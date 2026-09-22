@@ -12,6 +12,7 @@ Package root: `io.github.qdiaps.solitaire`
 - High-level Roadmap & DoD: `docs/ROADMAP.md`
 - Current Sprint Backlog: `docs/TASKS.md`
 - Dynamic Session State: `docs/STATE.md`
+- Agent Skills: `.agents/skills/` (composable skills: `tdd-workflow`, `state-and-git-sync`, `compose-solitaire-ui`)
 
 Always inspect `docs/STATE.md` and `docs/TASKS.md` before taking any action.
 
@@ -34,6 +35,11 @@ Always inspect `docs/STATE.md` and `docs/TASKS.md` before taking any action.
     - Self-documenting code. No redundant echo-comments.
     - Use KDoc (`/** ... */`) only for public interfaces, complex algorithms, or non-obvious game rules.
     - Strict immutability by default (`val`, data classes, immutable collections, exhaustive `when`).
+7. **Agent Skills Integration:**
+    - Always inspect and follow the specialized instructions in `.agents/skills/`:
+        - `tdd-workflow`: Apply Red-Green-Refactor cycle when building pure Kotlin domain logic, models, decks, rules, or solvers.
+        - `compose-solitaire-ui`: Follow when building Jetpack Compose screens, dragging overlays, Canvas victory animations, and haptics.
+        - `state-and-git-sync`: Follow when concluding any atomic task to synchronize documentation and generate Conventional Commits.
 
 ## 4. Execution & Safeguards
 - **Rule of 3 Failures:** If a build or test fails 3 consecutive times, STOP execution immediately. Summarize the failure, provide your hypothesis, and ask the user for direction. Do not cycle in loops.
