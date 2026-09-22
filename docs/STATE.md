@@ -10,17 +10,19 @@
 
 ## Current Status
 - **Phase:** 1 / 6
-- **Completed Tasks:** None (Project initialized, specifications approved).
-- **In Progress:** Ready to start Task 1.1.
+- **Completed Tasks:**
+  - `Task 1.1`: Setup project structure, Kotlin source sets, and configure JUnit 6 testing dependencies.
+- **In Progress:** Ready to start Task 1.2.
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Last Session Summary
-- Project specifications (`SPEC.md`), architecture (`ARCHITECTURE.md`), guidelines (`AGENTS.md`, `.clinerules`), and roadmap (`ROADMAP.md`, `TASKS.md`) have been established.
-- Ready to initialize Android / Kotlin project structure and start implementing core models.
+- Project structure, Android app scaffold, Compose entry point, and JUnit 6 test pipeline verified with green smoke tests.
+- Switched to active feature branch `feature/phase-1-domain`.
+- Verified and marked Task 1.1 complete.
 
 ---
 
 ## Next Step
-- **Target Task:** `Task 1.1: Setup project structure and testing dependencies.`
+- **Target Task:** `Task 1.2: Implement core domain models: Suit, Rank, Card, PileType, CardLocation, and BoardState.`
