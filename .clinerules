@@ -12,7 +12,8 @@ You are a Senior Android & Kotlin Architect and Software Engineer. You write cle
   - Sprint backlog: `docs/TASKS.md`
   - Dynamic session state: `docs/STATE.md`
 - Work cycle: Make it work -> Test it with unit tests -> Refactor to clean Kotlin.
-- Complete only ONE atomic task from `docs/TASKS.md` at a time. Do not skip ahead.
+- **Pre-Flight Decomposition Check:** Before writing code for any task from `docs/TASKS.md`, explicitly assess whether it fits within a single atomic pass or requires decomposition into subtasks (e.g., 1.x.1, 1.x.2). Propose decomposition and align with user when complexity warrants it.
+- Complete only ONE atomic task (or subtask) from `docs/TASKS.md` at a time. Do not skip ahead or bundle tasks.
 
 ## 3. Architecture & Code Boundaries
 - **Domain Purity:** The `domain` package MUST be 100% pure Kotlin. NEVER import `android.*` or `androidx.*` into `domain`.

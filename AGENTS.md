@@ -16,11 +16,14 @@ Always inspect `docs/STATE.md` and `docs/TASKS.md` before taking any action.
 
 ## 3. Workflow & Engineering Standards
 1. **Cycle:** Make it work -> Test it with comprehensive unit tests -> Refactor to idiomatic Kotlin.
-2. **Atomic Steps:** Pick only ONE task from `docs/TASKS.md` at a time. Do not implement unrequested features or bundle multiple steps together.
-3. **Architecture Boundaries:**
+2. **Pre-Flight Decomposition Check:** Before writing any code for a task from `docs/TASKS.md`, explicitly evaluate its scope:
+    - Assess whether the task can be completed reliably in a single atomic pass (Make -> Test -> Refactor).
+    - If the task spans multiple architectural layers, contains distinct independent algorithms, or carries high complexity, decompose it into explicit subtasks (e.g., 1.x.1, 1.x.2) and align with the user before writing code.
+3. **Atomic Steps:** Pick only ONE task (or subtask) from `docs/TASKS.md` at a time. Do not implement unrequested features or bundle multiple steps together.
+4. **Architecture Boundaries:**
     - The `domain` package must be 100% pure Kotlin. NEVER import `android.*` or `androidx.*` into `domain`.
     - Zero game logic inside `@Composable` functions. Composables only render state and emit user events (`GameIntent`).
-4. **Code Quality:**
+5. **Code Quality:**
     - Self-documenting code. No redundant echo-comments.
     - Use KDoc (`/** ... */`) only for public interfaces, complex algorithms, or non-obvious game rules.
     - Strict immutability by default (`val`, data classes, immutable collections, exhaustive `when`).
