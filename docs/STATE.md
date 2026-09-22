@@ -12,17 +12,19 @@
 - **Phase:** 1 / 6
 - **Completed Tasks:**
   - `Task 1.1`: Setup project structure, Kotlin source sets, and configure JUnit 6 testing dependencies.
-- **In Progress:** Ready to start Task 1.2.
+  - `Task 1.2`: Implement core domain models: `Suit`, `Rank`, `Card`, `PileType`, `CardLocation`, and `BoardState`.
+- **In Progress:** Ready to start Task 1.3.
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Last Session Summary
-- Project structure, Android app scaffold, Compose entry point, and JUnit 6 test pipeline verified with green smoke tests.
-- Switched to active feature branch `feature/phase-1-domain`.
-- Verified and marked Task 1.1 complete.
+- Implemented core domain models: `Suit`, `Rank`, `Card`, `PileType`, `CardLocation`, and `BoardState` in pure Kotlin under `domain.model`.
+- Verified domain purity with zero Android SDK dependencies.
+- Added comprehensive unit tests in `ModelsTest.kt` validating properties, bounds checking, and JSON serialization.
+- Verified test pipeline passing cleanly with `./gradlew test`.
 
 ---
 
 ## Next Step
-- **Target Task:** `Task 1.2: Implement core domain models: Suit, Rank, Card, PileType, CardLocation, and BoardState.`
+- **Target Task:** `Task 1.3: Implement Deck generator, shuffling utility, and initial Klondike 7-column deal logic with unit tests.`
