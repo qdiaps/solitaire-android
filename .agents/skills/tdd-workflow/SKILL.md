@@ -13,7 +13,7 @@ Ensure all game rules, models, and domain logic are thoroughly tested, determini
 ### Execution Steps
 1. **Red Phase (Test First):**
     - Create or update a test class under `app/src/test/kotlin/.../domain/`.
-    - Write targeted JUnit 5 test cases covering normal flows and boundary conditions (e.g., empty tableau, illegal rank/suit drops, king-only empty slots).
+    - Write targeted JUnit 6 test cases covering normal flows and boundary conditions (e.g., empty tableau, illegal rank/suit drops, king-only empty slots).
     - Execute `./gradlew test` in the terminal and verify the build fails or cannot compile.
 2. **Green Phase (Minimal Implementation):**
     - Write the simplest, most direct Kotlin code in `app/src/main/kotlin/.../domain/` to make all tests pass.
