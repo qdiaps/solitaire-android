@@ -40,13 +40,27 @@ Always inspect `docs/STATE.md` and `docs/TASKS.md` before taking any action.
       2. **Present the alternatives to the user:** Describe each option, recommend the preferred approach with clear reasoning (why it is better), and explain why the alternative(s) are less suitable.
       3. **Await user decision.**
       4. **Document the decision:** Once selected, record the chosen solution as a new lightweight ADR entry (`### ADR 00X: ...` with Context, Decision, Rationale) at the end of `docs/ARCHITECTURE.md`.
-7. **Architecture Boundaries:**
-    - The `domain` package must be 100% pure Kotlin. NEVER import `android.*` or `androidx.*` into `domain`.
-    - Zero game logic inside `@Composable` functions. Composables only render state and emit user events (`GameIntent`).
+7. **Modern Standards & Best Practices:**
+    - **Modern Idiomatic Kotlin:**
+      - Strict immutability by default: use `val`, immutable data classes (`copy()`), read-only collections (`List`, `Set`, `Map`). Never leak mutable collections or states.
+      - Exhaustive pattern matching: use `sealed interface` / `sealed class` and exhaustive `when` without generic fallback `else` branches whenever domain states or events are handled.
+      - Expressive standard library: prefer standard functional transformations (`map`, `filter`, `fold`, `take`, `drop`) and concise expression bodies where readability is enhanced.
+      - Defensive preconditions: use `require(condition) { "message" }` for argument validation and `check(condition) { "message" }` for state invariants. Avoid silent failure modes or null-swallowing.
+    - **Clean Architecture Boundaries:**
+      - The `domain` package must be 100% pure Kotlin. NEVER import `android.*` or `androidx.*` into `domain`.
+      - Pure unit testability: all domain entities, game rules, and deck algorithms must run in sub-second JVM test cycles without Android SDK mocks or emulator requirements.
+      - Zero business or rule calculations inside the presentation layer or `@Composable` functions.
+    - **Jetpack Compose Best Practices:**
+      - Unidirectional Data Flow (UDF): UI observes state (`StateFlow<GameUiState>`) and emits intents (`GameIntent`).
+      - State hoisting: build composables as stateless as possible, separating layout from state ownership to ensure previews and testability.
+      - Recomposition efficiency: ensure all UI state classes are `@Immutable` or `@Stable`. Never allocate objects or instantiate complex calculations directly inside the body of composables.
+      - Hardware-accelerated graphics: use dedicated Compose `Canvas` drawing loops (`drawBehind`, `drawWithCache`, `withFrameNanos`) for animations with heavy sprite counts (e.g., victory cascade) rather than thousands of recomposing widgets.
+    - **Coroutines & Concurrency:**
+      - Structured concurrency: always tie jobs to lifecycle-aware scopes (`viewModelScope`).
+      - Dispatcher hygiene: use `Dispatchers.Default` for CPU-intensive calculations (heuristics, solvers, deck validation) and `Dispatchers.Main` for UI interactions.
 8. **Code Quality:**
     - Self-documenting code. No redundant echo-comments.
     - Use KDoc (`/** ... */`) only for public interfaces, complex algorithms, or non-obvious game rules.
-    - Strict immutability by default (`val`, data classes, immutable collections, exhaustive `when`).
 9. **Agent Skills Integration:**
     - Always inspect and follow the specialized instructions in `.agents/skills/`:
         - `session-startup`: Follow when initializing or resuming a session to sync state and report progress.

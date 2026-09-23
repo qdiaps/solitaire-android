@@ -21,6 +21,11 @@
 ---
 
 ## Recent Progress Log
+- **2026-09-23 (Agent Guidelines & Best Practices):** Updated `AGENTS.md` and `tdd-workflow` skill with strict requirements:
+  - Codebase reconnaissance and style matching (test method backtick naming, JUnit 5/6 assertions, structure replication).
+  - Modern idiomatic Kotlin best practices (immutability, exhaustive `when`, expressive stdlib, defensive preconditions with `require`/`check`).
+  - Clean Architecture & pure JVM domain testability (zero Android leaks in domain).
+  - Jetpack Compose modern patterns (UDF, state hoisting, stability, canvas performance).
 - **2026-09-23 (Agent Skills & Session Protocol):** Added `session-startup` skill (`.agents/skills/session-startup/SKILL.md`) and updated `AGENTS.md` with explicit Session Startup Protocol to auto-read foundational docs and project state upon greeting/session start.
 - **2026-09-23 (Task 1.4):** Implemented `KlondikeRules` stock draw and infinite recycling logic supporting `DrawMode.DRAW_ONE` and `DrawMode.DRAW_THREE`. Verified with 15 unit tests covering draw order, boundary conditions, state immutability, and full multi-cycle invariance (`KlondikeRulesStockTest`).
 - **2026-09-22 (Task 1.3):** Implemented `Deck` generator, shuffling utility, and `KlondikeDealer` dealing logic. Verified with 100% test coverage (`DeckTest`, `KlondikeDealerTest`).
