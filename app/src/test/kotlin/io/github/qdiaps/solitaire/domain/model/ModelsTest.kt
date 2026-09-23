@@ -198,6 +198,50 @@ class ModelsTest {
     }
 
     @Nested
+    @DisplayName("Move tests")
+    inner class MoveTests {
+        @Test
+        fun `verify move properties`() {
+            val movedCards = listOf(
+                Card(Suit.SPADES, Rank.KING, isFaceUp = true),
+                Card(Suit.HEARTS, Rank.QUEEN, isFaceUp = true)
+            )
+            val move = Move(
+                source = CardLocation.Tableau(columnIndex = 1, cardIndex = 2),
+                destination = CardLocation.Tableau(columnIndex = 5, cardIndex = 4),
+                cards = movedCards,
+                scoreDelta = 5
+            )
+
+            assertEquals(CardLocation.Tableau(1, 2), move.source)
+            assertEquals(CardLocation.Tableau(5, 4), move.destination)
+            assertEquals(movedCards, move.cards)
+            assertEquals(5, move.scoreDelta)
+        }
+
+        @Test
+        fun `verify move default scoreDelta is zero`() {
+            val move = Move(
+                source = CardLocation.Waste,
+                destination = CardLocation.Foundation(0),
+                cards = listOf(Card(Suit.HEARTS, Rank.ACE, isFaceUp = true))
+            )
+            assertEquals(0, move.scoreDelta)
+        }
+
+        @Test
+        fun `verify move throws exception when cards list is empty`() {
+            assertThrows(IllegalArgumentException::class.java) {
+                Move(
+                    source = CardLocation.Waste,
+                    destination = CardLocation.Foundation(0),
+                    cards = emptyList()
+                )
+            }
+        }
+    }
+
+    @Nested
     @DisplayName("Serialization tests")
     inner class SerializationTests {
         private val json = Json { prettyPrint = false }
@@ -237,6 +281,19 @@ class ModelsTest {
             val encoded = json.encodeToString(board)
             val decoded = json.decodeFromString<BoardState>(encoded)
             assertEquals(board, decoded)
+        }
+
+        @Test
+        fun `roundtrip serialization for Move`() {
+            val move = Move(
+                source = CardLocation.Waste,
+                destination = CardLocation.Foundation(1),
+                cards = listOf(Card(Suit.DIAMONDS, Rank.ACE, isFaceUp = true)),
+                scoreDelta = 10
+            )
+            val encoded = json.encodeToString(move)
+            val decoded = json.decodeFromString<Move>(encoded)
+            assertEquals(move, decoded)
         }
     }
 }

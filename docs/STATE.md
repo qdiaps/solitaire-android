@@ -3,13 +3,13 @@
 ## Project Overview
 - **App:** Solitaire (Klondike)
 - **Package:** `io.github.qdiaps.solitaire`
-- **Current Milestone:** Phase 1 - Pure Domain Engine & Core Rules
+- **Current Milestone:** Phase 1 - Pure Domain Engine & Core Rules (Complete)
 - **Active Branch:** `feature/phase-1-domain`
 
 ---
 
 ## Current Focus & Status
-- **Phase:** 1 / 6
+- **Phase:** 1 / 6 Complete -> Transitioning to Phase 2 (Solvability Engine & Background Generator)
 - **Completed Tasks:**
   - `Task 1.1`: Setup project structure, Kotlin source sets, and configure JUnit 6 testing dependencies.
   - `Task 1.2`: Implement core domain models: `Suit`, `Rank`, `Card`, `PileType`, `CardLocation`, and `BoardState`.
@@ -20,18 +20,24 @@
   - `Task 1.7`: Implement auto-exposing face-down cards and scoring calculation on moves.
   - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
   - `Task 1.9`: Implement `UndoManager` (state snapshot rollback for board, score, moves) with unit tests.
-- **Current Focus:** Ready to start Task 1.10 (Phase 1 review, refactoring, and final verification).
+  - `Task 1.10`: Phase 1 review, refactoring to idiomatic Kotlin, completion of `Move` model, and verification of all 159 tests passing.
+- **Current Focus:** Phase 1 complete. Ready to begin Phase 2.
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-23 (Task 1.10):** Completed Phase 1 comprehensive review, refactoring, and model completion:
+  - Implemented the final domain model entity `Move` (`source`, `destination`, `cards`, `scoreDelta`) with `@Serializable` and non-empty preconditions.
+  - Added unit and serialization tests in `ModelsTest`, bringing the suite to 159 unit tests (100% pass).
+  - Executed full project verification: `./gradlew check` and `./gradlew lintDebug` passing cleanly with zero errors or warnings.
+  - Verified architectural boundaries: pure Kotlin domain layer with 0% Android framework leaks (`android.*`, `androidx.*`).
+  - Marked Phase 1 as completely fulfilled in `ROADMAP.md` and prepared Phase 2 sprint backlog in `TASKS.md`.
 - **2026-09-23 (Task 1.9):** Implemented `UndoManager` for step-by-step game undo/redo state rollback:
   - Backed by LIFO `ArrayDeque<BoardState>` snapshot stacks with configurable/unbounded history (`maxHistorySize`).
   - Implemented `record(state)`, `undo(currentState)`, `redo(currentState)`, `peekUndo()`, `peekRedo()`, and `clear()`.
   - Added full rollback validation ensuring card positions, face-up/down orientations, scores, and moves counts are cleanly preserved and restored.
-  - Added serialization and state persistence helpers `getUndoHistory()`, `getRedoHistory()`, and `restoreHistory()`.
-  - Invalidation of redo stack upon branching with a new move.
+  - Added serialization and state persistence helpers `getUndoHistory()`, `getRedoHistory()`, and `restoreHistory()`.\n  - Invalidation of redo stack upon branching with a new move.
   - Verified with 14 new unit tests (`UndoManagerTest`), bringing total test suite to 155 unit tests (100% pass).
 - **2026-09-23 (Task 1.8):** Implemented `SmartTapResolver` for auto-moving cards on single tap following Klondike specification:
   - Priority 1: Move to Foundation (if valid).
@@ -65,4 +71,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `Task 1.10: Phase 1 review, refactoring to idiomatic Kotlin, and verification that all tests pass.`
+- **Target Task:** `Task 2.1: Implement fast Klondike solvability solver (SolvabilityChecker) with heuristic search and state pruning.`
