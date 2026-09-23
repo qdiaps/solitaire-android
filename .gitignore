@@ -53,3 +53,6 @@ proguard/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Kotlin
+.kotlin/
