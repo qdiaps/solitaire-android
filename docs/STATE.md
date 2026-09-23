@@ -14,6 +14,7 @@
   - `T-2.1`: Implement compact/canonical state key representation (`SolverStateKey`) normalizing symmetric tableau columns and stock-cycle states to prevent cyclic exploration.
   - `T-2.2`: Implement legal move generator (`SolverMoveGenerator`) producing all non-redundant successor `BoardState` transitions with empty column and lateral move pruning.
   - `T-2.3`: Implement rule-based pruning for safe foundation promotions (`SafePromotion`) collapsing unnecessary search branching.
+  - `T-2.4`: Implement core A* / heuristic search engine (`SolvabilityChecker`) with priority queue expansion, admissible heuristics, and timeout/state limits.
 - **Completed Tasks (Phase 1):**
   - `Task 1.1`: Setup project structure, Kotlin source sets, and configure JUnit 6 testing dependencies.
   - `Task 1.2`: Implement core domain models: `Suit`, `Rank`, `Card`, `PileType`, `CardLocation`, and `BoardState`.
@@ -25,12 +26,18 @@
   - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
   - `Task 1.9`: Implement `UndoManager` (state snapshot rollback for board, score, moves) with unit tests.
   - `Task 1.10`: Phase 1 review, refactoring to idiomatic Kotlin, completion of `Move` model, and verification of all 159 tests passing.
-- **Current Focus:** Phase 2: Solvability Engine & Background Generator (Task T-2.4).
+- **Current Focus:** Phase 2: Solvability Engine & Background Generator (Task T-2.5).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-23 (Task T-2.4):** Implemented core A* heuristic search engine `SolvabilityChecker`:
+  - PriorityQueue-based A* with admissible distance heuristic $h(s) = (52 - \sum \text{foundation}) + 2 \cdot \text{faceDown} + (\text{stock} + \text{waste})$.
+  - Seamless greedy collapse of safe promotions via `SafePromotion`, preserving the full move chain through search node parent pointers.
+  - Structured output `SolvabilityResult`: `Solvable(moves, path, statesEvaluated, durationMs)`, `Unsolvable`, and `Timeout`.
+  - Added ADR 006 in `docs/ARCHITECTURE.md`.
+  - Verified with 7 unit tests in `SolvabilityCheckerTest`, expanding test suite to 207 unit tests (100% pass, 0 lint warnings).
 - **2026-09-23 (Task T-2.3):** Implemented safe foundation auto-promotion heuristic `SafePromotion`:
   - Mathematical proof implementation: Aces & Twos are unconditionally safe; Ranks $\ge 3$ are safe once both opposite-color foundation piles have reached at least rank $R - 1$.
   - Added `findSafeTransitions` and `applyAllSafePromotions` for greedy fixed-point search space collapse.
@@ -71,4 +78,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-2.4: Core A* / Heuristic Search Engine (SolvabilityChecker)`
+- **Target Task:** `T-2.5: Deadlock Detector (DeadlockDetector)`

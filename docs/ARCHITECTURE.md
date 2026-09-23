@@ -154,8 +154,7 @@ sealed interface GameEvent {
 
 ## 5. Coding & Documentation Standards
 - **KDoc:** Required for public APIs, non-obvious game rules, and complex solver heuristics.
-- **Strict Immutability:** Never expose `MutableStateFlow` outside `ViewModel`. Expose `asStateFlow()`.
-- **Coroutines:** Use `Dispatchers.Default` for game engine computations and solver; `Dispatchers.Main` for UI state collection.
+- **Strict Immutability:** Never expose `MutableStateFlow` outside `ViewModel`. Expose `asStateFlow()`.\n- **Coroutines:** Use `Dispatchers.Default` for game engine computations and solver; `Dispatchers.Main` for UI state collection.
 - **Testing:** Every rule in `KlondikeRules` must have a corresponding test case covering both valid and invalid scenarios.
 
 ---
@@ -193,3 +192,12 @@ sealed interface GameEvent {
   2. Rank $R \ge 3$ is provably safe if both opposite-color foundation piles have already reached rank $\ge R - 1$.
   3. Safe promotions are applied greedily to reach a reduced canonical state without branching, collapsing search state spaces by an order of magnitude.
 - **Rationale:** Guarantees no winning solution paths are severed while avoiding combinatorial explosion in the solver.
+
+### ADR 006: Core A* Search Engine with Priority-Queue Expansion (`SolvabilityChecker`)
+- **Context:** Solitaire deals must be verified for solvability before being offered to players, and hint/solution paths must be available upon request. Search algorithms must run within tight mobile time and memory budgets (< 300 ms on benchmark seeds, 0 GC spikes).
+- **Decision:** Implement an A* priority queue search engine using:
+  1. Admissible heuristic function $h(s) = (52 - \sum foundation) + 2 \cdot faceDown + (stock + waste)$.
+  2. Tie-breaking on lower heuristic cost $h$ to favor paths advancing foundations and card reveals.
+  3. Seamless integration with `SafePromotion` to collapse safe promotion chains into single nodes with full move parent pointer traceability.
+  4. Guardrails with configurable `timeoutMs` and `maxStates` limits.
+- **Rationale:** Produces optimal and near-optimal solution paths, guarantees deterministic termination on mobile hardware, and provides full move history reconstruction.

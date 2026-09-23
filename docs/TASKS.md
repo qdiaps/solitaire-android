@@ -12,7 +12,7 @@
 - [x] **T-2.3: Safe Foundation Auto-Promotion Heuristic (`SafePromotion`)**
   - Implement rule-based pruning for safe foundation promotions (e.g., Aces, Twos, and cards whose lower-ranked opposite-color cards are already banked), collapsing unnecessary search branching.
   - *TDD:* `SafePromotionTest` validating correct identification of safe vs. unsafe foundation moves.
-- [ ] **T-2.4: Core A* / Heuristic Search Engine (`SolvabilityChecker`)**
+- [x] **T-2.4: Core A* / Heuristic Search Engine (`SolvabilityChecker`)**
   - Implement heuristic search (A* / Best-First) prioritizing unexposed card reveals, foundation advancements, and minimal wasteful cycling with configurable timeout/depth limits.
   - Return structured `SolvabilityResult` (`Solvable(moves, path)`, `Unsolvable`, `Timeout`).
   - *TDD:* `SolvabilityCheckerTest` verifying solvability resolution on known hand positions and timeout guardrails.
