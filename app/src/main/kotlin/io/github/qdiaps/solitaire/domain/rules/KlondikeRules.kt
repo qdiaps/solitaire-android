@@ -303,4 +303,239 @@ object KlondikeRules {
         check(cardIndex != -1) { "Card $card not found in column $fromColumnIndex." }
         return moveTableauToTableau(state, fromColumnIndex, cardIndex, toColumnIndex)
     }
+
+    /**
+     * Checks whether [card] can be legally placed on top of [foundationPile].
+     *
+     * According to Klondike rules:
+     * - An empty foundation pile can only accept an [Rank.ACE].
+     * - A non-empty foundation pile can accept [card] only if it has the same suit
+     *   and its rank is exactly one higher than the topmost card.
+     * - [card] must be face-up.
+     *
+     * @param card The [Card] to be placed.
+     * @param foundationPile The current list of cards in the target foundation pile.
+     * @return `true` if placement is legal, `false` otherwise.
+     */
+    fun canPlaceOnFoundation(card: Card, foundationPile: List<Card>): Boolean {
+        if (!card.isFaceUp) return false
+        if (foundationPile.isEmpty()) {
+            return card.rank == Rank.ACE
+        }
+        val topCard = foundationPile.last()
+        return card.suit == topCard.suit && card.rank.value == topCard.rank.value + 1
+    }
+
+    /**
+     * Finds the 0-based index of the first foundation pile that can accept [card],
+     * or `null` if no foundation pile can accept it.
+     *
+     * @param state Current [BoardState].
+     * @param card The [Card] to find a foundation target for.
+     * @return Index in `0..3` of the matching foundation, or `null`.
+     */
+    fun findTargetFoundationIndex(state: BoardState, card: Card): Int? {
+        if (!card.isFaceUp) return null
+        for (i in state.foundations.indices) {
+            if (canPlaceOnFoundation(card, state.foundations[i])) {
+                return i
+            }
+        }
+        return null
+    }
+
+    /**
+     * Checks whether the topmost card from the waste pile can be moved to [foundationIndex].
+     *
+     * @param state Current [BoardState].
+     * @param foundationIndex 0-based index of the target foundation pile (0..3).
+     * @return `true` if the move is legal, `false` otherwise.
+     */
+    fun canMoveWasteToFoundation(state: BoardState, foundationIndex: Int): Boolean {
+        if (foundationIndex !in 0 until state.foundations.size) return false
+        if (state.waste.isEmpty()) return false
+        return canPlaceOnFoundation(state.waste.last(), state.foundations[foundationIndex])
+    }
+
+    /**
+     * Moves the topmost card from the waste pile to [foundationIndex].
+     *
+     * @param state Current [BoardState].
+     * @param foundationIndex 0-based index of the target foundation pile (0..3).
+     * @return New [BoardState] reflecting the moved card and incremented moves count.
+     * @throws IllegalArgumentException if [foundationIndex] is out of range.
+     * @throws IllegalStateException if waste is empty or move is illegal.
+     */
+    fun moveWasteToFoundation(state: BoardState, foundationIndex: Int): BoardState {
+        require(foundationIndex in 0 until state.foundations.size) {
+            "Invalid foundation index: $foundationIndex"
+        }
+        check(state.waste.isNotEmpty()) { "Cannot move from an empty waste pile." }
+
+        val cardToMove = state.waste.last()
+        check(canPlaceOnFoundation(cardToMove, state.foundations[foundationIndex])) {
+            "Cannot move $cardToMove to foundation $foundationIndex."
+        }
+
+        val newWaste = state.waste.dropLast(1)
+        val newFoundations = state.foundations.toMutableList().apply {
+            this[foundationIndex] = this[foundationIndex] + cardToMove
+        }
+
+        return state.copy(
+            waste = newWaste,
+            foundations = newFoundations,
+            movesCount = state.movesCount + 1
+        )
+    }
+
+    /**
+     * Checks whether the topmost card of [tableauIndex] can be moved to [foundationIndex].
+     *
+     * @param state Current [BoardState].
+     * @param tableauIndex 0-based index of the source tableau column (0..6).
+     * @param foundationIndex 0-based index of the target foundation pile (0..3).
+     * @return `true` if the move is legal, `false` otherwise.
+     */
+    fun canMoveTableauToFoundation(
+        state: BoardState,
+        tableauIndex: Int,
+        foundationIndex: Int
+    ): Boolean {
+        if (tableauIndex !in 0 until state.tableau.size) return false
+        if (foundationIndex !in 0 until state.foundations.size) return false
+
+        val column = state.tableau[tableauIndex]
+        if (column.isEmpty()) return false
+
+        return canPlaceOnFoundation(column.last(), state.foundations[foundationIndex])
+    }
+
+    /**
+     * Moves the topmost card of [tableauIndex] to [foundationIndex].
+     *
+     * @param state Current [BoardState].
+     * @param tableauIndex 0-based index of the source tableau column (0..6).
+     * @param foundationIndex 0-based index of the target foundation pile (0..3).
+     * @return New [BoardState] reflecting the moved card and incremented moves count.
+     * @throws IllegalArgumentException if [tableauIndex] or [foundationIndex] is out of range.
+     * @throws IllegalStateException if column is empty, top card is face-down, or move is illegal.
+     */
+    fun moveTableauToFoundation(
+        state: BoardState,
+        tableauIndex: Int,
+        foundationIndex: Int
+    ): BoardState {
+        require(tableauIndex in 0 until state.tableau.size) {
+            "Invalid tableau column index: $tableauIndex"
+        }
+        require(foundationIndex in 0 until state.foundations.size) {
+            "Invalid foundation index: $foundationIndex"
+        }
+
+        val column = state.tableau[tableauIndex]
+        check(column.isNotEmpty()) { "Cannot move from an empty tableau column: $tableauIndex" }
+
+        val cardToMove = column.last()
+        check(cardToMove.isFaceUp) { "Cannot move face-down card to foundation." }
+        check(canPlaceOnFoundation(cardToMove, state.foundations[foundationIndex])) {
+            "Cannot move $cardToMove to foundation $foundationIndex."
+        }
+
+        val newColumn = column.dropLast(1)
+        val newTableau = state.tableau.toMutableList().apply {
+            this[tableauIndex] = newColumn
+        }
+        val newFoundations = state.foundations.toMutableList().apply {
+            this[foundationIndex] = this[foundationIndex] + cardToMove
+        }
+
+        return state.copy(
+            tableau = newTableau,
+            foundations = newFoundations,
+            movesCount = state.movesCount + 1
+        )
+    }
+
+    /**
+     * Checks whether the topmost card from [foundationIndex] can be moved to [tableauIndex].
+     *
+     * Standard Klondike allows returning cards from foundations back to the tableau.
+     *
+     * @param state Current [BoardState].
+     * @param foundationIndex 0-based index of the source foundation pile (0..3).
+     * @param tableauIndex 0-based index of the target tableau column (0..6).
+     * @return `true` if the move is legal, `false` otherwise.
+     */
+    fun canMoveFoundationToTableau(
+        state: BoardState,
+        foundationIndex: Int,
+        tableauIndex: Int
+    ): Boolean {
+        if (foundationIndex !in 0 until state.foundations.size) return false
+        if (tableauIndex !in 0 until state.tableau.size) return false
+
+        val foundationPile = state.foundations[foundationIndex]
+        if (foundationPile.isEmpty()) return false
+
+        return canPlaceOnTableau(foundationPile.last(), state.tableau[tableauIndex])
+    }
+
+    /**
+     * Moves the topmost card from [foundationIndex] to [tableauIndex].
+     *
+     * @param state Current [BoardState].
+     * @param foundationIndex 0-based index of the source foundation pile (0..3).
+     * @param tableauIndex 0-based index of the target tableau column (0..6).
+     * @return New [BoardState] reflecting the moved card and incremented moves count.
+     * @throws IllegalArgumentException if indices are out of range.
+     * @throws IllegalStateException if foundation is empty or move is illegal.
+     */
+    fun moveFoundationToTableau(
+        state: BoardState,
+        foundationIndex: Int,
+        tableauIndex: Int
+    ): BoardState {
+        require(foundationIndex in 0 until state.foundations.size) {
+            "Invalid foundation index: $foundationIndex"
+        }
+        require(tableauIndex in 0 until state.tableau.size) {
+            "Invalid tableau column index: $tableauIndex"
+        }
+
+        val foundationPile = state.foundations[foundationIndex]
+        check(foundationPile.isNotEmpty()) { "Cannot move from an empty foundation pile: $foundationIndex" }
+
+        val cardToMove = foundationPile.last()
+        check(canPlaceOnTableau(cardToMove, state.tableau[tableauIndex])) {
+            "Cannot move $cardToMove from foundation onto tableau column $tableauIndex."
+        }
+
+        val newFoundationPile = foundationPile.dropLast(1)
+        val newFoundations = state.foundations.toMutableList().apply {
+            this[foundationIndex] = newFoundationPile
+        }
+        val newTableau = state.tableau.toMutableList().apply {
+            this[tableauIndex] = this[tableauIndex] + cardToMove
+        }
+
+        return state.copy(
+            foundations = newFoundations,
+            tableau = newTableau,
+            movesCount = state.movesCount + 1
+        )
+    }
+
+    /**
+     * Checks whether the game has been won.
+     *
+     * The game is won when all 4 foundations are completely filled (13 cards each, from Ace to King,
+     * totaling all 52 cards of the standard deck).
+     *
+     * @param state Current [BoardState].
+     * @return `true` if all foundations have 13 cards, `false` otherwise.
+     */
+    fun isGameWon(state: BoardState): Boolean {
+        return state.foundations.all { it.size == Rank.entries.size }
+    }
 }

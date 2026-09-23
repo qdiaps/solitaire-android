@@ -16,12 +16,14 @@
   - `Task 1.3`: Implement `Deck` generator, shuffling utility, and initial Klondike 7-column deal logic with unit tests.
   - `Task 1.4`: Implement `KlondikeRules`: Stock draw & recycling logic (Draw 1 / Draw 3) with unit tests.
   - `Task 1.5`: Implement `KlondikeRules`: Tableau-to-Tableau and Waste-to-Tableau movement validation with unit tests.
-- **Current Focus:** Ready to start Task 1.6.
+  - `Task 1.6`: Implement `KlondikeRules`: Foundation building validation (Ace to King by suit) with unit tests.
+- **Current Focus:** Ready to start Task 1.7.
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-23 (Task 1.6):** Implemented foundation building rules: `canPlaceOnFoundation`, `findTargetFoundationIndex`, `canMoveWasteToFoundation`, `moveWasteToFoundation`, `canMoveTableauToFoundation`, `moveTableauToFoundation`, `canMoveFoundationToTableau`, `moveFoundationToTableau`, and `isGameWon`. Verified with 22 unit tests (`KlondikeRulesFoundationTest`), bringing total tests to 99 (100% pass).
 - **2026-09-23 (Task 1.5):** Implemented tableau placement (`canPlaceOnTableau`), multi-card sequence validation (`isValidTableauSequence`), Waste-to-Tableau moves (`canMoveWasteToTableau`, `moveWasteToTableau`), and Tableau-to-Tableau single and multi-card moves (`canMoveTableauToTableau`, `moveTableauToTableau`) in pure Kotlin `KlondikeRules`. Verified with 25 unit tests following backtick naming style (`KlondikeRulesTableauTest`), bringing total tests to 77 (100% pass).
 - **2026-09-23 (Agent Guidelines & Best Practices):** Updated `AGENTS.md` and `tdd-workflow` skill with strict requirements:
   - Codebase reconnaissance and style matching (test method backtick naming, JUnit 5/6 assertions, structure replication).
@@ -38,4 +40,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `Task 1.6: Implement KlondikeRules: Foundation building validation (Ace to King by suit) with unit tests.`
+- **Target Task:** `Task 1.7: Implement auto-exposing face-down cards and scoring calculation on moves.`
