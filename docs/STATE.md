@@ -18,12 +18,21 @@
   - `Task 1.5`: Implement `KlondikeRules`: Tableau-to-Tableau and Waste-to-Tableau movement validation with unit tests.
   - `Task 1.6`: Implement `KlondikeRules`: Foundation building validation (Ace to King by suit) with unit tests.
   - `Task 1.7`: Implement auto-exposing face-down cards and scoring calculation on moves.
-- **Current Focus:** Ready to start Task 1.8.
+  - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
+- **Current Focus:** Ready to start Task 1.9.
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-23 (Task 1.8):** Implemented `SmartTapResolver` for auto-moving cards on single tap following Klondike specification:
+  - Priority 1: Move to Foundation (if valid).
+  - Priority 2: Move to Tableau column that reveals a hidden face-down card.
+  - Priority 3: Move to leftmost valid Tableau column (0..6).
+  - Prevented meaningless lateral moves (King already at base `cardIndex == 0` of a column does not move to another empty column).
+  - Implemented `resolveDestination`, `resolveAndApply`, `resolveMove`, and global `findBestMove(state)`.
+  - Added overloads accepting either `CardLocation` or `Card` instance.
+  - Verified with 23 new unit tests (`SmartTapResolverTest`), bringing total test suite to 141 unit tests (100% pass).
 - **2026-09-23 (Task 1.7):** Implemented auto-exposing face-down cards and standard Klondike scoring calculation on game moves:
   - Added scoring constants: `SCORE_WASTE_TO_TABLEAU (+5)`, `SCORE_WASTE_TO_FOUNDATION (+10)`, `SCORE_TABLEAU_TO_FOUNDATION (+10)`, `SCORE_TURNOVER_TABLEAU_CARD (+5)`, `SCORE_FOUNDATION_TO_TABLEAU (-15)`.
   - Implemented `calculateScore(currentScore, delta)` clamping score to 0 minimum (`coerceAtLeast(0)`).
@@ -43,4 +52,9 @@
 - **2026-09-22 (Task 1.3):** Implemented `Deck` generator, shuffling utility, and `KlondikeDealer` dealing logic. Verified with 100% test coverage (`DeckTest`, `KlondikeDealerTest`).
 - **2026-09-22 (Task 1.2):** Implemented core domain models: `Suit`, `Rank`, `Card`, `PileType`, `CardLocation`, and `BoardState` in pure Kotlin with JUnit 6 tests (`ModelsTest`).
 - **2026-09-22 (Task 1.1):** Verified Android scaffold, Compose setup, and JUnit 6 test suite runner (`InitializationTest`).
-- **2026-09-22 (Agent Skills & Guidelines):** Added agent skills (`tdd-workflow`, `state-and-git-sync`, `compose-solitaire-ui`), integrated skills into `AGENTS.md`, and added ADR protocol.\n\n---\n\n## Next Immediate Step\n- **Target Task:** `Task 1.8: Implement SmartTapResolver (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.`\n
+- **2026-09-22 (Agent Skills & Guidelines):** Added agent skills (`tdd-workflow`, `state-and-git-sync`, `compose-solitaire-ui`), integrated skills into `AGENTS.md`, and added ADR protocol.
+
+---
+
+## Next Immediate Step
+- **Target Task:** `Task 1.9: Implement UndoManager (state snapshot rollback for board, score, moves) with unit tests.`
