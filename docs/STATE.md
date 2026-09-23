@@ -10,7 +10,7 @@
 
 ## Current Focus & Status
 - **Phase:** 2 / 6
-- **Completed Tasks:**
+- **Completed Tasks (Phase 1):**
   - `Task 1.1`: Setup project structure, Kotlin source sets, and configure JUnit 6 testing dependencies.
   - `Task 1.2`: Implement core domain models: `Suit`, `Rank`, `Card`, `PileType`, `CardLocation`, and `BoardState`.
   - `Task 1.3`: Implement `Deck` generator, shuffling utility, and initial Klondike 7-column deal logic with unit tests.
@@ -21,14 +21,16 @@
   - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
   - `Task 1.9`: Implement `UndoManager` (state snapshot rollback for board, score, moves) with unit tests.
   - `Task 1.10`: Phase 1 review, refactoring to idiomatic Kotlin, completion of `Move` model, and verification of all 159 tests passing.
-- **Current Focus:** Phase 2 Kick-off: Architecture planning and implementation of Solvability Engine and Background Deal Generator.
+- **Current Focus:** Phase 2: Solvability Engine & Background Generator (Tasks T-2.1 through T-2.8).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-23 (Phase 2 Microtasks Decomposition):** Structured Phase 2 in `TASKS.md` into 8 atomic tasks (T-2.1 .. T-2.8) covering canonical state pruning, move enumeration, safe foundation heuristic, A* search loop, deadlock detection, coroutine deal buffering, and DoD benchmarks.
 - **2026-09-23 (Phase 2 Initialization):** Transitioned project to Phase 2 (Solvability Engine & Background Generator):
-  - Created and switched to `feature/phase-2-solver` branch.
+  - Merged Phase 1 PR #1 into `master`.
+  - Rebased `feature/phase-2-solver` on `master`.
   - Updated `STATE.md` and `TASKS.md` milestones.
   - Formulated high-level architectural plan for Phase 2 components (`SolvabilityChecker`, `DeadlockDetector`, `DealGenerator`).
 - **2026-09-23 (Task 1.10):** Completed Phase 1 comprehensive review, refactoring, and model completion:
@@ -76,4 +78,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `Task 2.1: Implement fast Klondike solvability solver (SolvabilityChecker) with heuristic search and state pruning.`
+- **Target Task:** `T-2.1: State Canonicalization & Visited Pruning (SolverStateKey)`
