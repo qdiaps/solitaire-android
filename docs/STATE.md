@@ -14,12 +14,14 @@
   - `Task 1.1`: Setup project structure, Kotlin source sets, and configure JUnit 6 testing dependencies.
   - `Task 1.2`: Implement core domain models: `Suit`, `Rank`, `Card`, `PileType`, `CardLocation`, and `BoardState`.
   - `Task 1.3`: Implement `Deck` generator, shuffling utility, and initial Klondike 7-column deal logic with unit tests.
-- **Current Focus:** Ready to start Task 1.4.
+  - `Task 1.4`: Implement `KlondikeRules`: Stock draw & recycling logic (Draw 1 / Draw 3) with unit tests.
+- **Current Focus:** Ready to start Task 1.5.
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-23 (Task 1.4):** Implemented `KlondikeRules` stock draw and infinite recycling logic supporting `DrawMode.DRAW_ONE` and `DrawMode.DRAW_THREE`. Verified with 15 unit tests covering draw order, boundary conditions, state immutability, and full multi-cycle invariance (`KlondikeRulesStockTest`).
 - **2026-09-22 (Task 1.3):** Implemented `Deck` generator, shuffling utility, and `KlondikeDealer` dealing logic. Verified with 100% test coverage (`DeckTest`, `KlondikeDealerTest`).
 - **2026-09-22 (Task 1.2):** Implemented core domain models: `Suit`, `Rank`, `Card`, `PileType`, `CardLocation`, and `BoardState` in pure Kotlin with JUnit 6 tests (`ModelsTest`).
 - **2026-09-22 (Task 1.1):** Verified Android scaffold, Compose setup, and JUnit 6 test suite runner (`InitializationTest`).
@@ -28,4 +30,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `Task 1.4: Implement KlondikeRules: Stock draw & recycling logic (Draw 1 / Draw 3) with unit tests.`
+- **Target Task:** `Task 1.5: Implement KlondikeRules: Tableau-to-Tableau and Waste-to-Tableau movement validation with unit tests.`
