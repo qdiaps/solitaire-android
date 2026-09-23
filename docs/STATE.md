@@ -21,6 +21,7 @@
 ---
 
 ## Recent Progress Log
+- **2026-09-23 (Agent Skills & Session Protocol):** Added `session-startup` skill (`.agents/skills/session-startup/SKILL.md`) and updated `AGENTS.md` with explicit Session Startup Protocol to auto-read foundational docs and project state upon greeting/session start.
 - **2026-09-23 (Task 1.4):** Implemented `KlondikeRules` stock draw and infinite recycling logic supporting `DrawMode.DRAW_ONE` and `DrawMode.DRAW_THREE`. Verified with 15 unit tests covering draw order, boundary conditions, state immutability, and full multi-cycle invariance (`KlondikeRulesStockTest`).
 - **2026-09-22 (Task 1.3):** Implemented `Deck` generator, shuffling utility, and `KlondikeDealer` dealing logic. Verified with 100% test coverage (`DeckTest`, `KlondikeDealerTest`).
 - **2026-09-22 (Task 1.2):** Implemented core domain models: `Suit`, `Rank`, `Card`, `PileType`, `CardLocation`, and `BoardState` in pure Kotlin with JUnit 6 tests (`ModelsTest`).
