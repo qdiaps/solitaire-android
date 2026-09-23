@@ -174,6 +174,7 @@ class KlondikeRulesFoundationTest {
             assertEquals(listOf(twoSpades), newState.waste)
             assertEquals(listOf(aceHearts), newState.foundations[0])
             assertEquals(6, newState.movesCount)
+            assertEquals(10, newState.score)
             assertNotSame(state, newState)
         }
 
@@ -241,9 +242,11 @@ class KlondikeRulesFoundationTest {
 
             val newState = KlondikeRules.moveTableauToFoundation(state, tableauIndex = 0, foundationIndex = 0)
 
-            assertEquals(listOf(hiddenCard), newState.tableau[0])
+            // When aceHearts is moved, hiddenCard is auto-exposed and awards 10 + 5 points
+            assertEquals(listOf(hiddenCard.copy(isFaceUp = true)), newState.tableau[0])
             assertEquals(listOf(aceHearts), newState.foundations[0])
             assertEquals(11, newState.movesCount)
+            assertEquals(15, newState.score)
         }
 
         @Test
@@ -312,6 +315,7 @@ class KlondikeRulesFoundationTest {
                 tableau = List(7) { colIndex ->
                     if (colIndex == 3) listOf(blackThree) else emptyList<Card>()
                 },
+                score = 30,
                 movesCount = 20
             )
 
@@ -323,6 +327,7 @@ class KlondikeRulesFoundationTest {
             assertEquals(listOf(aceHearts), newState.foundations[0])
             assertEquals(listOf(blackThree, twoHearts), newState.tableau[3])
             assertEquals(21, newState.movesCount)
+            assertEquals(15, newState.score) // 30 - 15 = 15
         }
 
         @Test

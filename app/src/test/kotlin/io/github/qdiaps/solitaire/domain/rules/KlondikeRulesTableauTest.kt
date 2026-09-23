@@ -182,6 +182,7 @@ class KlondikeRulesTableauTest {
             assertEquals(listOf(redAce), newState.waste)
             assertEquals(listOf(blackKing), newState.tableau[0])
             assertEquals(4, newState.movesCount)
+            assertEquals(5, newState.score)
             assertNotSame(state, newState)
         }
 
@@ -203,6 +204,7 @@ class KlondikeRulesTableauTest {
             assertTrue(newState.waste.isEmpty())
             assertEquals(listOf(blackKing, redQueen), newState.tableau[2])
             assertEquals(1, newState.movesCount)
+            assertEquals(5, newState.score)
         }
 
         @Test
@@ -300,9 +302,11 @@ class KlondikeRulesTableauTest {
 
             val newState = KlondikeRules.moveTableauToTableau(state, fromColumnIndex = 0, cardIndex = 1, toColumnIndex = 1)
 
-            assertEquals(listOf(hiddenCard), newState.tableau[0])
+            // When redQueen moves, hiddenCard is auto-exposed and awards 5 points
+            assertEquals(listOf(hiddenCard.copy(isFaceUp = true)), newState.tableau[0])
             assertEquals(listOf(blackKing, redQueen), newState.tableau[1])
             assertEquals(6, newState.movesCount)
+            assertEquals(5, newState.score)
         }
 
         @Test
@@ -323,9 +327,11 @@ class KlondikeRulesTableauTest {
 
             val newState = KlondikeRules.moveTableauToTableau(state, fromColumnIndex = 0, cardIndex = 1, toColumnIndex = 1)
 
-            assertEquals(listOf(hiddenCard), newState.tableau[0])
+            // When stack moves, hiddenCard is auto-exposed and awards 5 points
+            assertEquals(listOf(hiddenCard.copy(isFaceUp = true)), newState.tableau[0])
             assertEquals(listOf(blackKing, redQueen, blackJack, redTen), newState.tableau[1])
             assertEquals(1, newState.movesCount)
+            assertEquals(5, newState.score)
         }
 
         @Test
@@ -347,6 +353,7 @@ class KlondikeRulesTableauTest {
             assertTrue(newState.tableau[0].isEmpty())
             assertEquals(listOf(blackKing, redQueen, blackJack), newState.tableau[3])
             assertEquals(1, newState.movesCount)
+            assertEquals(0, newState.score)
         }
 
         @Test

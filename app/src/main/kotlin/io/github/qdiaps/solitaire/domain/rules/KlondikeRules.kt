@@ -9,9 +9,76 @@ import kotlin.math.min
  * Pure domain rules engine for Klondike Solitaire.
  *
  * Implements validation and state transitions for game operations such as
- * stock drawing, recycling, card movements, and foundations building.
+ * stock drawing, recycling, card movements, foundations building,
+ * auto-exposing face-down cards, and standard scoring.
  */
 object KlondikeRules {
+
+    /** Score points awarded for moving a card from waste to tableau (+5). */
+    const val SCORE_WASTE_TO_TABLEAU: Int = 5
+
+    /** Score points awarded for moving a card from waste to foundation (+10). */
+    const val SCORE_WASTE_TO_FOUNDATION: Int = 10
+
+    /** Score points awarded for moving a card from tableau to foundation (+10). */
+    const val SCORE_TABLEAU_TO_FOUNDATION: Int = 10
+
+    /** Score points awarded for turning over (auto-exposing) a hidden tableau card (+5). */
+    const val SCORE_TURNOVER_TABLEAU_CARD: Int = 5
+
+    /** Score points deducted for moving a card from foundation back to tableau (-15). */
+    const val SCORE_FOUNDATION_TO_TABLEAU: Int = -15
+
+    /**
+     * Calculates the new score after applying [pointsDelta], ensuring the score never drops below 0.
+     *
+     * @param currentScore Current game score.
+     * @param pointsDelta Points to add (positive) or deduct (negative).
+     * @return Resulting non-negative score.
+     */
+    fun calculateScore(currentScore: Int, pointsDelta: Int): Int =
+        (currentScore + pointsDelta).coerceAtLeast(0)
+
+    /**
+     * Exposes (turns face-up) the topmost card of the tableau column at [columnIndex] if it is face-down.
+     * If the card is flipped, increases the score by [SCORE_TURNOVER_TABLEAU_CARD].
+     *
+     * @param state Current [BoardState].
+     * @param columnIndex 0-based index of the tableau column (0..6).
+     * @return Updated [BoardState], or the same [state] if the column is empty or its top card is already face-up.
+     */
+    fun autoExposeTableauCard(state: BoardState, columnIndex: Int): BoardState {
+        if (columnIndex !in state.tableau.indices) return state
+        val column = state.tableau[columnIndex]
+        if (column.isEmpty()) return state
+        val topCard = column.last()
+        if (topCard.isFaceUp) return state
+
+        val updatedColumn = column.dropLast(1) + topCard.copy(isFaceUp = true)
+        val updatedTableau = state.tableau.toMutableList().apply {
+            this[columnIndex] = updatedColumn
+        }
+
+        return state.copy(
+            tableau = updatedTableau,
+            score = calculateScore(state.score, SCORE_TURNOVER_TABLEAU_CARD)
+        )
+    }
+
+    /**
+     * Scans all tableau columns (0..6) and exposes any topmost face-down cards,
+     * adding [SCORE_TURNOVER_TABLEAU_CARD] points for each card turned face-up.
+     *
+     * @param state Current [BoardState].
+     * @return Updated [BoardState].
+     */
+    fun autoExposeAllTableauColumns(state: BoardState): BoardState {
+        var currentState = state
+        for (i in currentState.tableau.indices) {
+            currentState = autoExposeTableauCard(currentState, i)
+        }
+        return currentState
+    }
 
     /**
      * Checks whether cards can be drawn from the stock pile.
@@ -161,9 +228,11 @@ object KlondikeRules {
     /**
      * Moves the topmost card from the waste pile to the specified tableau column.
      *
+     * Awards [SCORE_WASTE_TO_TABLEAU] points (+5).
+     *
      * @param state Current [BoardState].
      * @param targetColumnIndex 0-based index of the target tableau column (0..6).
-     * @return New [BoardState] reflecting the moved card and incremented moves count.
+     * @return New [BoardState] reflecting the moved card, updated score, and incremented moves count.
      * @throws IllegalArgumentException if [targetColumnIndex] is out of range.
      * @throws IllegalStateException if waste is empty or move is illegal.
      */
@@ -186,6 +255,7 @@ object KlondikeRules {
         return state.copy(
             waste = newWaste,
             tableau = newTableau,
+            score = calculateScore(state.score, SCORE_WASTE_TO_TABLEAU),
             movesCount = state.movesCount + 1
         )
     }
@@ -222,11 +292,15 @@ object KlondikeRules {
     /**
      * Moves a card (or stack of cards) starting at [cardIndex] from [fromColumnIndex] to [toColumnIndex].
      *
+     * If [autoExpose] is `true` (default) and the move uncovers a face-down card at the top of
+     * [fromColumnIndex], that card is turned face-up and awards [SCORE_TURNOVER_TABLEAU_CARD] points (+5).
+     *
      * @param state Current [BoardState].
      * @param fromColumnIndex Source column index (0..6).
      * @param cardIndex Index of the base card within source column to move with all cards above it.
      * @param toColumnIndex Target column index (0..6).
-     * @return New [BoardState] reflecting the moved cards and incremented moves count.
+     * @param autoExpose Whether to automatically flip the topmost remaining hidden card in source column.
+     * @return New [BoardState] reflecting the moved cards, updated score, and incremented moves count.
      * @throws IllegalArgumentException if column indices or cardIndex are out of bounds, or if moving within same column.
      * @throws IllegalStateException if cards are face-down, sequence is invalid, or target cannot accept the base card.
      */
@@ -234,7 +308,8 @@ object KlondikeRules {
         state: BoardState,
         fromColumnIndex: Int,
         cardIndex: Int,
-        toColumnIndex: Int
+        toColumnIndex: Int,
+        autoExpose: Boolean = true
     ): BoardState {
         require(fromColumnIndex in 0 until state.tableau.size) {
             "Invalid source column index: $fromColumnIndex"
@@ -258,16 +333,25 @@ object KlondikeRules {
             "Cannot place card ${movingStack.first()} on column $toColumnIndex."
         }
 
-        val newSourceColumn = sourceColumn.take(cardIndex)
+        var remainingSourceColumn = sourceColumn.take(cardIndex)
+        var turnoverPoints = 0
+
+        if (autoExpose && remainingSourceColumn.isNotEmpty() && !remainingSourceColumn.last().isFaceUp) {
+            val topHiddenCard = remainingSourceColumn.last()
+            remainingSourceColumn = remainingSourceColumn.dropLast(1) + topHiddenCard.copy(isFaceUp = true)
+            turnoverPoints = SCORE_TURNOVER_TABLEAU_CARD
+        }
+
         val newTargetColumn = state.tableau[toColumnIndex] + movingStack
 
         val newTableau = state.tableau.toMutableList().apply {
-            this[fromColumnIndex] = newSourceColumn
+            this[fromColumnIndex] = remainingSourceColumn
             this[toColumnIndex] = newTargetColumn
         }
 
         return state.copy(
             tableau = newTableau,
+            score = calculateScore(state.score, turnoverPoints),
             movesCount = state.movesCount + 1
         )
     }
@@ -289,19 +373,27 @@ object KlondikeRules {
 
     /**
      * Moves [card] from [fromColumnIndex] (along with all cards on top of it) to [toColumnIndex].
+     *
+     * @param state Current [BoardState].
+     * @param fromColumnIndex Source column index (0..6).
+     * @param card Base card to move.
+     * @param toColumnIndex Target column index (0..6).
+     * @param autoExpose Whether to automatically flip the topmost remaining hidden card in source column.
+     * @return New [BoardState].
      */
     fun moveTableauToTableau(
         state: BoardState,
         fromColumnIndex: Int,
         card: Card,
-        toColumnIndex: Int
+        toColumnIndex: Int,
+        autoExpose: Boolean = true
     ): BoardState {
         require(fromColumnIndex in 0 until state.tableau.size) {
             "Invalid source column index: $fromColumnIndex"
         }
         val cardIndex = state.tableau[fromColumnIndex].indexOf(card)
         check(cardIndex != -1) { "Card $card not found in column $fromColumnIndex." }
-        return moveTableauToTableau(state, fromColumnIndex, cardIndex, toColumnIndex)
+        return moveTableauToTableau(state, fromColumnIndex, cardIndex, toColumnIndex, autoExpose)
     }
 
     /**
@@ -360,9 +452,11 @@ object KlondikeRules {
     /**
      * Moves the topmost card from the waste pile to [foundationIndex].
      *
+     * Awards [SCORE_WASTE_TO_FOUNDATION] points (+10).
+     *
      * @param state Current [BoardState].
      * @param foundationIndex 0-based index of the target foundation pile (0..3).
-     * @return New [BoardState] reflecting the moved card and incremented moves count.
+     * @return New [BoardState] reflecting the moved card, updated score, and incremented moves count.
      * @throws IllegalArgumentException if [foundationIndex] is out of range.
      * @throws IllegalStateException if waste is empty or move is illegal.
      */
@@ -385,6 +479,7 @@ object KlondikeRules {
         return state.copy(
             waste = newWaste,
             foundations = newFoundations,
+            score = calculateScore(state.score, SCORE_WASTE_TO_FOUNDATION),
             movesCount = state.movesCount + 1
         )
     }
@@ -414,17 +509,23 @@ object KlondikeRules {
     /**
      * Moves the topmost card of [tableauIndex] to [foundationIndex].
      *
+     * Awards [SCORE_TABLEAU_TO_FOUNDATION] points (+10). If [autoExpose] is `true` (default)
+     * and the remaining topmost card of [tableauIndex] was face-down, that card is turned face-up
+     * and an additional [SCORE_TURNOVER_TABLEAU_CARD] points (+5) are awarded (total +15).
+     *
      * @param state Current [BoardState].
      * @param tableauIndex 0-based index of the source tableau column (0..6).
      * @param foundationIndex 0-based index of the target foundation pile (0..3).
-     * @return New [BoardState] reflecting the moved card and incremented moves count.
+     * @param autoExpose Whether to automatically flip the topmost remaining hidden card in source column.
+     * @return New [BoardState] reflecting the moved card, updated score, and incremented moves count.
      * @throws IllegalArgumentException if [tableauIndex] or [foundationIndex] is out of range.
      * @throws IllegalStateException if column is empty, top card is face-down, or move is illegal.
      */
     fun moveTableauToFoundation(
         state: BoardState,
         tableauIndex: Int,
-        foundationIndex: Int
+        foundationIndex: Int,
+        autoExpose: Boolean = true
     ): BoardState {
         require(tableauIndex in 0 until state.tableau.size) {
             "Invalid tableau column index: $tableauIndex"
@@ -442,9 +543,17 @@ object KlondikeRules {
             "Cannot move $cardToMove to foundation $foundationIndex."
         }
 
-        val newColumn = column.dropLast(1)
+        var remainingColumn = column.dropLast(1)
+        var pointsDelta = SCORE_TABLEAU_TO_FOUNDATION
+
+        if (autoExpose && remainingColumn.isNotEmpty() && !remainingColumn.last().isFaceUp) {
+            val topHiddenCard = remainingColumn.last()
+            remainingColumn = remainingColumn.dropLast(1) + topHiddenCard.copy(isFaceUp = true)
+            pointsDelta += SCORE_TURNOVER_TABLEAU_CARD
+        }
+
         val newTableau = state.tableau.toMutableList().apply {
-            this[tableauIndex] = newColumn
+            this[tableauIndex] = remainingColumn
         }
         val newFoundations = state.foundations.toMutableList().apply {
             this[foundationIndex] = this[foundationIndex] + cardToMove
@@ -453,6 +562,7 @@ object KlondikeRules {
         return state.copy(
             tableau = newTableau,
             foundations = newFoundations,
+            score = calculateScore(state.score, pointsDelta),
             movesCount = state.movesCount + 1
         )
     }
@@ -484,10 +594,12 @@ object KlondikeRules {
     /**
      * Moves the topmost card from [foundationIndex] to [tableauIndex].
      *
+     * Deducts [SCORE_FOUNDATION_TO_TABLEAU] points (-15). The resulting score cannot drop below 0.
+     *
      * @param state Current [BoardState].
      * @param foundationIndex 0-based index of the source foundation pile (0..3).
      * @param tableauIndex 0-based index of the target tableau column (0..6).
-     * @return New [BoardState] reflecting the moved card and incremented moves count.
+     * @return New [BoardState] reflecting the moved card, updated score, and incremented moves count.
      * @throws IllegalArgumentException if indices are out of range.
      * @throws IllegalStateException if foundation is empty or move is illegal.
      */
@@ -522,6 +634,7 @@ object KlondikeRules {
         return state.copy(
             foundations = newFoundations,
             tableau = newTableau,
+            score = calculateScore(state.score, SCORE_FOUNDATION_TO_TABLEAU),
             movesCount = state.movesCount + 1
         )
     }
