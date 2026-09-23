@@ -17,7 +17,8 @@ The project follows strict layered Clean Architecture principles coupled with un
        │  Models: Card, Suit, Rank, BoardState, Move            │
        │  Rules: KlondikeRules, MoveValidator, SmartTapResolver │
        │  Engine: SolitaireEngine, UndoStack                    │
-       │  Solver: SolvabilityChecker, DealGenerator             │
+       │  Solver: SolverStateKey, SolverMoveGenerator,          │
+       │          SafePromotion, SolvabilityChecker, ...        │
        └──────────────────────────┬──────────────────────────────┘
                                    │ Depends on abstractions
        ┌──────────────────────────▼──────────────────────────────┐
@@ -54,7 +55,10 @@ io.github.qdiaps.solitaire/
 │   │   └── UndoManager.kt        // Manages ArrayDeque of BoardState snapshots
 │   └── solver/
 │       ├── SolverStateKey.kt     // Bit-packed canonical state key for visited pruning
+│       ├── SolverMoveGenerator.kt// Legal non-redundant successor transition generator
+│       ├── SafePromotion.kt      // Provably safe foundation promotion heuristic
 │       ├── SolvabilityChecker.kt // BFS / A* heuristic solver
+│       ├── DeadlockDetector.kt   // Real-time unplayable deadlock detector
 │       └── DealGenerator.kt      // Generates and buffers solvable deck seeds
 │
 ├── data/
@@ -181,3 +185,11 @@ sealed interface GameEvent {
   4. Omission of ephemeral scoring and move count metadata.
   5. Pre-computed hash code and SIMD-backed `contentEquals`.
 - **Rationale:** Reduces memory consumption from ~1.5 KB to under 100 bytes per state (>15x reduction), normalizes symmetric board branches to prune cyclic or equivalent states, and yields sub-microsecond hash table lookups.
+
+### ADR 005: Provably Safe Foundation Auto-Promotion Heuristic (`SafePromotion`)
+- **Context:** A naive search engine branches on every legal foundation promotion. However, in Klondike, prematurely promoting a card can dead-end a winning line if that card was needed in the tableau to receive a descending card of opposite color. Conversely, exploring every possible foundation move creates an enormous branching factor.
+- **Decision:** Implement mathematically safe foundation promotion heuristics:
+  1. Rank 1 (Aces) and Rank 2 (Twos) are unconditionally safe (never needed to receive cards in tableau).
+  2. Rank $R \ge 3$ is provably safe if both opposite-color foundation piles have already reached rank $\ge R - 1$.
+  3. Safe promotions are applied greedily to reach a reduced canonical state without branching, collapsing search state spaces by an order of magnitude.
+- **Rationale:** Guarantees no winning solution paths are severed while avoiding combinatorial explosion in the solver.

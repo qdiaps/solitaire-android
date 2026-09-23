@@ -9,7 +9,7 @@
 - [x] **T-2.2: Successor Move Enumerator (`SolverMoveGenerator`)**
   - Implement legal move generator producing all non-redundant successor `BoardState` transitions (Stock draw, Waste moves, Tableau sequence moves, Foundation promotions).
   - *TDD:* `SolverMoveGeneratorTest` checking exhaustive yet non-redundant move generation across varied board positions.
-- [ ] **T-2.3: Safe Foundation Auto-Promotion Heuristic (`SafePromotion`)**
+- [x] **T-2.3: Safe Foundation Auto-Promotion Heuristic (`SafePromotion`)**
   - Implement rule-based pruning for safe foundation promotions (e.g., Aces, Twos, and cards whose lower-ranked opposite-color cards are already banked), collapsing unnecessary search branching.
   - *TDD:* `SafePromotionTest` validating correct identification of safe vs. unsafe foundation moves.
 - [ ] **T-2.4: Core A* / Heuristic Search Engine (`SolvabilityChecker`)**
