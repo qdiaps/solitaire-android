@@ -2,6 +2,7 @@ package io.github.qdiaps.solitaire.domain.rules
 
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
+import io.github.qdiaps.solitaire.domain.model.Rank
 import kotlin.math.min
 
 /**
@@ -99,5 +100,207 @@ object KlondikeRules {
             canRecycle(state) -> recycle(state)
             else -> state
         }
+    }
+
+    /**
+     * Checks whether [card] can be legally placed on top of [targetColumn].
+     *
+     * According to Klondike rules:
+     * - An empty column can only receive a [Rank.KING].
+     * - A non-empty column can receive [card] only if its current topmost card is face-up,
+     *   has the opposite color (red vs black), and has a rank exactly one value higher.
+     *
+     * @param card The [Card] to be placed.
+     * @param targetColumn The current list of cards in the target tableau column.
+     * @return `true` if placement is legal, `false` otherwise.
+     */
+    fun canPlaceOnTableau(card: Card, targetColumn: List<Card>): Boolean {
+        if (targetColumn.isEmpty()) {
+            return card.rank == Rank.KING
+        }
+        val topCard = targetColumn.last()
+        return topCard.isFaceUp &&
+            card.suit.isRed != topCard.suit.isRed &&
+            card.rank.value == topCard.rank.value - 1
+    }
+
+    /**
+     * Checks whether the given list of [cards] forms a valid descending, alternating-color
+     * tableau sequence where every card is face-up.
+     *
+     * @param cards The list of cards to validate.
+     * @return `true` if [cards] is non-empty and forms a valid face-up sequence, `false` otherwise.
+     */
+    fun isValidTableauSequence(cards: List<Card>): Boolean {
+        if (cards.isEmpty()) return false
+        if (cards.any { !it.isFaceUp }) return false
+
+        for (i in 0 until cards.size - 1) {
+            val current = cards[i]
+            val next = cards[i + 1]
+            if (next.suit.isRed == current.suit.isRed || next.rank.value != current.rank.value - 1) {
+                return false
+            }
+        }
+        return true
+    }
+
+    /**
+     * Checks whether the topmost card from the waste pile can be moved to the specified tableau column.
+     *
+     * @param state Current [BoardState].
+     * @param targetColumnIndex 0-based index of the target tableau column (0..6).
+     * @return `true` if the move is legal, `false` otherwise.
+     */
+    fun canMoveWasteToTableau(state: BoardState, targetColumnIndex: Int): Boolean {
+        if (targetColumnIndex !in 0 until state.tableau.size) return false
+        if (state.waste.isEmpty()) return false
+        return canPlaceOnTableau(state.waste.last(), state.tableau[targetColumnIndex])
+    }
+
+    /**
+     * Moves the topmost card from the waste pile to the specified tableau column.
+     *
+     * @param state Current [BoardState].
+     * @param targetColumnIndex 0-based index of the target tableau column (0..6).
+     * @return New [BoardState] reflecting the moved card and incremented moves count.
+     * @throws IllegalArgumentException if [targetColumnIndex] is out of range.
+     * @throws IllegalStateException if waste is empty or move is illegal.
+     */
+    fun moveWasteToTableau(state: BoardState, targetColumnIndex: Int): BoardState {
+        require(targetColumnIndex in 0 until state.tableau.size) {
+            "Invalid target tableau column index: $targetColumnIndex"
+        }
+        check(state.waste.isNotEmpty()) { "Cannot move from an empty waste pile." }
+
+        val cardToMove = state.waste.last()
+        check(canPlaceOnTableau(cardToMove, state.tableau[targetColumnIndex])) {
+            "Cannot move $cardToMove to tableau column $targetColumnIndex."
+        }
+
+        val newWaste = state.waste.dropLast(1)
+        val newTableau = state.tableau.toMutableList().apply {
+            this[targetColumnIndex] = this[targetColumnIndex] + cardToMove
+        }
+
+        return state.copy(
+            waste = newWaste,
+            tableau = newTableau,
+            movesCount = state.movesCount + 1
+        )
+    }
+
+    /**
+     * Checks whether a card (or stack of cards) starting at [cardIndex] in [fromColumnIndex]
+     * can be moved to [toColumnIndex].
+     *
+     * @param state Current [BoardState].
+     * @param fromColumnIndex Source column index (0..6).
+     * @param cardIndex Index of the base card within source column to move with all cards above it.
+     * @param toColumnIndex Target column index (0..6).
+     * @return `true` if the move is legal, `false` otherwise.
+     */
+    fun canMoveTableauToTableau(
+        state: BoardState,
+        fromColumnIndex: Int,
+        cardIndex: Int,
+        toColumnIndex: Int
+    ): Boolean {
+        if (fromColumnIndex !in 0 until state.tableau.size) return false
+        if (toColumnIndex !in 0 until state.tableau.size) return false
+        if (fromColumnIndex == toColumnIndex) return false
+
+        val sourceColumn = state.tableau[fromColumnIndex]
+        if (cardIndex !in sourceColumn.indices) return false
+
+        val movingStack = sourceColumn.subList(cardIndex, sourceColumn.size)
+        if (!isValidTableauSequence(movingStack)) return false
+
+        return canPlaceOnTableau(movingStack.first(), state.tableau[toColumnIndex])
+    }
+
+    /**
+     * Moves a card (or stack of cards) starting at [cardIndex] from [fromColumnIndex] to [toColumnIndex].
+     *
+     * @param state Current [BoardState].
+     * @param fromColumnIndex Source column index (0..6).
+     * @param cardIndex Index of the base card within source column to move with all cards above it.
+     * @param toColumnIndex Target column index (0..6).
+     * @return New [BoardState] reflecting the moved cards and incremented moves count.
+     * @throws IllegalArgumentException if column indices or cardIndex are out of bounds, or if moving within same column.
+     * @throws IllegalStateException if cards are face-down, sequence is invalid, or target cannot accept the base card.
+     */
+    fun moveTableauToTableau(
+        state: BoardState,
+        fromColumnIndex: Int,
+        cardIndex: Int,
+        toColumnIndex: Int
+    ): BoardState {
+        require(fromColumnIndex in 0 until state.tableau.size) {
+            "Invalid source column index: $fromColumnIndex"
+        }
+        require(toColumnIndex in 0 until state.tableau.size) {
+            "Invalid target column index: $toColumnIndex"
+        }
+        require(fromColumnIndex != toColumnIndex) {
+            "Cannot move tableau cards within the same column: $fromColumnIndex"
+        }
+
+        val sourceColumn = state.tableau[fromColumnIndex]
+        require(cardIndex in sourceColumn.indices) {
+            "Card index $cardIndex out of bounds for column $fromColumnIndex (size: ${sourceColumn.size})"
+        }
+
+        val movingStack = sourceColumn.subList(cardIndex, sourceColumn.size)
+        check(movingStack.first().isFaceUp) { "Cannot move face-down cards from tableau." }
+        check(isValidTableauSequence(movingStack)) { "Moving cards do not form a valid tableau sequence." }
+        check(canPlaceOnTableau(movingStack.first(), state.tableau[toColumnIndex])) {
+            "Cannot place card ${movingStack.first()} on column $toColumnIndex."
+        }
+
+        val newSourceColumn = sourceColumn.take(cardIndex)
+        val newTargetColumn = state.tableau[toColumnIndex] + movingStack
+
+        val newTableau = state.tableau.toMutableList().apply {
+            this[fromColumnIndex] = newSourceColumn
+            this[toColumnIndex] = newTargetColumn
+        }
+
+        return state.copy(
+            tableau = newTableau,
+            movesCount = state.movesCount + 1
+        )
+    }
+
+    /**
+     * Checks whether [card] in [fromColumnIndex] (along with all cards on top of it) can be moved to [toColumnIndex].
+     */
+    fun canMoveTableauToTableau(
+        state: BoardState,
+        fromColumnIndex: Int,
+        card: Card,
+        toColumnIndex: Int
+    ): Boolean {
+        if (fromColumnIndex !in 0 until state.tableau.size) return false
+        val cardIndex = state.tableau[fromColumnIndex].indexOf(card)
+        if (cardIndex == -1) return false
+        return canMoveTableauToTableau(state, fromColumnIndex, cardIndex, toColumnIndex)
+    }
+
+    /**
+     * Moves [card] from [fromColumnIndex] (along with all cards on top of it) to [toColumnIndex].
+     */
+    fun moveTableauToTableau(
+        state: BoardState,
+        fromColumnIndex: Int,
+        card: Card,
+        toColumnIndex: Int
+    ): BoardState {
+        require(fromColumnIndex in 0 until state.tableau.size) {
+            "Invalid source column index: $fromColumnIndex"
+        }
+        val cardIndex = state.tableau[fromColumnIndex].indexOf(card)
+        check(cardIndex != -1) { "Card $card not found in column $fromColumnIndex." }
+        return moveTableauToTableau(state, fromColumnIndex, cardIndex, toColumnIndex)
     }
 }

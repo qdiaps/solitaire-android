@@ -15,12 +15,14 @@
   - `Task 1.2`: Implement core domain models: `Suit`, `Rank`, `Card`, `PileType`, `CardLocation`, and `BoardState`.
   - `Task 1.3`: Implement `Deck` generator, shuffling utility, and initial Klondike 7-column deal logic with unit tests.
   - `Task 1.4`: Implement `KlondikeRules`: Stock draw & recycling logic (Draw 1 / Draw 3) with unit tests.
-- **Current Focus:** Ready to start Task 1.5.
+  - `Task 1.5`: Implement `KlondikeRules`: Tableau-to-Tableau and Waste-to-Tableau movement validation with unit tests.
+- **Current Focus:** Ready to start Task 1.6.
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-23 (Task 1.5):** Implemented tableau placement (`canPlaceOnTableau`), multi-card sequence validation (`isValidTableauSequence`), Waste-to-Tableau moves (`canMoveWasteToTableau`, `moveWasteToTableau`), and Tableau-to-Tableau single and multi-card moves (`canMoveTableauToTableau`, `moveTableauToTableau`) in pure Kotlin `KlondikeRules`. Verified with 25 unit tests following backtick naming style (`KlondikeRulesTableauTest`), bringing total tests to 77 (100% pass).
 - **2026-09-23 (Agent Guidelines & Best Practices):** Updated `AGENTS.md` and `tdd-workflow` skill with strict requirements:
   - Codebase reconnaissance and style matching (test method backtick naming, JUnit 5/6 assertions, structure replication).
   - Modern idiomatic Kotlin best practices (immutability, exhaustive `when`, expressive stdlib, defensive preconditions with `require`/`check`).
@@ -36,4 +38,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `Task 1.5: Implement KlondikeRules: Tableau-to-Tableau and Waste-to-Tableau movement validation with unit tests.`
+- **Target Task:** `Task 1.6: Implement KlondikeRules: Foundation building validation (Ace to King by suit) with unit tests.`
