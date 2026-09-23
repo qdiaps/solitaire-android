@@ -6,7 +6,7 @@
 - [x] **T-2.1: State Canonicalization & Visited Pruning (`SolverStateKey`)**
   - Implement compact/canonical state key representation normalizing symmetric tableau columns and stock-cycle states to prevent cyclic exploration.
   - *TDD:* `SolverStateKeyTest` checking symmetry handling, hash equality, and memory efficiency.
-- [ ] **T-2.2: Successor Move Enumerator (`SolverMoveGenerator`)**
+- [x] **T-2.2: Successor Move Enumerator (`SolverMoveGenerator`)**
   - Implement legal move generator producing all non-redundant successor `BoardState` transitions (Stock draw, Waste moves, Tableau sequence moves, Foundation promotions).
   - *TDD:* `SolverMoveGeneratorTest` checking exhaustive yet non-redundant move generation across varied board positions.
 - [ ] **T-2.3: Safe Foundation Auto-Promotion Heuristic (`SafePromotion`)**
@@ -18,7 +18,8 @@
   - *TDD:* `SolvabilityCheckerTest` verifying solvability resolution on known hand positions and timeout guardrails.
 - [ ] **T-2.5: Deadlock Detector (`DeadlockDetector`)**
   - Implement real-time board analyzer detecting when no legal productive moves remain (checking stock cycle, waste moves, and tableau shifts).
-  - Return `DeadlockStatus` (`ActiveGame`, `Deadlock(reason)`).\n  - *TDD:* `DeadlockDetectorTest` validating detection across exhausted stock, locked tableaus, and active playable boards.
+  - Return `DeadlockStatus` (`ActiveGame`, `Deadlock(reason)`).
+  - *TDD:* `DeadlockDetectorTest` validating detection across exhausted stock, locked tableaus, and active playable boards.
 - [ ] **T-2.6: Background Deal Generator (`DealGenerator`)**
   - Implement coroutine-based background deal generator running on `Dispatchers.Default` using a buffered Kotlin `Channel` (capacity 2–3) of pre-verified solvable deals.
   - Expose suspend `getSolvableDeal(): BoardState` for instant new game provisioning.
