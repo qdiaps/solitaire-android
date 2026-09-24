@@ -28,7 +28,7 @@
   - Validate solver performance on benchmark seeds ensuring resolution meets the Definition of Done (< 300ms on benchmark seed).
   - Test on known unsolvable deals to ensure graceful exhaustion/timeout without memory leaks or infinite loops.
   - *TDD/Benchmark:* `SolvabilityBenchmarkTest`.
-- [ ] **T-2.8: Phase 2 Review, Code Cleanliness & State Sync**
+- [x] **T-2.8: Phase 2 Review, Code Cleanliness & State Sync**
   - Architectural review of solver package, idiomatic Kotlin checks, `./gradlew check` & `./gradlew test` verification.
   - Update `docs/STATE.md` and commit final Phase 2 delivery.
 

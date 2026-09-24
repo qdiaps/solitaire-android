@@ -18,6 +18,7 @@
   - `T-2.5`: Implement real-time unplayable deadlock detector (`DeadlockDetector`) analyzing exhausted stock, locked tableaus, and stock-cycle reachability.
   - `T-2.6`: Implement coroutine-based background deal generator (`DealGenerator`) with buffered channel, solver verification, and instant deal provisioning.
   - `T-2.7`: Validate solvability benchmarks against Definition of Done (< 300ms on benchmark seed), verify known unsolvable deals, timeout/maxStates cutoffs, and memory stability.
+  - `T-2.8`: Phase 2 review, code cleanliness, verification of all 239 unit tests and Android lint checks passing, and documentation synchronization.
 - **Completed Tasks (Phase 1):**
   - `Task 1.1`: Setup project structure, Kotlin source sets, and configure JUnit 6 testing dependencies.
   - `Task 1.2`: Implement core domain models: `Suit`, `Rank`, `Card`, `PileType`, `CardLocation`, and `BoardState`.
@@ -29,12 +30,18 @@
   - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
   - `Task 1.9`: Implement `UndoManager` (state snapshot rollback for board, score, moves) with unit tests.
   - `Task 1.10`: Phase 1 review, refactoring to idiomatic Kotlin, completion of `Move` model, and verification of all 159 tests passing.
-- **Current Focus:** Phase 2: Solvability Engine & Background Generator (Task T-2.8).
+- **Current Focus:** Phase 2: Solvability Engine & Background Generator (Completed).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-24 (Task T-2.8):** Completed Phase 2 comprehensive architectural review, code cleanliness audit, and state synchronization:
+  - Conducted architectural and code review of domain solver components (`SolverStateKey`, `SolverMoveGenerator`, `SafePromotion`, `SolvabilityChecker`, `DeadlockDetector`, `DealGenerator`).
+  - Confirmed 100% pure Kotlin in domain (zero Android dependencies), strict immutability, exhaustive pattern matching, structured concurrency, and backpressure hygiene.
+  - Validated full test suite and build verification: all 239 unit tests pass across pure domain and solver engines (100% pass, 0 lint warnings via `./gradlew check`).
+  - Documented ADRs 004 through 008 in `docs/ARCHITECTURE.md`.
+  - All Phase 2 deliverables verified against Definition of Done (< 300ms resolution, deadlock detection, buffered deal provisioning).
 - **2026-09-24 (Task T-2.7):** Validated solver performance benchmarks and known deals in `SolvabilityBenchmarkTest`:
   - Confirmed Definition of Done: benchmark seeds (Seed 23 in ~25ms, Seed 32 in ~29ms, Seed 12 in ~107ms) resolve to valid winning paths in < 300ms.
   - Validated known unsolvable hands: trapped Aces and exhausted stock cycles terminate search gracefully and return `SolvabilityResult.Unsolvable` in finite steps without loops.
@@ -100,4 +107,5 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-2.8: Phase 2 Review, Code Cleanliness & State Sync`
+- **Target Milestone:** Transition to Phase 3: Compose Board Layout & Static Presentation.
+- **Recommended Action:** Merge branch `feature/phase-2-solver` into `master` and initialize `feature/phase-3-compose-board` upon user confirmation.
