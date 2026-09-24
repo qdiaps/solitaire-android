@@ -3,14 +3,23 @@
 ## Project Overview
 - **App:** Solitaire (Klondike)
 - **Package:** `io.github.qdiaps.solitaire`
-- **Current Milestone:** Phase 1 - Pure Domain Engine & Core Rules (Complete)
-- **Active Branch:** `feature/phase-1-domain`
+- **Current Milestone:** Phase 2 - Solvability Engine & Background Generator
+- **Active Branch:** `feature/phase-2-solver`
 
 ---
 
 ## Current Focus & Status
-- **Phase:** 1 / 6 Complete -> Transitioning to Phase 2 (Solvability Engine & Background Generator)
-- **Completed Tasks:**
+- **Phase:** 2 / 6
+- **Completed Tasks (Phase 2):**
+  - `T-2.1`: Implement compact/canonical state key representation (`SolverStateKey`) normalizing symmetric tableau columns and stock-cycle states to prevent cyclic exploration.
+  - `T-2.2`: Implement legal move generator (`SolverMoveGenerator`) producing all non-redundant successor `BoardState` transitions with empty column and lateral move pruning.
+  - `T-2.3`: Implement rule-based pruning for safe foundation promotions (`SafePromotion`) collapsing unnecessary search branching.
+  - `T-2.4`: Implement core A* / heuristic search engine (`SolvabilityChecker`) with priority queue expansion, admissible heuristics, and timeout/state limits.
+  - `T-2.5`: Implement real-time unplayable deadlock detector (`DeadlockDetector`) analyzing exhausted stock, locked tableaus, and stock-cycle reachability.
+  - `T-2.6`: Implement coroutine-based background deal generator (`DealGenerator`) with buffered channel, solver verification, and instant deal provisioning.
+  - `T-2.7`: Validate solvability benchmarks against Definition of Done (< 300ms on benchmark seed), verify known unsolvable deals, timeout/maxStates cutoffs, and memory stability.
+  - `T-2.8`: Phase 2 review, code cleanliness, verification of all 239 unit tests and Android lint checks passing, and documentation synchronization.
+- **Completed Tasks (Phase 1):**
   - `Task 1.1`: Setup project structure, Kotlin source sets, and configure JUnit 6 testing dependencies.
   - `Task 1.2`: Implement core domain models: `Suit`, `Rank`, `Card`, `PileType`, `CardLocation`, and `BoardState`.
   - `Task 1.3`: Implement `Deck` generator, shuffling utility, and initial Klondike 7-column deal logic with unit tests.
@@ -21,54 +30,82 @@
   - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
   - `Task 1.9`: Implement `UndoManager` (state snapshot rollback for board, score, moves) with unit tests.
   - `Task 1.10`: Phase 1 review, refactoring to idiomatic Kotlin, completion of `Move` model, and verification of all 159 tests passing.
-- **Current Focus:** Phase 1 complete. Ready to begin Phase 2.
+- **Current Focus:** Phase 2: Solvability Engine & Background Generator (Completed).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
-- **2026-09-23 (Task 1.10):** Completed Phase 1 comprehensive review, refactoring, and model completion:
-  - Implemented the final domain model entity `Move` (`source`, `destination`, `cards`, `scoreDelta`) with `@Serializable` and non-empty preconditions.
-  - Added unit and serialization tests in `ModelsTest`, bringing the suite to 159 unit tests (100% pass).
-  - Executed full project verification: `./gradlew check` and `./gradlew lintDebug` passing cleanly with zero errors or warnings.
-  - Verified architectural boundaries: pure Kotlin domain layer with 0% Android framework leaks (`android.*`, `androidx.*`).
-  - Marked Phase 1 as completely fulfilled in `ROADMAP.md` and prepared Phase 2 sprint backlog in `TASKS.md`.
-- **2026-09-23 (Task 1.9):** Implemented `UndoManager` for step-by-step game undo/redo state rollback:
-  - Backed by LIFO `ArrayDeque<BoardState>` snapshot stacks with configurable/unbounded history (`maxHistorySize`).
-  - Implemented `record(state)`, `undo(currentState)`, `redo(currentState)`, `peekUndo()`, `peekRedo()`, and `clear()`.
-  - Added full rollback validation ensuring card positions, face-up/down orientations, scores, and moves counts are cleanly preserved and restored.
-  - Added serialization and state persistence helpers `getUndoHistory()`, `getRedoHistory()`, and `restoreHistory()`.\n  - Invalidation of redo stack upon branching with a new move.
-  - Verified with 14 new unit tests (`UndoManagerTest`), bringing total test suite to 155 unit tests (100% pass).
-- **2026-09-23 (Task 1.8):** Implemented `SmartTapResolver` for auto-moving cards on single tap following Klondike specification:
-  - Priority 1: Move to Foundation (if valid).
-  - Priority 2: Move to Tableau column that reveals a hidden face-down card.
-  - Priority 3: Move to leftmost valid Tableau column (0..6).
-  - Prevented meaningless lateral moves (King already at base `cardIndex == 0` of a column does not move to another empty column).
-  - Implemented `resolveDestination`, `resolveAndApply`, `resolveMove`, and global `findBestMove(state)`.
-  - Added overloads accepting either `CardLocation` or `Card` instance.
-  - Verified with 23 new unit tests (`SmartTapResolverTest`), bringing total test suite to 141 unit tests (100% pass).
-- **2026-09-23 (Task 1.7):** Implemented auto-exposing face-down cards and standard Klondike scoring calculation on game moves:
-  - Added scoring constants: `SCORE_WASTE_TO_TABLEAU (+5)`, `SCORE_WASTE_TO_FOUNDATION (+10)`, `SCORE_TABLEAU_TO_FOUNDATION (+10)`, `SCORE_TURNOVER_TABLEAU_CARD (+5)`, `SCORE_FOUNDATION_TO_TABLEAU (-15)`.
-  - Implemented `calculateScore(currentScore, delta)` clamping score to 0 minimum (`coerceAtLeast(0)`).
-  - Implemented standalone helpers `autoExposeTableauCard` and `autoExposeAllTableauColumns`.
-  - Updated `moveWasteToTableau` (+5), `moveWasteToFoundation` (+10), `moveTableauToFoundation` (+10, +5 if top hidden card exposed), `moveTableauToTableau` (+5 if top hidden card exposed), and `moveFoundationToTableau` (-15).
-  - Added parameter `autoExpose: Boolean = true` to `moveTableauToTableau` and `moveTableauToFoundation`.
-  - Verified with 19 new unit tests (`KlondikeRulesScoringAndExposeTest`) and updated existing tableau/foundation tests, bringing total test suite to 118 unit tests (100% pass).
-- **2026-09-23 (Task 1.6):** Implemented foundation building rules: `canPlaceOnFoundation`, `findTargetFoundationIndex`, `canMoveWasteToFoundation`, `moveWasteToFoundation`, `canMoveTableauToFoundation`, `moveTableauToFoundation`, `canMoveFoundationToTableau`, `moveFoundationToTableau`, and `isGameWon`. Verified with 22 unit tests (`KlondikeRulesFoundationTest`), bringing total tests to 99 (100% pass).
-- **2026-09-23 (Task 1.5):** Implemented tableau placement (`canPlaceOnTableau`), multi-card sequence validation (`isValidTableauSequence`), Waste-to-Tableau moves (`canMoveWasteToTableau`, `moveWasteToTableau`), and Tableau-to-Tableau single and multi-card moves (`canMoveTableauToTableau`, `moveTableauToTableau`) in pure Kotlin `KlondikeRules`. Verified with 25 unit tests following backtick naming style (`KlondikeRulesTableauTest`), bringing total tests to 77 (100% pass).
-- **2026-09-23 (Agent Guidelines & Best Practices):** Updated `AGENTS.md` and `tdd-workflow` skill with strict requirements:
-  - Codebase reconnaissance and style matching (test method backtick naming, JUnit 5/6 assertions, structure replication).
-  - Modern idiomatic Kotlin best practices (immutability, exhaustive `when`, expressive stdlib, defensive preconditions with `require`/`check`).
-  - Clean Architecture & pure JVM domain testability (zero Android leaks in domain).
-  - Jetpack Compose modern patterns (UDF, state hoisting, stability, canvas performance).
-- **2026-09-23 (Agent Skills & Session Protocol):** Added `session-startup` skill (`.agents/skills/session-startup/SKILL.md`) and updated `AGENTS.md` with explicit Session Startup Protocol to auto-read foundational docs and project state upon greeting/session start.
-- **2026-09-23 (Task 1.4):** Implemented `KlondikeRules` stock draw and infinite recycling logic supporting `DrawMode.DRAW_ONE` and `DrawMode.DRAW_THREE`. Verified with 15 unit tests covering draw order, boundary conditions, state immutability, and full multi-cycle invariance (`KlondikeRulesStockTest`).
-- **2026-09-22 (Task 1.3):** Implemented `Deck` generator, shuffling utility, and `KlondikeDealer` dealing logic. Verified with 100% test coverage (`DeckTest`, `KlondikeDealerTest`).
-- **2026-09-22 (Task 1.2):** Implemented core domain models: `Suit`, `Rank`, `Card`, `PileType`, `CardLocation`, and `BoardState` in pure Kotlin with JUnit 6 tests (`ModelsTest`).
-- **2026-09-22 (Task 1.1):** Verified Android scaffold, Compose setup, and JUnit 6 test suite runner (`InitializationTest`).
-- **2026-09-22 (Agent Skills & Guidelines):** Added agent skills (`tdd-workflow`, `state-and-git-sync`, `compose-solitaire-ui`), integrated skills into `AGENTS.md`, and added ADR protocol.
+- **2026-09-24 (Task T-2.8):** Completed Phase 2 comprehensive architectural review, code cleanliness audit, and state synchronization:
+  - Conducted architectural and code review of domain solver components (`SolverStateKey`, `SolverMoveGenerator`, `SafePromotion`, `SolvabilityChecker`, `DeadlockDetector`, `DealGenerator`).
+  - Confirmed 100% pure Kotlin in domain (zero Android dependencies), strict immutability, exhaustive pattern matching, structured concurrency, and backpressure hygiene.
+  - Validated full test suite and build verification: all 239 unit tests pass across pure domain and solver engines (100% pass, 0 lint warnings via `./gradlew check`).
+  - Documented ADRs 004 through 008 in `docs/ARCHITECTURE.md`.
+  - All Phase 2 deliverables verified against Definition of Done (< 300ms resolution, deadlock detection, buffered deal provisioning).
+- **2026-09-24 (Task T-2.7):** Validated solver performance benchmarks and known deals in `SolvabilityBenchmarkTest`:
+  - Confirmed Definition of Done: benchmark seeds (Seed 23 in ~25ms, Seed 32 in ~29ms, Seed 12 in ~107ms) resolve to valid winning paths in < 300ms.
+  - Validated known unsolvable hands: trapped Aces and exhausted stock cycles terminate search gracefully and return `SolvabilityResult.Unsolvable` in finite steps without loops.
+  - Validated safety guardrails: strict `maxStates` cutoff enforcement and prompt `timeoutMs` termination.
+  - Verified heap and GC stability across sequential deal evaluations without state leaks.
+  - Expanding test suite to 239 unit tests (100% pass, 0 lint warnings).
+- **2026-09-24 (Task T-2.6):** Implemented coroutine-based background deal generator `DealGenerator`:
+  - Maintained bounded `Channel<BoardState>` buffer (capacity 2–3) of pre-verified solvable deals.
+  - Runs continuous background worker on `Dispatchers.Default` tied to structured lifecycle `CoroutineScope`.
+  - Suspends producer loop via coroutine backpressure when buffer is full, using zero CPU cycles or allocations while idle.
+  - Exposes non-blocking suspend `getSolvableDeal(): BoardState` for instantaneous game startup.
+  - Added ADR 008 in `docs/ARCHITECTURE.md`.
+  - Verified with 7 unit tests in `DealGeneratorTest`, expanding test suite to 230 unit tests (100% pass, 0 lint warnings).
+- **2026-09-24 (Task T-2.5):** Implemented real-time board analyzer `DeadlockDetector`:
+  - Detects deadlock conditions across exhausted stock (`EXHAUSTED_STOCK`), unplayable stock cycles under Draw 1 / Draw 3 (`STOCK_CYCLE_EXHAUSTED`), and locked tableaus (`LOCKED_TABLEAU`).
+  - Prunes non-productive tableau transitions (lateral King hops between empty columns and equivalent parent rank/color sequence shifts).
+  - Employs stock-cycle simulation with visited `(stock, waste)` pair tracking to evaluate reachable plays.
+  - Added ADR 007 in `docs/ARCHITECTURE.md`.
+  - Verified with 15 unit tests in `DeadlockDetectorTest`, expanding test suite to 222 unit tests (100% pass, 0 lint warnings).
+- **2026-09-23 (Task T-2.4):** Implemented core A* heuristic search engine `SolvabilityChecker`:
+  - PriorityQueue-based A* with admissible distance heuristic $h(s) = (52 - \sum \text{foundation}) + 2 \cdot \text{faceDown} + (\text{stock} + \text{waste})$.
+  - Seamless greedy collapse of safe promotions via `SafePromotion`, preserving the full move chain through search node parent pointers.
+  - Structured output `SolvabilityResult`: `Solvable(moves, path, statesEvaluated, durationMs)`, `Unsolvable`, and `Timeout`.
+  - Added ADR 006 in `docs/ARCHITECTURE.md`.
+  - Verified with 7 unit tests in `SolvabilityCheckerTest`, expanding test suite to 207 unit tests (100% pass, 0 lint warnings).
+- **2026-09-23 (Task T-2.3):** Implemented safe foundation auto-promotion heuristic `SafePromotion`:
+  - Mathematical proof implementation: Aces & Twos are unconditionally safe; Ranks $\ge 3$ are safe once both opposite-color foundation piles have reached at least rank $R - 1$.
+  - Added `findSafeTransitions` and `applyAllSafePromotions` for greedy fixed-point search space collapse.
+  - Added ADR 005 in `docs/ARCHITECTURE.md`.
+  - Verified with 12 unit tests in `SafePromotionTest`, bringing total unit tests to 200 (100% pass, 0 lint warnings).
+- **2026-09-23 (Task T-2.2):** Implemented successor move enumerator `SolverMoveGenerator`:
+  - Generates exhaustive non-redundant transitions (`SolverTransition(move, state)`) from any board state.
+  - Pruning heuristics: terminal check (won state), empty column symmetry pruning (targeting only first empty column for Kings), useless lateral King move pruning (King at index 0 prohibited from jumping between empty columns), and equivalent parent rank/color pruning.
+  - Optional support for foundation-to-tableau demotions (disabled by default).
+  - Verified with 15 unit tests in `SolverMoveGeneratorTest`, expanding test suite to 188 passing unit tests (100% pass, 0 lint warnings).
+- **2026-09-23 (Task T-2.1):** Implemented compact/canonical state key representation `SolverStateKey`:
+  - Normalized tableau column order via lexicographical `ByteArray` sorting to prune symmetric column permutations and lateral King shifts.
+  - Packed 4 foundation top card ranks into a 16-bit integer indexed by suit (`Suit.entries`), ensuring foundation pile ordering invariance.
+  - Bit-packed individual cards into single bytes (rank in bits 0..3, suit in bits 4..5, face-up in bit 6).
+  - Ensured score and movesCount invariance for pure board state equality.
+  - Added visited set cyclic stock draw pruning verification and performance benchmarks (< 500ms for 10,000 keys).
+  - Documented ADR 004 in `docs/ARCHITECTURE.md`.
+  - Verified with 14 new unit tests (`SolverStateKeyTest`), bringing test suite to 173 unit tests (100% pass, 0 lint warnings).
+- **2026-09-23 (Phase 2 Microtasks Decomposition):** Structured Phase 2 in `TASKS.md` into 8 atomic tasks (T-2.1 .. T-2.8) covering canonical state pruning, move enumeration, safe foundation heuristic, A* search loop, deadlock detection, coroutine deal buffering, and DoD benchmarks.
+- **2026-09-23 (Phase 2 Initialization):** Transitioned project to Phase 2 (Solvability Engine & Background Generator):
+  - Merged Phase 1 PR #1 into `master`.
+  - Rebased `feature/phase-2-solver` on `master`.
+  - Updated `STATE.md` and `TASKS.md` milestones.
+  - Formulated high-level architectural plan for Phase 2 components (`SolvabilityChecker`, `DeadlockDetector`, `DealGenerator`).
+- **2026-09-23 (Task 1.10):** Completed Phase 1 comprehensive review, refactoring, and model completion (159 unit tests, 0 errors/warnings).
+- **2026-09-23 (Task 1.9):** Implemented `UndoManager` with state snapshot stacks and history limits (14 tests).
+- **2026-09-23 (Task 1.8):** Implemented `SmartTapResolver` for smart card auto-moves (23 tests).
+- **2026-09-23 (Task 1.7):** Implemented auto-exposing face-down cards and scoring calculation (19 tests).
+- **2026-09-23 (Task 1.6):** Implemented foundation building rules and game won check (22 tests).
+- **2026-09-23 (Task 1.5):** Implemented tableau placement and sequence moves (25 tests).
+- **2026-09-23 (Agent Guidelines & Best Practices):** Updated `AGENTS.md` and `tdd-workflow` skill.
+- **2026-09-23 (Agent Skills & Session Protocol):** Added `session-startup` skill.
+- **2026-09-23 (Task 1.4):** Implemented `KlondikeRules` stock draw and recycling logic (15 tests).
+- **2026-09-22 (Task 1.3):** Implement `Deck` generator, shuffling utility, and initial Klondike 7-column deal logic with unit tests.
+- **2026-09-22 (Task 1.2):** Implemented core domain models in pure Kotlin.
+- **2026-09-22 (Task 1.1):** Verified Android scaffold, Compose setup, and JUnit 6 test runner.
 
 ---
 
 ## Next Immediate Step
-- **Target Task:** `Task 2.1: Implement fast Klondike solvability solver (SolvabilityChecker) with heuristic search and state pruning.`
+- **Target Milestone:** Transition to Phase 3: Compose Board Layout & Static Presentation.
+- **Recommended Action:** Merge branch `feature/phase-2-solver` into `master` and initialize `feature/phase-3-compose-board` upon user confirmation.
