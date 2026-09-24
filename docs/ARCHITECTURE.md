@@ -201,3 +201,14 @@ sealed interface GameEvent {
   3. Seamless integration with `SafePromotion` to collapse safe promotion chains into single nodes with full move parent pointer traceability.
   4. Guardrails with configurable `timeoutMs` and `maxStates` limits.
 - **Rationale:** Produces optimal and near-optimal solution paths, guarantees deterministic termination on mobile hardware, and provides full move history reconstruction.
+
+### ADR 007: Real-Time Deadlock Detection via Stock Cycle and Tableau Invariants (`DeadlockDetector`)
+- **Context:** Players and UI need instant feedback when a board reaches a state where no legal productive moves remain (e.g. stock exhausted, stock cycles without producing playable cards, tableaus locked with non-productive lateral King hops or equivalent parent moves).
+- **Decision:** Implement `DeadlockDetector` analyzing:
+  1. Win check (`ActiveGame`).
+  2. Direct foundation promotions from tableau or waste.
+  3. Direct tableau placements from waste.
+  4. Productive tableau sequence moves (pruning lateral King moves to empty columns and equivalent parent rank/color swaps).
+  5. Stock cycle simulation tracking visited `(stock, waste)` pairs under active `DrawMode` (Draw 1 / Draw 3) to verify if any accessible waste card can be placed onto tableau or foundations.
+  6. Structured status `DeadlockStatus.ActiveGame` vs `DeadlockStatus.Deadlock(DeadlockReason)`.
+- **Rationale:** Provides sub-millisecond deadlock evaluation without full tree search, enabling real-time UI "No moves left" alerts and fast solver pruning.

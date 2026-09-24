@@ -15,6 +15,7 @@
   - `T-2.2`: Implement legal move generator (`SolverMoveGenerator`) producing all non-redundant successor `BoardState` transitions with empty column and lateral move pruning.
   - `T-2.3`: Implement rule-based pruning for safe foundation promotions (`SafePromotion`) collapsing unnecessary search branching.
   - `T-2.4`: Implement core A* / heuristic search engine (`SolvabilityChecker`) with priority queue expansion, admissible heuristics, and timeout/state limits.
+  - `T-2.5`: Implement real-time unplayable deadlock detector (`DeadlockDetector`) analyzing exhausted stock, locked tableaus, and stock-cycle reachability.
 - **Completed Tasks (Phase 1):**
   - `Task 1.1`: Setup project structure, Kotlin source sets, and configure JUnit 6 testing dependencies.
   - `Task 1.2`: Implement core domain models: `Suit`, `Rank`, `Card`, `PileType`, `CardLocation`, and `BoardState`.
@@ -26,12 +27,18 @@
   - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
   - `Task 1.9`: Implement `UndoManager` (state snapshot rollback for board, score, moves) with unit tests.
   - `Task 1.10`: Phase 1 review, refactoring to idiomatic Kotlin, completion of `Move` model, and verification of all 159 tests passing.
-- **Current Focus:** Phase 2: Solvability Engine & Background Generator (Task T-2.5).
+- **Current Focus:** Phase 2: Solvability Engine & Background Generator (Task T-2.6).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-24 (Task T-2.5):** Implemented real-time board analyzer `DeadlockDetector`:
+  - Detects deadlock conditions across exhausted stock (`EXHAUSTED_STOCK`), unplayable stock cycles under Draw 1 / Draw 3 (`STOCK_CYCLE_EXHAUSTED`), and locked tableaus (`LOCKED_TABLEAU`).
+  - Prunes non-productive tableau transitions (lateral King hops between empty columns and equivalent parent rank/color sequence shifts).
+  - Employs stock-cycle simulation with visited `(stock, waste)` pair tracking to evaluate reachable plays.
+  - Added ADR 007 in `docs/ARCHITECTURE.md`.
+  - Verified with 15 unit tests in `DeadlockDetectorTest`, expanding test suite to 222 unit tests (100% pass, 0 lint warnings).
 - **2026-09-23 (Task T-2.4):** Implemented core A* heuristic search engine `SolvabilityChecker`:
   - PriorityQueue-based A* with admissible distance heuristic $h(s) = (52 - \sum \text{foundation}) + 2 \cdot \text{faceDown} + (\text{stock} + \text{waste})$.
   - Seamless greedy collapse of safe promotions via `SafePromotion`, preserving the full move chain through search node parent pointers.
@@ -78,4 +85,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-2.5: Deadlock Detector (DeadlockDetector)`
+- **Target Task:** `T-2.6: Background Deal Generator (DealGenerator)`
