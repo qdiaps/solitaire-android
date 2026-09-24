@@ -30,12 +30,13 @@
   - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
   - `Task 1.9`: Implement `UndoManager` (state snapshot rollback for board, score, moves) with unit tests.
   - `Task 1.10`: Phase 1 review, refactoring to idiomatic Kotlin, completion of `Move` model, and verification of all 159 tests passing.
-- **Current Focus:** Phase 3: Compose Board Layout & Static Presentation (Planning & Task Decomposition).
+- **Current Focus:** Phase 3: Compose Board Layout & Static Presentation (Task T-3.1).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-24 (Phase 3 Microtasks Decomposition):** Structured Phase 3 in `TASKS.md` into 8 atomic tasks (T-3.1 .. T-3.8) covering Compose theme/dimensions, CardView (face-up/down/placeholder), TopRow (with left-handed mode), TableauColumn cascade, TableauArea 7-column layout, Status & Action bars, GameScreen integration, and Phase 3 review.
 - **2026-09-24 (Phase 3 Initialization):** Transitioned project to Phase 3 (Compose Board Layout & Static Presentation):
   - Merged Phase 2 PR #2 into `master`.
   - Created and switched to working branch `feature/phase-3-compose-board`.
@@ -112,4 +113,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** Phase 3 task decomposition and backlog breakdown in `docs/TASKS.md`.
+- **Target Task:** `T-3.1: Compose Theme, Felt Backgrounds & Card Dimensions Math`
