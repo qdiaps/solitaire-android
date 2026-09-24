@@ -1,7 +1,16 @@
-# Current Sprint Tasks - Phase 2: Solvability Engine & Background Generator
+# Current Sprint Tasks - Phase 3: Compose Board Layout & Static Presentation
 
-> **Current Phase:** Phase 2 (Solvability Engine & Background Generator)
-> **Branch:** `feature/phase-2-solver`
+> **Current Phase:** Phase 3 (Compose Board Layout & Static Presentation)
+> **Branch:** `feature/phase-3-compose-board`
+
+*(Sprint backlog decomposition pending user alignment)*
+
+---
+
+# Completed Sprint Tasks - Phase 2: Solvability Engine & Background Generator
+
+> **Phase 2 Status:** Complete (239 unit tests passing, 0 lint warnings)
+> **Branch:** `feature/phase-2-solver` (merged into `master`)
 
 - [x] **T-2.1: State Canonicalization & Visited Pruning (`SolverStateKey`)**
   - Implement compact/canonical state key representation normalizing symmetric tableau columns and stock-cycle states to prevent cyclic exploration.

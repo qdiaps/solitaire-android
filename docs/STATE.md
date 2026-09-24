@@ -3,13 +3,13 @@
 ## Project Overview
 - **App:** Solitaire (Klondike)
 - **Package:** `io.github.qdiaps.solitaire`
-- **Current Milestone:** Phase 2 - Solvability Engine & Background Generator
-- **Active Branch:** `feature/phase-2-solver`
+- **Current Milestone:** Phase 3 - Compose Board Layout & Static Presentation
+- **Active Branch:** `feature/phase-3-compose-board`
 
 ---
 
 ## Current Focus & Status
-- **Phase:** 2 / 6
+- **Phase:** 3 / 6
 - **Completed Tasks (Phase 2):**
   - `T-2.1`: Implement compact/canonical state key representation (`SolverStateKey`) normalizing symmetric tableau columns and stock-cycle states to prevent cyclic exploration.
   - `T-2.2`: Implement legal move generator (`SolverMoveGenerator`) producing all non-redundant successor `BoardState` transitions with empty column and lateral move pruning.
@@ -30,12 +30,17 @@
   - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
   - `Task 1.9`: Implement `UndoManager` (state snapshot rollback for board, score, moves) with unit tests.
   - `Task 1.10`: Phase 1 review, refactoring to idiomatic Kotlin, completion of `Move` model, and verification of all 159 tests passing.
-- **Current Focus:** Phase 2: Solvability Engine & Background Generator (Completed).
+- **Current Focus:** Phase 3: Compose Board Layout & Static Presentation (Planning & Task Decomposition).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-24 (Phase 3 Initialization):** Transitioned project to Phase 3 (Compose Board Layout & Static Presentation):
+  - Merged Phase 2 PR #2 into `master`.
+  - Created and switched to working branch `feature/phase-3-compose-board`.
+  - Updated `STATE.md` and `TASKS.md` milestones.
+  - Ready for Phase 3 task decomposition and sprint planning.
 - **2026-09-24 (Task T-2.8):** Completed Phase 2 comprehensive architectural review, code cleanliness audit, and state synchronization:
   - Conducted architectural and code review of domain solver components (`SolverStateKey`, `SolverMoveGenerator`, `SafePromotion`, `SolvabilityChecker`, `DeadlockDetector`, `DealGenerator`).
   - Confirmed 100% pure Kotlin in domain (zero Android dependencies), strict immutability, exhaustive pattern matching, structured concurrency, and backpressure hygiene.
@@ -107,5 +112,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Milestone:** Transition to Phase 3: Compose Board Layout & Static Presentation.
-- **Recommended Action:** Merge branch `feature/phase-2-solver` into `master` and initialize `feature/phase-3-compose-board` upon user confirmation.
+- **Target Task:** Phase 3 task decomposition and backlog breakdown in `docs/TASKS.md`.
