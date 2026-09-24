@@ -10,18 +10,18 @@ The project follows strict layered Clean Architecture principles coupled with un
        │          │                                        │     │
        │       GameIntent                             GameViewModel
        │          └────────────────────────────────────────┘     │
-       └──────────────────────────┬──────────────────────────────┘
-                                   │ Invokes UseCases / Engine
-       ┌──────────────────────────▼──────────────────────────────┐
+       └──────────────────────────┬─────────────────────────────┘
+                                  │ Invokes UseCases / Engine
+       ┌──────────────────────────▼─────────────────────────────┐
        │                   Domain Layer (Pure Kotlin)           │
        │  Models: Card, Suit, Rank, BoardState, Move            │
        │  Rules: KlondikeRules, MoveValidator, SmartTapResolver │
        │  Engine: SolitaireEngine, UndoStack                    │
        │  Solver: SolverStateKey, SolverMoveGenerator,          │
        │          SafePromotion, SolvabilityChecker, ...        │
-       └──────────────────────────┬──────────────────────────────┘
-                                   │ Depends on abstractions
-       ┌──────────────────────────▼──────────────────────────────┐
+       └──────────────────────────┬─────────────────────────────┘
+                                  │ Depends on abstractions
+       ┌──────────────────────────▼─────────────────────────────┐
        │                   Data Layer                           │
        │  PreferencesRepository (Jetpack DataStore)             │
        │  GamePersistence (JSON serialization of BoardState)    │
@@ -154,7 +154,8 @@ sealed interface GameEvent {
 
 ## 5. Coding & Documentation Standards
 - **KDoc:** Required for public APIs, non-obvious game rules, and complex solver heuristics.
-- **Strict Immutability:** Never expose `MutableStateFlow` outside `ViewModel`. Expose `asStateFlow()`.\n- **Coroutines:** Use `Dispatchers.Default` for game engine computations and solver; `Dispatchers.Main` for UI state collection.
+- **Strict Immutability:** Never expose `MutableStateFlow` outside `ViewModel`. Expose `asStateFlow()`.
+- **Coroutines:** Use `Dispatchers.Default` for game engine computations and solver; `Dispatchers.Main` for UI state collection.
 - **Testing:** Every rule in `KlondikeRules` must have a corresponding test case covering both valid and invalid scenarios.
 
 ---
@@ -212,3 +213,12 @@ sealed interface GameEvent {
   5. Stock cycle simulation tracking visited `(stock, waste)` pairs under active `DrawMode` (Draw 1 / Draw 3) to verify if any accessible waste card can be placed onto tableau or foundations.
   6. Structured status `DeadlockStatus.ActiveGame` vs `DeadlockStatus.Deadlock(DeadlockReason)`.
 - **Rationale:** Provides sub-millisecond deadlock evaluation without full tree search, enabling real-time UI "No moves left" alerts and fast solver pruning.
+
+### ADR 008: Buffered Background Deal Provisioning via Coroutine Channels (`DealGenerator`)
+- **Context:** Solving Klondike deals on-the-fly when a user taps "New Game" can cause perceptible latency (~100–300ms) or UI stutter. Conversely, generating an unbounded pool of deals wastes memory and CPU battery.
+- **Decision:** Implement `DealGenerator` leveraging Kotlin Coroutines:
+  1. A background producer coroutine running on `Dispatchers.Default` tied to structured lifecycle `CoroutineScope`.
+  2. A bounded `Channel<BoardState>` buffer (capacity 2–3) of pre-verified solvable deals.
+  3. Backpressure-driven producer suspension when the buffer is full, using zero CPU cycles or memory allocations while idle.
+  4. Immediate, non-blocking retrieval via `suspend fun getSolvableDeal(): BoardState` from the channel buffer.
+- **Rationale:** Ensures instant new game provisioning for players while preserving battery life and mobile memory limits through natural coroutine backpressure.

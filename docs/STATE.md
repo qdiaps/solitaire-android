@@ -16,6 +16,7 @@
   - `T-2.3`: Implement rule-based pruning for safe foundation promotions (`SafePromotion`) collapsing unnecessary search branching.
   - `T-2.4`: Implement core A* / heuristic search engine (`SolvabilityChecker`) with priority queue expansion, admissible heuristics, and timeout/state limits.
   - `T-2.5`: Implement real-time unplayable deadlock detector (`DeadlockDetector`) analyzing exhausted stock, locked tableaus, and stock-cycle reachability.
+  - `T-2.6`: Implement coroutine-based background deal generator (`DealGenerator`) with buffered channel, solver verification, and instant deal provisioning.
 - **Completed Tasks (Phase 1):**
   - `Task 1.1`: Setup project structure, Kotlin source sets, and configure JUnit 6 testing dependencies.
   - `Task 1.2`: Implement core domain models: `Suit`, `Rank`, `Card`, `PileType`, `CardLocation`, and `BoardState`.
@@ -27,12 +28,19 @@
   - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
   - `Task 1.9`: Implement `UndoManager` (state snapshot rollback for board, score, moves) with unit tests.
   - `Task 1.10`: Phase 1 review, refactoring to idiomatic Kotlin, completion of `Move` model, and verification of all 159 tests passing.
-- **Current Focus:** Phase 2: Solvability Engine & Background Generator (Task T-2.6).
+- **Current Focus:** Phase 2: Solvability Engine & Background Generator (Task T-2.7).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-24 (Task T-2.6):** Implemented coroutine-based background deal generator `DealGenerator`:
+  - Maintained bounded `Channel<BoardState>` buffer (capacity 2–3) of pre-verified solvable deals.
+  - Runs continuous background worker on `Dispatchers.Default` tied to structured lifecycle `CoroutineScope`.
+  - Suspends producer loop via coroutine backpressure when buffer is full, using zero CPU cycles or allocations while idle.
+  - Exposes non-blocking suspend `getSolvableDeal(): BoardState` for instantaneous game startup.
+  - Added ADR 008 in `docs/ARCHITECTURE.md`.
+  - Verified with 7 unit tests in `DealGeneratorTest`, expanding test suite to 230 unit tests (100% pass, 0 lint warnings).
 - **2026-09-24 (Task T-2.5):** Implemented real-time board analyzer `DeadlockDetector`:
   - Detects deadlock conditions across exhausted stock (`EXHAUSTED_STOCK`), unplayable stock cycles under Draw 1 / Draw 3 (`STOCK_CYCLE_EXHAUSTED`), and locked tableaus (`LOCKED_TABLEAU`).
   - Prunes non-productive tableau transitions (lateral King hops between empty columns and equivalent parent rank/color sequence shifts).
@@ -85,4 +93,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-2.6: Background Deal Generator (DealGenerator)`
+- **Target Task:** `T-2.7: Solvability Benchmarks & Validation on Known Deals`
