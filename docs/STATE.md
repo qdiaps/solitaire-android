@@ -17,6 +17,7 @@
   - `T-2.4`: Implement core A* / heuristic search engine (`SolvabilityChecker`) with priority queue expansion, admissible heuristics, and timeout/state limits.
   - `T-2.5`: Implement real-time unplayable deadlock detector (`DeadlockDetector`) analyzing exhausted stock, locked tableaus, and stock-cycle reachability.
   - `T-2.6`: Implement coroutine-based background deal generator (`DealGenerator`) with buffered channel, solver verification, and instant deal provisioning.
+  - `T-2.7`: Validate solvability benchmarks against Definition of Done (< 300ms on benchmark seed), verify known unsolvable deals, timeout/maxStates cutoffs, and memory stability.
 - **Completed Tasks (Phase 1):**
   - `Task 1.1`: Setup project structure, Kotlin source sets, and configure JUnit 6 testing dependencies.
   - `Task 1.2`: Implement core domain models: `Suit`, `Rank`, `Card`, `PileType`, `CardLocation`, and `BoardState`.
@@ -28,12 +29,18 @@
   - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
   - `Task 1.9`: Implement `UndoManager` (state snapshot rollback for board, score, moves) with unit tests.
   - `Task 1.10`: Phase 1 review, refactoring to idiomatic Kotlin, completion of `Move` model, and verification of all 159 tests passing.
-- **Current Focus:** Phase 2: Solvability Engine & Background Generator (Task T-2.7).
+- **Current Focus:** Phase 2: Solvability Engine & Background Generator (Task T-2.8).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-24 (Task T-2.7):** Validated solver performance benchmarks and known deals in `SolvabilityBenchmarkTest`:
+  - Confirmed Definition of Done: benchmark seeds (Seed 23 in ~25ms, Seed 32 in ~29ms, Seed 12 in ~107ms) resolve to valid winning paths in < 300ms.
+  - Validated known unsolvable hands: trapped Aces and exhausted stock cycles terminate search gracefully and return `SolvabilityResult.Unsolvable` in finite steps without loops.
+  - Validated safety guardrails: strict `maxStates` cutoff enforcement and prompt `timeoutMs` termination.
+  - Verified heap and GC stability across sequential deal evaluations without state leaks.
+  - Expanding test suite to 239 unit tests (100% pass, 0 lint warnings).
 - **2026-09-24 (Task T-2.6):** Implemented coroutine-based background deal generator `DealGenerator`:
   - Maintained bounded `Channel<BoardState>` buffer (capacity 2–3) of pre-verified solvable deals.
   - Runs continuous background worker on `Dispatchers.Default` tied to structured lifecycle `CoroutineScope`.
@@ -93,4 +100,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-2.7: Solvability Benchmarks & Validation on Known Deals`
+- **Target Task:** `T-2.8: Phase 2 Review, Code Cleanliness & State Sync`

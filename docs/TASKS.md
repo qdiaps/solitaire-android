@@ -24,7 +24,7 @@
   - Implement coroutine-based background deal generator running on `Dispatchers.Default` using a buffered Kotlin `Channel` (capacity 2–3) of pre-verified solvable deals.
   - Expose suspend `getSolvableDeal(): BoardState` for instant new game provisioning.
   - *TDD:* `DealGeneratorTest` testing buffer pre-filling, cancellation responsiveness, and non-blocking deal consumption.
-- [ ] **T-2.7: Solvability Benchmarks & Validation on Known Deals**
+- [x] **T-2.7: Solvability Benchmarks & Validation on Known Deals**
   - Validate solver performance on benchmark seeds ensuring resolution meets the Definition of Done (< 300ms on benchmark seed).
   - Test on known unsolvable deals to ensure graceful exhaustion/timeout without memory leaks or infinite loops.
   - *TDD/Benchmark:* `SolvabilityBenchmarkTest`.
