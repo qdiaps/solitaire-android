@@ -3,13 +3,13 @@
 ## Project Overview
 - **App:** Solitaire (Klondike)
 - **Package:** `io.github.qdiaps.solitaire`
-- **Current Milestone:** Phase 3 - Compose Board Layout & Static Presentation
-- **Active Branch:** `feature/phase-3-compose-board`
+- **Current Milestone:** Phase 4 - Drag-and-Drop & Interactive Gameplay
+- **Active Branch:** `feature/phase-4-interactive-gameplay`
 
 ---
 
 ## Current Focus & Status
-- **Phase:** 3 / 6
+- **Phase:** 4 / 6
 - **Completed Tasks (Phase 3):**
   - `T-3.1`: Implement `SolitaireTheme`, typography, suit colors, 4 felt table palettes (`Classic Green`, `Deep Navy`, `Dark Charcoal`, `Wine Red`), and `CardDimensions` calculator (12 new unit tests).
   - `T-3.2`: Implement vector `SuitEmblem` geometry, `CardView` (face-up rank indices and center emblem, face-down diamond lattice pattern), and `CardSlotPlaceholder` with watermarks (Foundations, Stock recycle, Tableau King).
@@ -171,4 +171,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-4.1: GameViewModel (MVI State Container, Timer, Lifecycle)`
+- **Target Task:** `T-4.1: MVI Contract Definitions (GameContract.kt)`
