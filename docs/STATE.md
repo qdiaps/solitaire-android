@@ -15,12 +15,22 @@
   - **Phase 2: Solvability Engine & Background Generator** — 80 unit tests (100% pass), A* solver, deadlock detector, buffered deal generator. (Complete)
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Phase 4: Drag-and-Drop & Interactive Gameplay (Task T-4.8).
+- **Current Focus:** Phase 4: Drag-and-Drop & Interactive Gameplay (Task T-4.9).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (T-4.8: Drop Validation, Snap-Back Animation & Haptic Feedback):**
+  - Implemented pure domain drop validation and execution primitives in `KlondikeRules`: `canMoveCards(state, cards, source, target)` and `moveCards(state, cards, source, target, autoExpose = true)` covering Waste->Tableau/Foundation, Tableau->Tableau/Foundation, and Foundation->Tableau.
+  - Added unit test suite `KlondikeRulesDropTest` with 17 unit tests verifying pure domain move rules, illegal sources/destinations, sequence validation, and score deltas (100% pass).
+  - Wired `GameIntent.OnCardDropped` in `GameViewModel`: validates drops via `KlondikeRules.canMoveCards`, records undo snapshots in `UndoManager`, applies moves with auto-flip reveals, checks win/deadlock conditions, and emits single-shot `GameEvent.PlayHapticSnap` (or `GameEvent.TriggerWinCelebration`).
+  - Added `DropIntents` test suite in `GameViewModelTest` covering valid drops, illegal drops, win triggers, and undo reversibility (4 unit tests, 100% pass).
+  - Extended `DragDropState` with `isSnappingBack: Boolean`, `isActive: Boolean`, `DefaultSnapBackSpec` with spring physics (`Spring.DampingRatioMediumBouncy`, `Spring.StiffnessMediumLow`), and suspend `snapBack()` returning cards smoothly to `originPosition`.
+  - Added `DropTargetRegistry.findValidDropTarget` connecting geometric hitboxes with `KlondikeRules.canMoveCards`.
+  - Implemented `DragDropState.onDropRelease` resolving drops via `findValidDropTarget`, performing `HapticFeedbackType.LongPress` feedback on pickup and valid drop snap, and triggering `snapBack` on invalid/canceled releases.
+  - Updated `DragOverlay` to check `dragDropState.isActive` ensuring lifted cards remain rendered in the floating overlay during snap-back translation.
+  - Added unit tests in `DragDropStateTest` and `DropTargetRegistryTest` covering snap-back animation state, haptic feedback triggers, and drop validation (408 suite tests passing with 0 failures and 0 lint warnings).
 - **2026-09-25 (T-4.7: Global Drag Overlay Layer (DragOverlay)):**
   - Implemented top-level `DragOverlay` and pure presentation `DragOverlayContent` floating above all board elements (ADR 003).
   - Applied elevated shadow (`12.dp`) and vertical cascade spacing matching `CardDimensions.faceUpPeek`.
@@ -78,4 +88,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-4.8: Drop Validation, Snap-Back Animation & Haptic Feedback`
+- **Target Task:** `T-4.9: Activity & Screen Wiring, End-to-End Gameplay & Phase 4 Review`

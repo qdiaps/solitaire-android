@@ -69,6 +69,11 @@ class SolvabilityBenchmarkTest {
                 drawMode = DrawMode.DRAW_ONE
             )
 
+            // Warm up JIT
+            repeat(2) {
+                SolvabilityChecker.checkSolvability(board, config.copy(timeoutMs = 30L, maxStates = 100))
+            }
+
             val result: SolvabilityResult
             val elapsedMs = measureTimeMillis {
                 result = SolvabilityChecker.checkSolvability(board, config)

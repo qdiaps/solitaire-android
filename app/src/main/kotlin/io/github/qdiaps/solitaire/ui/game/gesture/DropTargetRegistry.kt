@@ -9,6 +9,9 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import io.github.qdiaps.solitaire.domain.model.CardLocation
+import io.github.qdiaps.solitaire.domain.model.BoardState
+import io.github.qdiaps.solitaire.domain.model.Card
+import io.github.qdiaps.solitaire.domain.rules.KlondikeRules
 
 /**
  * CompositionLocal providing access to the screen's [DropTargetRegistry] across the Compose hierarchy.
@@ -176,3 +179,28 @@ fun Modifier.dropTarget(location: CardLocation): Modifier {
  */
 @Composable
 fun rememberDropTargetRegistry(): DropTargetRegistry = remember { DropTargetRegistry() }
+
+/**
+ * Evaluates drop destination for [draggedCards] lifted from [source] given [draggedBounds]
+ * against the registered drop targets in this registry and domain [boardState].
+ *
+ * Hit-tests candidates using bounding box intersection area, then validates move legality
+ * via [KlondikeRules.canMoveCards].
+ *
+ * @param boardState Current game board state snapshot.
+ * @param cards List of cards being dropped.
+ * @param source Origin location where cards were picked up.
+ * @param draggedBounds Screen coordinates bounding box of the moving card stack.
+ * @param minOverlapArea Minimum overlap area required to hit-test a target.
+ * @return Legal destination [CardLocation] if valid move, or [null] if no target or move is illegal.
+ */
+fun DropTargetRegistry.findValidDropTarget(
+    boardState: BoardState,
+    cards: List<Card>,
+    source: CardLocation,
+    draggedBounds: Rect,
+    minOverlapArea: Float = 0f
+): CardLocation? {
+    val target = findBestTarget(draggedBounds, minOverlapArea) ?: return null
+    return if (KlondikeRules.canMoveCards(boardState, cards, source, target)) target else null
+}

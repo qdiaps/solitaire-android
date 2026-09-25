@@ -69,7 +69,7 @@ fun DragOverlay(
     dragDropState: DragDropState,
     modifier: Modifier = Modifier
 ) {
-    if (!dragDropState.isDragging || dragDropState.draggedCards.isEmpty()) {
+    if (!dragDropState.isActive || dragDropState.draggedCards.isEmpty()) {
         return
     }
 

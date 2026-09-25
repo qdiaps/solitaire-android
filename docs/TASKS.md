@@ -34,7 +34,7 @@
   - Render moving card stacks with elevated shadow (`12.dp`) and vertical cascade spacing matching `CardDimensions`.
   - Hide source cards on the board while drag is in progress to prevent duplicate ghost cards.
   - *Compose Previews:* `DragOverlayPreview` showing single card and multi-card stacks floating over felt.
-- [ ] **T-4.8: Drop Validation, Snap-Back Animation & Haptic Feedback**
+- [x] **T-4.8: Drop Validation, Snap-Back Animation & Haptic Feedback**
   - Implement drop gesture release handling: validate destination using `KlondikeRules.canMoveCards`.
   - If valid: dispatch `OnCardDropped` intent, update board state, auto-flip uncovered cards, and trigger haptic snap.
   - If invalid: animate dragged cards smoothly back to origin position using `Animatable` spring physics before clearing drag state.

@@ -96,7 +96,7 @@ class GameViewModel(
             is GameIntent.DrawStockCard -> drawStockCard()
             is GameIntent.RecycleStock -> recycleStock()
             is GameIntent.OnCardTapped -> onCardTapped(intent.card, intent.location)
-            is GameIntent.OnCardDropped -> { /* Handled in T-4.8 */ }
+            is GameIntent.OnCardDropped -> onCardDropped(intent.cards, intent.source, intent.target)
             is GameIntent.UndoMove -> undoMove()
             is GameIntent.RequestHint -> { /* Handled in T-5.x */ }
             is GameIntent.AutoComplete -> { /* Handled in T-5.x */ }
@@ -293,7 +293,23 @@ class GameViewModel(
         stopTimer()
     }
 
-    private fun updateBoardStateAfterMove(nextBoard: BoardState) {
+    /**
+     * Handles dropping cards from [source] onto [target].
+     *
+     * Validates destination via [KlondikeRules.canMoveCards]. If legal, records an undo snapshot,
+     * applies the move with auto-expose, updates the board state, checks win/deadlock conditions,
+     * and triggers [GameEvent.PlayHapticSnap].
+     */
+    fun onCardDropped(cards: List<Card>, source: CardLocation, target: CardLocation) {
+        val currentBoard = _uiState.value.boardState
+        if (!KlondikeRules.canMoveCards(currentBoard, cards, source, target)) return
+
+        undoManager.record(currentBoard)
+        val nextBoard = KlondikeRules.moveCards(currentBoard, cards, source, target, autoExpose = true)
+        updateBoardStateAfterMove(nextBoard, isDrop = true)
+    }
+
+    private fun updateBoardStateAfterMove(nextBoard: BoardState, isDrop: Boolean = false) {
         val isWon = KlondikeRules.isGameWon(nextBoard)
         val isDeadlocked = if (isWon) false else DeadlockDetector.detect(nextBoard, drawMode).isDeadlocked
         _uiState.update { current ->
@@ -309,7 +325,8 @@ class GameViewModel(
             stopTimer()
             _events.tryEmit(GameEvent.TriggerWinCelebration)
         } else {
-            _events.tryEmit(GameEvent.PlayHapticTick)
+            val event = if (isDrop) GameEvent.PlayHapticSnap else GameEvent.PlayHapticTick
+            _events.tryEmit(event)
         }
     }
 

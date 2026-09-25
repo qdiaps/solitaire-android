@@ -1,6 +1,10 @@
 package io.github.qdiaps.solitaire.ui.game.gesture
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.domain.model.Rank
@@ -13,6 +17,29 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import kotlinx.coroutines.test.runTest
+
+import androidx.compose.runtime.MonotonicFrameClock
+import kotlinx.coroutines.withContext
+
+
+private class FakeHapticFeedback : HapticFeedback {
+    var performedCount = 0
+    var lastFeedbackType: HapticFeedbackType? = null
+
+    override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {
+        performedCount++
+        lastFeedbackType = hapticFeedbackType
+    }
+}
+
+private class TestFrameClock(private val frameTimeNanos: Long = 16_000_000L) : MonotonicFrameClock {
+    private var time = 0L
+    override suspend fun <R> withFrameNanos(onFrame: (frameTimeNanos: Long) -> R): R {
+        time += frameTimeNanos
+        return onFrame(time)
+    }
+}
 
 class DragDropStateTest {
 
@@ -298,6 +325,178 @@ class DragDropStateTest {
             assertTrue(state.isCardHidden(CardLocation.Foundation(2), 0))
             assertFalse(state.isCardHidden(CardLocation.Foundation(1), 0))
             assertFalse(state.isCardHidden(CardLocation.Tableau(2), 0))
+        }
+    }
+
+    @Nested
+    @DisplayName("Snap-back animation and lifecycle")
+    inner class SnapBackTests {
+
+        @Test
+        fun `snapBack returns dragPosition to originPosition and resets state`() = runTest {
+            val state = DragDropState()
+            val origin = Offset(100f, 150f)
+            state.startDrag(CardLocation.Waste, listOf(cardAceHearts), originPosition = origin)
+            state.onDragDelta(Offset(200f, 300f))
+
+            assertEquals(Offset(300f, 450f), state.dragPosition)
+            assertTrue(state.isDragging)
+            assertFalse(state.isSnappingBack)
+            assertTrue(state.isActive)
+
+            withContext(TestFrameClock()) { state.snapBack() }
+
+            assertFalse(state.isDragging)
+            assertFalse(state.isSnappingBack)
+            assertFalse(state.isActive)
+            assertEquals(Offset.Zero, state.dragPosition)
+            assertEquals(Offset.Zero, state.originPosition)
+            assertTrue(state.draggedCards.isEmpty())
+        }
+
+        @Test
+        fun `isCardDragged and isCardHidden remain true during active drag and reset after snapBack`() = runTest {
+            val state = DragDropState()
+            val origin = Offset(100f, 150f)
+            state.startDrag(
+                CardLocation.Tableau(columnIndex = 2, cardIndex = 1),
+                listOf(cardAceHearts),
+                originPosition = origin
+            )
+
+            assertTrue(state.isCardDragged(cardAceHearts))
+            assertTrue(state.isCardHidden(CardLocation.Tableau(2), 1))
+
+            withContext(TestFrameClock()) { state.snapBack() }
+
+            assertFalse(state.isCardDragged(cardAceHearts))
+            assertFalse(state.isCardHidden(CardLocation.Tableau(2), 1))
+        }
+
+        @Test
+        fun `snapBack when not active does nothing`() = runTest {
+            val state = DragDropState()
+            withContext(TestFrameClock()) { state.snapBack() }
+            assertFalse(state.isActive)
+        }
+    }
+
+    @Nested
+    @DisplayName("Haptic feedback and onDropRelease integration")
+    inner class HapticFeedbackAndDropReleaseTests {
+
+        @Test
+        fun `card pickup triggers haptic feedback`() {
+            val state = DragDropState()
+            val fakeHaptics = FakeHapticFeedback()
+
+            state.startDrag(
+                source = CardLocation.Waste,
+                cards = listOf(cardAceHearts),
+                hapticFeedback = fakeHaptics
+            )
+
+            assertEquals(1, fakeHaptics.performedCount)
+            assertEquals(HapticFeedbackType.LongPress, fakeHaptics.lastFeedbackType)
+        }
+
+        @Test
+        fun `valid onDropRelease triggers haptic snap and invokes onValidDrop`() = runTest {
+            val state = DragDropState()
+            val fakeHaptics = FakeHapticFeedback()
+            val registry = DropTargetRegistry()
+            val foundation0 = CardLocation.Foundation(0)
+            registry.register(foundation0, Rect(0f, 0f, 100f, 140f))
+
+            val board = BoardState(waste = listOf(cardAceHearts))
+            state.startDrag(
+                source = CardLocation.Waste,
+                cards = listOf(cardAceHearts),
+                originPosition = Offset(0f, 0f)
+            )
+
+            var droppedCards: List<Card>? = null
+            var droppedSource: CardLocation? = null
+            var droppedTarget: CardLocation? = null
+
+            val result = withContext(TestFrameClock()) {
+                state.onDropRelease(
+                    boardState = board,
+                    registry = registry,
+                    draggedBounds = Rect(10f, 10f, 90f, 130f),
+                    hapticFeedback = fakeHaptics,
+                    onValidDrop = { cards, src, tgt ->
+                        droppedCards = cards
+                        droppedSource = src
+                        droppedTarget = tgt
+                    }
+                )
+            }
+
+            assertTrue(result)
+            assertFalse(state.isActive)
+            assertEquals(1, fakeHaptics.performedCount)
+            assertEquals(HapticFeedbackType.LongPress, fakeHaptics.lastFeedbackType)
+            assertEquals(listOf(cardAceHearts), droppedCards)
+            assertEquals(CardLocation.Waste, droppedSource)
+            assertEquals(foundation0, droppedTarget)
+        }
+
+        @Test
+        fun `invalid onDropRelease animates snap-back and does not invoke onValidDrop`() = runTest {
+            val state = DragDropState()
+            val fakeHaptics = FakeHapticFeedback()
+            val registry = DropTargetRegistry()
+            val foundation0 = CardLocation.Foundation(0)
+            registry.register(foundation0, Rect(0f, 0f, 100f, 140f))
+
+            // Two of Clubs cannot go to empty Foundation 0 (requires Ace)
+            val board = BoardState(waste = listOf(cardTwoClubs))
+            val origin = Offset(50f, 50f)
+            state.startDrag(
+                source = CardLocation.Waste,
+                cards = listOf(cardTwoClubs),
+                originPosition = origin
+            )
+            state.onDragDelta(Offset(100f, 100f))
+
+            var dropInvoked = false
+
+            val result = withContext(TestFrameClock()) {
+                state.onDropRelease(
+                    boardState = board,
+                    registry = registry,
+                    draggedBounds = Rect(10f, 10f, 90f, 130f),
+                    hapticFeedback = fakeHaptics,
+                    onValidDrop = { _, _, _ -> dropInvoked = true }
+                )
+            }
+
+            assertFalse(result)
+            assertFalse(dropInvoked)
+            assertFalse(state.isActive)
+            assertEquals(0, fakeHaptics.performedCount) // no drop snap on invalid drop
+            assertEquals(Offset.Zero, state.dragPosition)
+        }
+
+        @Test
+        fun `onDropRelease returns false when state is idle`() = runTest {
+            val state = DragDropState()
+            val registry = DropTargetRegistry()
+            val board = BoardState()
+
+            var dropInvoked = false
+            val result = withContext(TestFrameClock()) {
+                state.onDropRelease(
+                    boardState = board,
+                    registry = registry,
+                    draggedBounds = Rect(0f, 0f, 10f, 10f),
+                    onValidDrop = { _, _, _ -> dropInvoked = true }
+                )
+            }
+
+            assertFalse(result)
+            assertFalse(dropInvoked)
         }
     }
 }

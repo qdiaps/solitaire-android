@@ -2,6 +2,10 @@ package io.github.qdiaps.solitaire.ui.game.gesture
 
 import androidx.compose.ui.geometry.Rect
 import io.github.qdiaps.solitaire.domain.model.CardLocation
+import io.github.qdiaps.solitaire.domain.model.BoardState
+import io.github.qdiaps.solitaire.domain.model.Card
+import io.github.qdiaps.solitaire.domain.model.Rank
+import io.github.qdiaps.solitaire.domain.model.Suit
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -257,6 +261,101 @@ class DropTargetRegistryTest {
             val result = registry.findBestTarget(dragged)
 
             assertEquals(foundation0, result)
+        }
+    }
+
+    @Nested
+    @DisplayName("findValidDropTarget integration with KlondikeRules")
+    inner class ValidDropTargetTests {
+
+        private val aceOfSpades = Card(Suit.SPADES, Rank.ACE, isFaceUp = true, id = "ace_spades")
+        private val twoOfHearts = Card(Suit.HEARTS, Rank.TWO, isFaceUp = true, id = "two_hearts")
+        private val threeOfSpades = Card(Suit.SPADES, Rank.THREE, isFaceUp = true, id = "three_spades")
+
+        @Test
+        fun `returns target when geometry overlaps and move is legal`() {
+            val registry = DropTargetRegistry()
+            val foundation0 = CardLocation.Foundation(0)
+            registry.register(foundation0, Rect(0f, 0f, 100f, 140f))
+
+            val board = BoardState(waste = listOf(aceOfSpades))
+            val draggedBounds = Rect(10f, 10f, 90f, 130f)
+
+            val validTarget = registry.findValidDropTarget(
+                boardState = board,
+                cards = listOf(aceOfSpades),
+                source = CardLocation.Waste,
+                draggedBounds = draggedBounds
+            )
+
+            assertEquals(foundation0, validTarget)
+        }
+
+        @Test
+        fun `returns null when geometry overlaps but move is illegal`() {
+            val registry = DropTargetRegistry()
+            val foundation0 = CardLocation.Foundation(0)
+            registry.register(foundation0, Rect(0f, 0f, 100f, 140f))
+
+            // Two of Hearts cannot be placed on empty Foundation 0 (requires Ace)
+            val board = BoardState(waste = listOf(twoOfHearts))
+            val draggedBounds = Rect(10f, 10f, 90f, 130f)
+
+            val validTarget = registry.findValidDropTarget(
+                boardState = board,
+                cards = listOf(twoOfHearts),
+                source = CardLocation.Waste,
+                draggedBounds = draggedBounds
+            )
+
+            assertNull(validTarget)
+        }
+
+        @Test
+        fun `returns null when no targets overlap`() {
+            val registry = DropTargetRegistry()
+            val foundation0 = CardLocation.Foundation(0)
+            registry.register(foundation0, Rect(0f, 0f, 100f, 140f))
+
+            val board = BoardState(waste = listOf(aceOfSpades))
+            val draggedBounds = Rect(300f, 300f, 400f, 440f)
+
+            val validTarget = registry.findValidDropTarget(
+                boardState = board,
+                cards = listOf(aceOfSpades),
+                source = CardLocation.Waste,
+                draggedBounds = draggedBounds
+            )
+
+            assertNull(validTarget)
+        }
+
+        @Test
+        fun `validates tableau sequence drop onto matching column`() {
+            val registry = DropTargetRegistry()
+            val tableauCol1 = CardLocation.Tableau(1)
+            registry.register(tableauCol1, Rect(120f, 200f, 220f, 500f))
+
+            // Column 1 has Three of Spades. We drop Two of Hearts from Column 0.
+            val board = BoardState(
+                tableau = List(7) { col ->
+                    when (col) {
+                        0 -> listOf(twoOfHearts)
+                        1 -> listOf(threeOfSpades)
+                        else -> emptyList()
+                    }
+                }
+            )
+            val draggedBounds = Rect(130f, 210f, 210f, 330f)
+
+            val validTarget = registry.findValidDropTarget(
+                boardState = board,
+                cards = listOf(twoOfHearts),
+                source = CardLocation.Tableau(0, 0),
+                draggedBounds = draggedBounds
+            )
+
+            assertEquals(tableauCol1, validTarget)
         }
     }
 }

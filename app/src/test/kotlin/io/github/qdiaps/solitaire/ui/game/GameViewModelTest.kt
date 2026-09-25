@@ -507,6 +507,7 @@ class GameViewModelTest {
             val solvableBoard = createCustomBoard("solvable_seed")
             val generator = DealGenerator(
                 scope = backgroundScope,
+                dispatcher = testDispatcher,
                 bufferCapacity = 1,
                 dealProvider = { solvableBoard },
                 solvabilityChecker = { board, _ ->
@@ -741,6 +742,169 @@ class GameViewModelTest {
             val state = viewModel.uiState.value
             assertTrue(state.isDeadlocked)
             assertFalse(state.isGameWon)
+        }
+    }
+
+    @Nested
+    @DisplayName("Drop Intents")
+    inner class DropIntents {
+
+        @Test
+        @DisplayName("Valid card drop updates board, records undo, and emits PlayHapticSnap")
+        fun `valid card drop updates board, records undo, and emits PlayHapticSnap`() = runTest(testDispatcher) {
+            val redSix = Card(Suit.HEARTS, Rank.SIX, isFaceUp = true, id = "red6")
+            val blackSeven = Card(Suit.CLUBS, Rank.SEVEN, isFaceUp = true, id = "black7")
+            val tableau = List(7) { col ->
+                when (col) {
+                    0 -> listOf(redSix)
+                    1 -> listOf(blackSeven)
+                    else -> emptyList()
+                }
+            }
+            val board = BoardState(tableau = tableau)
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            var hapticSnapEmitted = false
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.events.collect { event ->
+                    if (event is GameEvent.PlayHapticSnap) {
+                        hapticSnapEmitted = true
+                    }
+                }
+            }
+
+            viewModel.onIntent(
+                GameIntent.OnCardDropped(
+                    cards = listOf(redSix),
+                    source = CardLocation.Tableau(0, 0),
+                    target = CardLocation.Tableau(1, 0)
+                )
+            )
+
+            val state = viewModel.uiState.value
+            assertTrue(state.boardState.tableau[0].isEmpty())
+            assertEquals(listOf(blackSeven, redSix), state.boardState.tableau[1])
+            assertEquals(1, state.boardState.movesCount)
+            assertTrue(state.canUndo)
+            assertTrue(hapticSnapEmitted)
+        }
+
+        @Test
+        @DisplayName("Invalid card drop leaves board unchanged and emits no event")
+        fun `invalid card drop leaves board unchanged and emits no event`() = runTest(testDispatcher) {
+            val redSix = Card(Suit.HEARTS, Rank.SIX, isFaceUp = true, id = "red6")
+            val redKing = Card(Suit.DIAMONDS, Rank.KING, isFaceUp = true, id = "redK")
+            val tableau = List(7) { col ->
+                when (col) {
+                    0 -> listOf(redSix)
+                    1 -> listOf(redKing)
+                    else -> emptyList()
+                }
+            }
+            val board = BoardState(tableau = tableau)
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            var anyEventEmitted = false
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.events.collect {
+                    anyEventEmitted = true
+                }
+            }
+
+            viewModel.onIntent(
+                GameIntent.OnCardDropped(
+                    cards = listOf(redSix),
+                    source = CardLocation.Tableau(0, 0),
+                    target = CardLocation.Tableau(1, 0)
+                )
+            )
+
+            val state = viewModel.uiState.value
+            assertEquals(board, state.boardState)
+            assertFalse(state.canUndo)
+            assertFalse(anyEventEmitted)
+        }
+
+        @Test
+        @DisplayName("Winning card drop emits TriggerWinCelebration and stops timer")
+        fun `winning card drop emits TriggerWinCelebration and stops timer`() = runTest(testDispatcher) {
+            val kingOfSpades = Card(Suit.SPADES, Rank.KING, isFaceUp = true, id = "king_spades")
+            val spadesFoundation = Rank.entries.filter { it != Rank.KING }.map { Card(Suit.SPADES, it, isFaceUp = true) }
+            val otherFoundations = listOf(Suit.HEARTS, Suit.DIAMONDS, Suit.CLUBS).map { suit ->
+                Rank.entries.map { Card(suit, it, isFaceUp = true) }
+            }
+            val foundations = listOf(spadesFoundation) + otherFoundations
+            val board = BoardState(
+                tableau = List(7) { col -> if (col == 0) listOf(kingOfSpades) else emptyList() },
+                foundations = foundations
+            )
+
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                timerDelayMs = 1000L,
+                autoStartTimer = true
+            )
+
+            var celebrationEmitted = false
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.events.collect { event ->
+                    if (event is GameEvent.TriggerWinCelebration) {
+                        celebrationEmitted = true
+                    }
+                }
+            }
+
+            viewModel.onIntent(
+                GameIntent.OnCardDropped(
+                    cards = listOf(kingOfSpades),
+                    source = CardLocation.Tableau(0, 0),
+                    target = CardLocation.Foundation(0)
+                )
+            )
+
+            val state = viewModel.uiState.value
+            assertTrue(state.isGameWon)
+            assertFalse(viewModel.isTimerRunning)
+            assertTrue(celebrationEmitted)
+        }
+
+        @Test
+        @DisplayName("Card drop move can be undone via UndoMove")
+        fun `card drop move can be undone via UndoMove`() = runTest(testDispatcher) {
+            val aceOfSpades = Card(Suit.SPADES, Rank.ACE, isFaceUp = true, id = "ace_spades")
+            val initialBoard = BoardState(waste = listOf(aceOfSpades))
+            val viewModel = GameViewModel(
+                initialBoardState = initialBoard,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(
+                GameIntent.OnCardDropped(
+                    cards = listOf(aceOfSpades),
+                    source = CardLocation.Waste,
+                    target = CardLocation.Foundation(0)
+                )
+            )
+            assertTrue(viewModel.uiState.value.canUndo)
+            assertEquals(1, viewModel.uiState.value.boardState.movesCount)
+
+            viewModel.onIntent(GameIntent.UndoMove)
+
+            val state = viewModel.uiState.value
+            assertEquals(initialBoard, state.boardState)
+            assertEquals(0, state.boardState.movesCount)
+            assertFalse(state.canUndo)
         }
     }
 }

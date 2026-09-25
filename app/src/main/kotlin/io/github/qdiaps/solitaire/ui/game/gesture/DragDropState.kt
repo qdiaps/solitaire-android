@@ -1,5 +1,10 @@
 package io.github.qdiaps.solitaire.ui.game.gesture
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.spring
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.compositionLocalOf
@@ -8,6 +13,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
 
@@ -16,6 +25,15 @@ import io.github.qdiaps.solitaire.domain.model.CardLocation
  */
 val LocalDragDropState: ProvidableCompositionLocal<DragDropState?> =
     compositionLocalOf { null }
+
+/**
+ * Default spring animation specification for smooth card snap-back returning to its origin.
+ */
+val DefaultSnapBackSpec: AnimationSpec<Offset> = spring(
+    dampingRatio = Spring.DampingRatioMediumBouncy,
+    stiffness = Spring.StiffnessMediumLow
+)
+
 
 /**
  * Manages the active drag-and-drop gesture lifecycle, dragged cards stack,
@@ -28,6 +46,18 @@ class DragDropState {
      */
     var isDragging: Boolean by mutableStateOf(false)
         private set
+
+    /**
+     * Whether a snap-back animation returning cards to origin is currently in progress.
+     */
+    var isSnappingBack: Boolean by mutableStateOf(false)
+        private set
+
+    /**
+     * Whether cards are actively being dragged by user gesture or animating back to origin.
+     */
+    val isActive: Boolean
+        get() = isDragging || isSnappingBack
 
     /**
      * The board location from which cards were lifted.
@@ -69,7 +99,8 @@ class DragDropState {
     fun startDrag(
         source: CardLocation,
         cards: List<Card>,
-        originPosition: Offset = Offset.Zero
+        originPosition: Offset = Offset.Zero,
+        hapticFeedback: HapticFeedback? = null
     ) {
         require(cards.isNotEmpty()) { "Cannot start drag with empty card list" }
         this.isDragging = true
@@ -77,6 +108,7 @@ class DragDropState {
         this.draggedCards = cards
         this.originPosition = originPosition
         this.dragPosition = originPosition
+        hapticFeedback?.performHapticFeedback(HapticFeedbackType.LongPress)
     }
 
     /**
@@ -100,10 +132,36 @@ class DragDropState {
      */
     fun reset() {
         isDragging = false
+        isSnappingBack = false
         sourceLocation = null
         draggedCards = emptyList()
         originPosition = Offset.Zero
         dragPosition = Offset.Zero
+    }
+
+    /**
+     * Animates the lifted card stack from current [dragPosition] back to [originPosition]
+     * using spring physics, then resets all drag state back to idle.
+     *
+     * @param animationSpec The [AnimationSpec] controlling spring physics (defaults to [DefaultSnapBackSpec]).
+     */
+    suspend fun snapBack(
+        animationSpec: AnimationSpec<Offset> = DefaultSnapBackSpec
+    ) {
+        if (!isDragging && !isSnappingBack) return
+        isDragging = false
+        isSnappingBack = true
+        try {
+            val animatable = Animatable(dragPosition, Offset.VectorConverter)
+            animatable.animateTo(
+                targetValue = originPosition,
+                animationSpec = animationSpec
+            ) {
+                dragPosition = value
+            }
+        } finally {
+            reset()
+        }
     }
 
     /**
@@ -137,7 +195,8 @@ class DragDropState {
         columnIndex: Int,
         cardIndex: Int,
         columnCards: List<Card>,
-        originPosition: Offset = Offset.Zero
+        originPosition: Offset = Offset.Zero,
+        hapticFeedback: HapticFeedback? = null
     ): Boolean {
         val cardsToDrag = sliceTableauStack(columnCards, cardIndex)
         if (cardsToDrag.isEmpty()) return false
@@ -145,7 +204,8 @@ class DragDropState {
         startDrag(
             source = CardLocation.Tableau(columnIndex, cardIndex),
             cards = cardsToDrag,
-            originPosition = originPosition
+            originPosition = originPosition,
+            hapticFeedback = hapticFeedback
         )
         return true
     }
@@ -159,7 +219,8 @@ class DragDropState {
      */
     fun startWasteDrag(
         wasteCards: List<Card>,
-        originPosition: Offset = Offset.Zero
+        originPosition: Offset = Offset.Zero,
+        hapticFeedback: HapticFeedback? = null
     ): Boolean {
         val topCard = wasteCards.lastOrNull() ?: return false
         if (!topCard.isFaceUp) return false
@@ -167,7 +228,8 @@ class DragDropState {
         startDrag(
             source = CardLocation.Waste,
             cards = listOf(topCard),
-            originPosition = originPosition
+            originPosition = originPosition,
+            hapticFeedback = hapticFeedback
         )
         return true
     }
@@ -183,7 +245,8 @@ class DragDropState {
     fun startFoundationDrag(
         foundationIndex: Int,
         foundationCards: List<Card>,
-        originPosition: Offset = Offset.Zero
+        originPosition: Offset = Offset.Zero,
+        hapticFeedback: HapticFeedback? = null
     ): Boolean {
         val topCard = foundationCards.lastOrNull() ?: return false
         if (!topCard.isFaceUp) return false
@@ -191,7 +254,8 @@ class DragDropState {
         startDrag(
             source = CardLocation.Foundation(foundationIndex),
             cards = listOf(topCard),
-            originPosition = originPosition
+            originPosition = originPosition,
+            hapticFeedback = hapticFeedback
         )
         return true
     }
@@ -200,7 +264,7 @@ class DragDropState {
      * Returns whether the given [card] is currently part of the active drag stack.
      */
     fun isCardDragged(card: Card): Boolean {
-        return isDragging && draggedCards.any { it.id == card.id }
+        return (isDragging || isSnappingBack) && draggedCards.any { it.id == card.id }
     }
 
     /**
@@ -208,7 +272,7 @@ class DragDropState {
      * while being rendered in the floating drag overlay.
      */
     fun isCardHidden(location: CardLocation, cardIndex: Int): Boolean {
-        if (!isDragging) return false
+        if (!isDragging && !isSnappingBack) return false
         val source = sourceLocation ?: return false
 
         return when {
@@ -220,6 +284,56 @@ class DragDropState {
                 source.index == location.index
             }
             else -> false
+        }
+    }
+
+    /**
+     * Completes a drop gesture at current coordinates.
+     *
+     * Evaluates candidate targets from [registry] matching the stack bounding box [draggedBounds].
+     * If a valid target is found according to [boardState] and [io.github.qdiaps.solitaire.domain.rules.KlondikeRules.canMoveCards]:
+     * - Resets drag state.
+     * - Triggers [hapticFeedback]?.performHapticFeedback(HapticFeedbackType.LongPress).
+     * - Invokes [onValidDrop] callback with dragged cards, source, and target destination.
+     * If invalid or outside any drop target:
+     * - Animates the lifted card stack smoothly back to [originPosition] via [snapBack].
+     *
+     * @param boardState Current game board state snapshot.
+     * @param registry Active [DropTargetRegistry] storing screen hitboxes.
+     * @param draggedBounds Current screen bounding box of the moving card stack.
+     * @param hapticFeedback Optional [HapticFeedback] instance for haptic snap.
+     * @param onValidDrop Callback invoked when destination is legal.
+     * @return  if drop was valid and applied,  if snapped back.
+     */
+    suspend fun onDropRelease(
+        boardState: BoardState,
+        registry: DropTargetRegistry,
+        draggedBounds: Rect,
+        hapticFeedback: HapticFeedback? = null,
+        onValidDrop: (cards: List<Card>, source: CardLocation, target: CardLocation) -> Unit
+    ): Boolean {
+        if (!isActive || draggedCards.isEmpty()) return false
+        val source = sourceLocation ?: run {
+            snapBack()
+            return false
+        }
+
+        val validTarget = registry.findValidDropTarget(
+            boardState = boardState,
+            cards = draggedCards,
+            source = source,
+            draggedBounds = draggedBounds
+        )
+
+        return if (validTarget != null) {
+            val cardsToMove = draggedCards
+            reset()
+            hapticFeedback?.performHapticFeedback(HapticFeedbackType.LongPress)
+            onValidDrop(cardsToMove, source, validTarget)
+            true
+        } else {
+            snapBack()
+            false
         }
     }
 }
