@@ -64,6 +64,13 @@
   - Registered `Stock` and `Waste` bounds in `DropTargetRegistry` for reliable trajectory calculation in normal and left-handed modes.
   - *TDD/Unit Tests:* `CardFlightStateTest` verifying interpolation, rotation, cancellation, and callbacks.
   - Full suite passed: 418 unit tests passing (100%), 0 failures, 0 Android lint errors.
+- [x] **T-4.12: Universal ERM Haptics Engine & MediaTek HAL Fallback (`SolitaireHaptics`)**
+  - Fixed silent failure of `VibrationEffect.createPredefined` on MediaTek / rugged devices (Hotwav Cyber X) where HAL returns unsupported without throwing exceptions.
+  - Added `vib.areAllEffectsSupported(effect)` hardware check guarding `createPredefined`.
+  - Implemented calibrated one-shot pulse fallbacks for ERM motors in heavy rugged phones (~380g): 45ms tick, 65ms pickup, 90ms snap at `DEFAULT_AMPLITUDE`.
+  - Upgraded vibration attributes to `VibrationAttributes.USAGE_HARDWARE_FEEDBACK` (API 33+) and `AudioAttributes.USAGE_GAME` (API 26+) so tactile feedback is not muted by system touch/keyboard toggle.
+  - Added `SolitaireHapticsTest` unit tests.
+  - Full suite passed: 420 unit tests passing (100%), 0 failures, 0 Android lint errors.
 
 ---
 

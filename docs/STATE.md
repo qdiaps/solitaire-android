@@ -14,14 +14,21 @@
   - **Phase 1: Pure Domain Engine** — 159 unit tests (100% pass), models, rules, scoring, smart tap, undo. (Complete)
   - **Phase 2: Solvability Engine & Background Generator** — 80 unit tests (100% pass), A* solver, deadlock detector, buffered deal generator. (Complete)
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
-  - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 148 unit tests (100% pass, 418 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, haptics, flight animations, 3D card flips, and `MainActivity` wiring. (Complete)
+  - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 150 unit tests (100% pass, 420 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, and `MainActivity` wiring. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Phase 4 completed, polished with 60/120 FPS flight & 3D flip animations, and verified. Ready for Phase 5 (Visual Polish, Themes & Customization).
+- **Current Focus:** Phase 4 completed, polished with universal ERM/MediaTek haptics, 60/120 FPS flight & 3D flip animations, and verified. Ready for Phase 5 (Visual Polish, Themes & Customization).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (T-4.12: Universal ERM Haptics Engine & MediaTek HAL Fallback):**
+  - Identified silent vibration drop on MediaTek Helio G99 / rugged devices (Hotwav Cyber X) where vendor HAL ignores `createPredefined(EFFECT_CLICK)` without throwing exceptions and Compose view haptics get silenced.
+  - Added `vib.areAllEffectsSupported(effect)` guard before using `createPredefined`.
+  - Added calibrated one-shot pulse fallbacks designed for heavy rugged phones (~380g) with ERM motors: 45ms tick, 65ms pickup, 90ms snap with `VibrationEffect.DEFAULT_AMPLITUDE` overcoming motor rotor inertia.
+  - Upgraded vibration attributes to `VibrationAttributes.createForUsage(USAGE_HARDWARE_FEEDBACK)` (API 33+) and `AudioAttributes.USAGE_GAME` (API 26+) ensuring game tactile feedback is never muted by system keyboard/touch toggle.
+  - Added unit test suite `SolitaireHapticsTest`.
+  - Full suite passed: 420 unit tests passing (100%), 0 failures, 0 Android lint errors.
 - **2026-09-25 (T-4.11: Smooth Flight Animations & 3D Flips):**
   - Implemented `CardFlightState` managing in-flight card interpolation, 3D flip rotation, and source card masking without triggering recomposition loops.
   - Implemented `AnimatedMoveOverlay` floating overlay layer rendering flying cards with elevation shadow (10.dp) and 3D Y-axis rotation with perspective camera distance.
@@ -54,7 +61,7 @@
   - Wired `GameIntent.OnCardDropped` in `GameViewModel`: validates drops via `KlondikeRules.canMoveCards`, records undo snapshots in `UndoManager`, applies moves with auto-flip reveals, checks win/deadlock conditions, and emits single-shot `GameEvent.PlayHapticSnap` (or `GameEvent.TriggerWinCelebration`).
   - Added `DropIntents` test suite in `GameViewModelTest` covering valid drops, illegal drops, win triggers, and undo reversibility (4 unit tests, 100% pass).
   - Extended `DragDropState` with `isSnappingBack: Boolean`, `isActive: Boolean`, `DefaultSnapBackSpec` with spring physics (`Spring.DampingRatioMediumBouncy`, `Spring.StiffnessMediumLow`), and suspend `snapBack()` returning cards smoothly to `originPosition`.
-  - Added `DropTargetRegistry.findValidDropTarget` connecting geometric hitboxes with `KlondikeRules.canMoveCards`.\
+  - Added `DropTargetRegistry.findValidDropTarget` connecting geometric hitboxes with `KlondikeRules.canMoveCards`.
   - Implemented `DragDropState.onDropRelease` resolving drops via `findValidDropTarget`, performing `HapticFeedbackType.LongPress` feedback on pickup and valid drop snap, and triggering `snapBack` on invalid/canceled releases`.
   - Updated `DragOverlay` to check `dragDropState.isActive` ensuring lifted cards remain rendered in the floating overlay during snap-back translation`.
   - Added unit tests in `DragDropStateTest` and `DropTargetRegistryTest` covering snap-back animation state, haptic feedback triggers, and drop validation (408 suite tests passing with 0 failures and 0 lint warnings).
@@ -77,7 +84,7 @@
   - Created `DropTargetRegistry` managing root-relative screen bounds (`Rect`) of Foundation slots and Tableau columns.
   - Implemented `calculateOverlapArea` and `calculateOverlapRatio` functions handling boundary, edge-touching, and degenerate conditions.
   - Implemented generic `findBestDropTarget` selecting the destination with maximum intersection area and supporting `minOverlapArea` tolerance thresholds.
-  - Added `Modifier.dropTarget(location, registry)` and ambient `@Composable Modifier.dropTarget(location)` backed by `LocalDropTargetRegistry`.\
+  - Added `Modifier.dropTarget(location, registry)` and ambient `@Composable Modifier.dropTarget(location)` backed by `LocalDropTargetRegistry`.
   - Wired drop target modifier attachments into `FoundationRowView` (`Foundation(0..3)`) and `TableauAreaView` (`Tableau(0..6)`).
   - Added unit test suite `DropTargetRegistryTest` with 21 unit tests covering state management, overlap calculations, ratios, and multi-target priority selection (100% pass across all 344 suite tests).
 - **2026-09-25 (T-4.4: Smart Tap Move Execution & Auto-Flip Uncovered Cards):**
@@ -88,15 +95,15 @@
   - Connected victory detection and win celebration flow triggering `GameEvent.TriggerWinCelebration` and halting the elapsed timer.
   - Added test suite `SmartTapIntents` in `GameViewModelTest` covering waste-to-foundation promotions, tableau sequence moves, face-down auto-exposure, unmovable taps, win triggers, deadlock updates, and undo reversibility (8 unit tests, 100% pass across all 323 suite tests).
 - **2026-09-25 (T-4.3: Stock Draw, Waste Extraction & Undo Processing in ViewModel):**
-  - Configured `DrawMode` (`DRAW_ONE` / `DRAW_THREE`) parameter support in `GameViewModel`.
+  - Configured `DrawMode` (`DRAW_ONE` / `DRAW_THREE`) parameter support in `GameViewModel`.\
   - Implemented `drawStockCard()` handling standard card draw from stock to waste and automatic recycling fallback when stock is empty.
   - Implemented `recycleStock()` restoring waste cards face-down into stock with state snapshot recording.
   - Implemented `undoMove()` popping previous board state from `UndoManager`, updating `canUndo` flag, win status, and resuming timer if rolled back from a victory.
   - Added single-shot `GameEvent.PlayHapticTick` on card draw/undo actions and `GameEvent.TriggerWinCelebration` on victory.
   - Added test suite `StockAndUndoIntents` in `GameViewModelTest` covering 9 comprehensive test scenarios (100% pass).
 - **2026-09-25 (T-4.2: GameViewModel Lifecycle, Deal Initialization & Timer):**
-  - Implemented `GameViewModel` exposing reactive `StateFlow<GameUiState>` and `SharedFlow<GameEvent>`.\
-  - Added deal initialization supporting standard shuffled deals via `dealProvider` and background solvable deals via `DealGenerator`.
+  - Implemented `GameViewModel` exposing reactive `StateFlow<GameUiState>` and `SharedFlow<GameEvent>`.
+  - Added deal initialization supporting standard shuffled deals via `dealProvider` and background solvable deals via `DealGenerator`.\
   - Implemented coroutine stopwatch timer loop with `startTimer`, `pauseTimer`, `resumeTimer`, and `stopTimer` methods, guarded against ticks when game is won.
   - Added `StartNewGame`, `RestartGame`, `ToggleLeftHanded`, `SelectFeltTheme`, and `DismissHint` intent handling.
   - Designed timer coroutine scope injection (`coroutineScope: CoroutineScope?`) enabling test integration via `backgroundScope` to eliminate scheduler deadlocks and infinite continuation re-dispatching during tests.

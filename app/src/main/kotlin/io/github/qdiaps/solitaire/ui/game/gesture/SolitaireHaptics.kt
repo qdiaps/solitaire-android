@@ -1,8 +1,9 @@
 package io.github.qdiaps.solitaire.ui.game.gesture
 
 import android.content.Context
+import android.media.AudioAttributes
 import android.os.Build
-import android.os.CombinedVibration
+import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -18,8 +19,12 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 /**
  * High-performance tactile haptic feedback provider for Solitaire.
  *
- * Combines hardware [Vibrator] effects (API 26+) with compose [HapticFeedback] fallback,
- * ensuring distinct tactile feedback on pickup, snap drop, and card dealing across all devices.
+ * Designed with universal hardware compatibility:
+ * - On devices with high-end LRA motors (Pixel, Galaxy S), plays hardware predefined waveforms (EFFECT_CLICK, etc.).
+ * - On rugged devices with heavy chassis and ERM rotor motors (Hotwav Cyber X, Oukitel, Blackview),
+ *   detects lack of predefined waveform support via [Vibrator.areAllEffectsSupported] and falls back to
+ *   calibrated one-shot pulses (45-90ms) with [VibrationAttributes.USAGE_HARDWARE_FEEDBACK] and [VibrationEffect.DEFAULT_AMPLITUDE].
+ * - Falls back to Compose [HapticFeedback] if hardware vibrator is unavailable.
  */
 interface SolitaireHaptics {
     fun playPickup()
@@ -36,50 +41,106 @@ class AndroidSolitaireHaptics(
 ) : SolitaireHaptics {
 
     private val vibrator: Vibrator? by lazy {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        @Suppress("DEPRECATION")
+        val systemVibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        if (systemVibrator != null && systemVibrator.hasVibrator()) {
+            systemVibrator
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
-            vibratorManager?.defaultVibrator
+            val defaultVibrator = vibratorManager?.defaultVibrator
+            if (defaultVibrator != null && defaultVibrator.hasVibrator()) {
+                defaultVibrator
+            } else {
+                systemVibrator
+            }
         } else {
-            @Suppress("DEPRECATION")
-            context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            systemVibrator
         }
     }
 
+    private val legacyAudioAttributes: AudioAttributes by lazy {
+        AudioAttributes.Builder()
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .setUsage(AudioAttributes.USAGE_GAME)
+            .build()
+    }
+
     override fun playPickup() {
-        if (!tryVibrateEffect(VibrationEffect.EFFECT_CLICK, 25L, 160)) {
+        val played = tryVibrate(
+            predefinedEffect = VibrationEffect.EFFECT_CLICK,
+            durationMs = 65L,
+            amplitude = 180
+        )
+        if (!played) {
             composeHaptics.performHapticFeedback(HapticFeedbackType.LongPress)
         }
     }
 
     override fun playSnap() {
-        if (!tryVibrateEffect(VibrationEffect.EFFECT_HEAVY_CLICK, 40L, 220)) {
+        val played = tryVibrate(
+            predefinedEffect = VibrationEffect.EFFECT_HEAVY_CLICK,
+            durationMs = 90L,
+            amplitude = 255
+        )
+        if (!played) {
             composeHaptics.performHapticFeedback(HapticFeedbackType.LongPress)
         }
     }
 
     override fun playTick() {
-        if (!tryVibrateEffect(VibrationEffect.EFFECT_TICK, 15L, 100)) {
+        val played = tryVibrate(
+            predefinedEffect = VibrationEffect.EFFECT_TICK,
+            durationMs = 45L,
+            amplitude = 140
+        )
+        if (!played) {
             composeHaptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         }
     }
 
-    private fun tryVibrateEffect(predefinedEffect: Int, fallbackDurationMs: Long, fallbackAmplitude: Int): Boolean {
+    private fun tryVibrate(
+        predefinedEffect: Int,
+        durationMs: Long,
+        amplitude: Int
+    ): Boolean {
         val vib = vibrator ?: return false
         if (!vib.hasVibrator()) return false
 
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                vib.vibrate(VibrationEffect.createPredefined(predefinedEffect))
-                return true
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vib.vibrate(VibrationEffect.createOneShot(fallbackDurationMs, fallbackAmplitude))
-                return true
+            // Check if hardware genuinely supports predefined effects (e.g. Pixel / premium LRA motors)
+            val isPredefinedSupported = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                try {
+                    vib.areAllEffectsSupported(predefinedEffect) == Vibrator.VIBRATION_EFFECT_SUPPORT_YES
+                } catch (_: Throwable) {
+                    false
+                }
+            } else {
+                false
+            }
+
+            val effect = if (isPredefinedSupported && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                VibrationEffect.createPredefined(predefinedEffect)
+            } else {
+                // Fallback for ERM motors (Hotwav Cyber X, rugged devices, etc.) and devices without predefined effect support
+                val effectiveAmplitude = if (vib.hasAmplitudeControl()) {
+                    amplitude
+                } else {
+                    VibrationEffect.DEFAULT_AMPLITUDE
+                }
+                VibrationEffect.createOneShot(durationMs, effectiveAmplitude)
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                vib.vibrate(
+                    effect,
+                    VibrationAttributes.createForUsage(VibrationAttributes.USAGE_HARDWARE_FEEDBACK)
+                )
             } else {
                 @Suppress("DEPRECATION")
-                vib.vibrate(fallbackDurationMs)
-                return true
+                vib.vibrate(effect, legacyAudioAttributes)
             }
-        } catch (_: Exception) {
+            return true
+        } catch (_: Throwable) {
             return false
         }
     }
