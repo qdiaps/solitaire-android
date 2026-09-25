@@ -7,7 +7,7 @@
   - Implement `SolitaireTheme`, typography, suit colors, and 4 felt table palettes (`Classic Green`, `Deep Navy`, `Dark Charcoal`, `Wine Red`).
   - Implement `CardDimensions` calculator computing card width, height (5:7 ratio), face-down peek, face-up peek, corner radii, and spacing for 7-column portrait constraint.
   - *TDD/Unit Tests:* `CardDimensionsTest` validating geometry across standard screen widths (360dp, 393dp, 411dp, 600dp).
-- [ ] **T-3.2: Card View Component (Face-Up, Face-Down & Empty Slot Placeholder)**
+- [x] **T-3.2: Card View Component (Face-Up, Face-Down & Empty Slot Placeholder)**
   - Implement vector/canvas suit emblems and rank typography rendering for face-up cards.
   - Implement minimal geometric card-back pattern for face-down cards.
   - Implement empty slot placeholder with subtle border and optional watermark (foundation suit or stock recycle icon).
