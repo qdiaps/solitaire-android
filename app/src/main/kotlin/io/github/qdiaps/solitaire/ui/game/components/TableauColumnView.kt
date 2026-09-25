@@ -52,9 +52,8 @@ fun calculateTableauOffsets(
 /**
  * Renders a single vertical Tableau column.
  *
- * If [cards] is empty, renders an empty [CardSlotPlaceholder] with a King watermark (`TableauKing`).
- * If [cards] is non-empty, renders all cards vertically stacked with distinct peek offsets
- * for face-down and face-up cards.
+ * Always mounts a base [CardSlotPlaceholder] with a King watermark (`TableauKing`) at the root
+ * of the column, which remains visible when empty or when cards are being lifted/dragged.
  *
  * @param cards List of cards in this column from bottom (index 0) to top (last index).
  * @param modifier Compose [Modifier] applied to this column container.
@@ -78,62 +77,62 @@ fun TableauColumnView(
 ) {
     val dimensions = SolitaireTheme.cardDimensions
 
-    if (cards.isEmpty()) {
-        CardSlotPlaceholder(
-            modifier = modifier,
-            watermark = SlotWatermark.TableauKing,
-            onClick = onEmptySlotClick
+    val yOffsets = remember(cards, dimensions.faceDownPeek, dimensions.faceUpPeek) {
+        calculateTableauOffsets(
+            cards = cards,
+            faceDownPeek = dimensions.faceDownPeek,
+            faceUpPeek = dimensions.faceUpPeek
         )
-    } else {
-        val yOffsets = remember(cards, dimensions.faceDownPeek, dimensions.faceUpPeek) {
-            calculateTableauOffsets(
-                cards = cards,
-                faceDownPeek = dimensions.faceDownPeek,
-                faceUpPeek = dimensions.faceUpPeek
-            )
-        }
+    }
 
-        val totalHeight = yOffsets.last() + dimensions.cardHeight
-        val dragDropState = LocalDragDropState.current
+    val totalHeight = if (cards.isEmpty()) dimensions.cardHeight else yOffsets.last() + dimensions.cardHeight
+    val dragDropState = LocalDragDropState.current
 
-        Box(
-            modifier = modifier.size(dimensions.cardWidth, totalHeight)
-        ) {
-            cards.forEachIndexed { index, card ->
-                key(card.id) {
-                    val isCardDragged = dragDropState != null && dragDropState.isCardDragged(card)
-                    val dragModifier = if (card.isFaceUp && boardState != null && onCardDropped != null) {
-                        Modifier.cardDragTarget(
-                            isEnabled = true,
-                            boardState = boardState,
-                            onStartDrag = { origin ->
-                                dragDropState?.startTableauDrag(
-                                    columnIndex = columnIndex,
-                                    cardIndex = index,
-                                    columnCards = cards,
-                                    originPosition = origin
-                                ) == true
-                            },
-                            onValidDrop = onCardDropped
-                        )
-                    } else {
-                        Modifier
-                    }
+    Box(
+        modifier = modifier.size(dimensions.cardWidth, totalHeight)
+    ) {
+        // Base slot placeholder: always present at root of column (y = 0.dp)
+        // Immediately visible when column is empty or when the bottom-most card is lifted
+        CardSlotPlaceholder(
+            modifier = Modifier.size(dimensions.cardWidth, dimensions.cardHeight),
+            watermark = SlotWatermark.TableauKing,
+            onClick = if (cards.isEmpty()) onEmptySlotClick else null
+        )
 
-                    CardView(
-                        card = card,
-                        modifier = Modifier
-                            .offset(y = yOffsets[index])
-                            .then(dragModifier)
-                            .graphicsLayer {
-                                if (isCardDragged) {
-                                    alpha = 0f
-                                }
-                            },
-                        isHighlighted = card == highlightedCard,
-                        onClick = onCardClick?.let { { it(card) } }
+        cards.forEachIndexed { index, card ->
+            key(card.id) {
+                val isCardDragged = dragDropState != null && dragDropState.isCardDragged(card)
+                val dragModifier = if (card.isFaceUp && boardState != null && onCardDropped != null) {
+                    Modifier.cardDragTarget(
+                        isEnabled = true,
+                        boardState = boardState,
+                        onStartDrag = { origin ->
+                            dragDropState?.startTableauDrag(
+                                columnIndex = columnIndex,
+                                cardIndex = index,
+                                columnCards = cards,
+                                originPosition = origin
+                            ) == true
+                        },
+                        onValidDrop = onCardDropped
                     )
+                } else {
+                    Modifier
                 }
+
+                CardView(
+                    card = card,
+                    modifier = Modifier
+                        .offset(y = yOffsets[index])
+                        .then(dragModifier)
+                        .graphicsLayer {
+                            if (isCardDragged) {
+                                alpha = 0f
+                            }
+                        },
+                    isHighlighted = card == highlightedCard,
+                    onClick = onCardClick?.let { { it(card) } }
+                )
             }
         }
     }

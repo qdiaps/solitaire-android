@@ -1,7 +1,9 @@
 package io.github.qdiaps.solitaire.ui.game.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
@@ -28,11 +30,12 @@ val DEFAULT_FOUNDATION_SUITS: List<Suit> = listOf(
 /**
  * Renders an individual Foundation pile slot.
  *
- * If [topCard] is present, displays that face-up card.
- * If [topCard] is null (foundation is empty), displays an empty [CardSlotPlaceholder]
- * with [defaultSuit] watermark.
+ * Always mounts an empty [CardSlotPlaceholder] with [defaultSuit] watermark at the base.
+ * If [underCard] exists, renders it behind [topCard], so when [topCard] is lifted or dragged,
+ * either [underCard] or the suit placeholder is immediately visible without popping.
  *
  * @param topCard Topmost banked card in this foundation pile, or `null` if empty.
+ * @param underCard Card immediately beneath the top card in this foundation pile (if any).
  * @param defaultSuit The suit watermark shown when this foundation slot is empty.
  * @param modifier Compose [Modifier] applied to this slot.
  * @param isHighlighted Whether to render an active hint border around this slot.
@@ -44,6 +47,7 @@ val DEFAULT_FOUNDATION_SUITS: List<Suit> = listOf(
 @Composable
 fun FoundationPileView(
     topCard: Card?,
+    underCard: Card? = null,
     defaultSuit: Suit,
     modifier: Modifier = Modifier,
     isHighlighted: Boolean = false,
@@ -52,46 +56,60 @@ fun FoundationPileView(
     onClick: (() -> Unit)? = null,
     onCardDropped: ((cards: List<Card>, source: CardLocation, target: CardLocation) -> Unit)? = null
 ) {
-    if (topCard != null) {
-        key(topCard.id) {
-            val dragDropState = LocalDragDropState.current
-            val isCardDragged = dragDropState != null && dragDropState.isCardDragged(topCard)
-            val dragModifier = if (topCard.isFaceUp && boardState != null && onCardDropped != null) {
-                Modifier.cardDragTarget(
-                    isEnabled = true,
-                    boardState = boardState,
-                    onStartDrag = { origin ->
-                        dragDropState?.startFoundationDrag(
-                            foundationIndex = foundationIndex,
-                            foundationCards = listOf(topCard),
-                            originPosition = origin
-                        ) == true
-                    },
-                    onValidDrop = onCardDropped
-                )
-            } else {
-                Modifier
-            }
+    val dimensions = SolitaireTheme.cardDimensions
 
+    Box(
+        modifier = modifier.size(dimensions.cardWidth, dimensions.cardHeight)
+    ) {
+        CardSlotPlaceholder(
+            modifier = Modifier.size(dimensions.cardWidth, dimensions.cardHeight),
+            watermark = SlotWatermark.FoundationSuit(defaultSuit),
+            onClick = if (topCard == null) onClick else null
+        )
+
+        if (underCard != null) {
             CardView(
-                card = topCard,
-                modifier = modifier
-                    .then(dragModifier)
-                    .graphicsLayer {
-                        if (isCardDragged) {
-                            alpha = 0f
-                        }
-                    },
-                isHighlighted = isHighlighted,
-                onClick = onClick
+                card = underCard,
+                modifier = Modifier.size(dimensions.cardWidth, dimensions.cardHeight)
             )
         }
-    } else {
-        CardSlotPlaceholder(
-            modifier = modifier,
-            watermark = SlotWatermark.FoundationSuit(defaultSuit),
-            onClick = onClick
-        )
+
+        if (topCard != null) {
+            key(topCard.id) {
+                val dragDropState = LocalDragDropState.current
+                val isCardDragged = dragDropState != null && dragDropState.isCardDragged(topCard)
+                val dragModifier = if (topCard.isFaceUp && boardState != null && onCardDropped != null) {
+                    Modifier.cardDragTarget(
+                        isEnabled = true,
+                        boardState = boardState,
+                        onStartDrag = { origin ->
+                            dragDropState?.startFoundationDrag(
+                                foundationIndex = foundationIndex,
+                                foundationCards = listOf(topCard),
+                                originPosition = origin
+                            ) == true
+                        },
+                        onValidDrop = onCardDropped
+                    )
+                } else {
+                    Modifier
+                }
+
+                CardView(
+                    card = topCard,
+                    modifier = Modifier
+                        .size(dimensions.cardWidth, dimensions.cardHeight)
+                        .then(dragModifier)
+                        .graphicsLayer {
+                            if (isCardDragged) {
+                                alpha = 0f
+                            }
+                        },
+                    isHighlighted = isHighlighted,
+                    onClick = onClick
+                )
+            }
+        }
     }
 }
 
@@ -125,10 +143,12 @@ fun FoundationRowView(
         for (index in 0 until 4) {
             val pile = foundations.getOrNull(index).orEmpty()
             val topCard = pile.lastOrNull()
+            val underCard = if (pile.size >= 2) pile[pile.size - 2] else null
             val defaultSuit = defaultSuits.getOrElse(index) { Suit.HEARTS }
 
             FoundationPileView(
                 topCard = topCard,
+                underCard = underCard,
                 defaultSuit = defaultSuit,
                 modifier = Modifier.dropTarget(CardLocation.Foundation(index)),
                 isHighlighted = highlightedFoundationIndex == index,
