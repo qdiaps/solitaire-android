@@ -3,7 +3,7 @@
 > **Current Phase:** Phase 3 (Compose Board Layout & Static Presentation)
 > **Branch:** `feature/phase-3-compose-board`
 
-- [ ] **T-3.1: Compose Theme, Felt Backgrounds & Card Dimensions Math**
+- [x] **T-3.1: Compose Theme, Felt Backgrounds & Card Dimensions Math**
   - Implement `SolitaireTheme`, typography, suit colors, and 4 felt table palettes (`Classic Green`, `Deep Navy`, `Dark Charcoal`, `Wine Red`).
   - Implement `CardDimensions` calculator computing card width, height (5:7 ratio), face-down peek, face-up peek, corner radii, and spacing for 7-column portrait constraint.
   - *TDD/Unit Tests:* `CardDimensionsTest` validating geometry across standard screen widths (360dp, 393dp, 411dp, 600dp).

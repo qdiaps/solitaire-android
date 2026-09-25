@@ -10,6 +10,8 @@
 
 ## Current Focus & Status
 - **Phase:** 3 / 6
+- **Completed Tasks (Phase 3):**
+  - `T-3.1`: Implement `SolitaireTheme`, typography, suit colors, 4 felt table palettes (`Classic Green`, `Deep Navy`, `Dark Charcoal`, `Wine Red`), and `CardDimensions` calculator (12 new unit tests).
 - **Completed Tasks (Phase 2):**
   - `T-2.1`: Implement compact/canonical state key representation (`SolverStateKey`) normalizing symmetric tableau columns and stock-cycle states to prevent cyclic exploration.
   - `T-2.2`: Implement legal move generator (`SolverMoveGenerator`) producing all non-redundant successor `BoardState` transitions with empty column and lateral move pruning.
@@ -30,12 +32,17 @@
   - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
   - `Task 1.9`: Implement `UndoManager` (state snapshot rollback for board, score, moves) with unit tests.
   - `Task 1.10`: Phase 1 review, refactoring to idiomatic Kotlin, completion of `Move` model, and verification of all 159 tests passing.
-- **Current Focus:** Phase 3: Compose Board Layout & Static Presentation (Task T-3.1).
+- **Current Focus:** Phase 3: Compose Board Layout & Static Presentation (Task T-3.2).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (Task T-3.1):** Implemented `SolitaireTheme`, felt table palettes, typography, and `CardDimensions` geometry math:
+  - Defined 4 felt table palettes (`Classic Green`, `Deep Navy`, `Dark Charcoal`, `Wine Red`) with surfaces, dark vignette edges, and contrasting suit colors in `FeltTheme` and `Color.kt`.
+  - Implemented `SolitaireTheme` providing `LocalSolitaireColors`, `LocalSolitaireCardTypography`, and `LocalCardDimensions`.
+  - Implemented `CardDimensions` calculator for 7-column portrait constraint computing card width, height (5:7 ratio), cascade peeks (20% face-down, 35% face-up), corner radii, and centering padding.
+  - Verified with 12 new unit tests (`CardDimensionsTest`, `FeltThemeTest`), expanding test suite to 251 passing unit tests (100% pass, 0 lint warnings via `./gradlew check`).
 - **2026-09-24 (Phase 3 Microtasks Decomposition):** Structured Phase 3 in `TASKS.md` into 8 atomic tasks (T-3.1 .. T-3.8) covering Compose theme/dimensions, CardView (face-up/down/placeholder), TopRow (with left-handed mode), TableauColumn cascade, TableauArea 7-column layout, Status & Action bars, GameScreen integration, and Phase 3 review.
 - **2026-09-24 (Phase 3 Initialization):** Transitioned project to Phase 3 (Compose Board Layout & Static Presentation):
   - Merged Phase 2 PR #2 into `master`.
@@ -113,4 +120,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-3.1: Compose Theme, Felt Backgrounds & Card Dimensions Math`
+- **Target Task:** `T-3.2: Card View Component (Face-Up, Face-Down & Empty Slot Placeholder)`
