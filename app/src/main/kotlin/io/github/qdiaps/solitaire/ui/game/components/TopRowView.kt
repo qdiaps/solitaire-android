@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
+import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 
 /**
@@ -29,9 +30,11 @@ import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
  * @param isStockHighlighted Whether stock slot has active hint highlight.
  * @param isWasteHighlighted Whether waste card has active hint highlight.
  * @param highlightedFoundationIndex Optional index (0..3) of foundation with active hint highlight.
+ * @param boardState Optional board state provider for drag drop validation.
  * @param onStockClick Callback when stock pile is tapped.
  * @param onWasteClick Callback when waste pile is tapped.
  * @param onFoundationClick Callback when a foundation pile is tapped with its 0-based index.
+ * @param onCardDropped Optional callback invoked when a card is dropped onto a valid target.
  */
 @Composable
 fun TopRowView(
@@ -44,9 +47,11 @@ fun TopRowView(
     isStockHighlighted: Boolean = false,
     isWasteHighlighted: Boolean = false,
     highlightedFoundationIndex: Int? = null,
+    boardState: (() -> BoardState)? = null,
     onStockClick: (() -> Unit)? = null,
     onWasteClick: (() -> Unit)? = null,
-    onFoundationClick: ((foundationIndex: Int) -> Unit)? = null
+    onFoundationClick: ((foundationIndex: Int) -> Unit)? = null,
+    onCardDropped: ((cards: List<Card>, source: CardLocation, target: CardLocation) -> Unit)? = null
 ) {
     val dimensions = SolitaireTheme.cardDimensions
 
@@ -65,25 +70,33 @@ fun TopRowView(
             WastePileView(
                 topCard = wasteTopCard,
                 isHighlighted = isWasteHighlighted,
-                onClick = onWasteClick
+                boardState = boardState,
+                onClick = onWasteClick,
+                onCardDropped = onCardDropped
             )
             Spacer(modifier = Modifier.size(dimensions.cardWidth, dimensions.cardHeight))
             FoundationRowView(
                 foundations = foundations,
                 highlightedFoundationIndex = highlightedFoundationIndex,
-                onFoundationClick = onFoundationClick
+                boardState = boardState,
+                onFoundationClick = onFoundationClick,
+                onCardDropped = onCardDropped
             )
         } else {
             FoundationRowView(
                 foundations = foundations,
                 highlightedFoundationIndex = highlightedFoundationIndex,
-                onFoundationClick = onFoundationClick
+                boardState = boardState,
+                onFoundationClick = onFoundationClick,
+                onCardDropped = onCardDropped
             )
             Spacer(modifier = Modifier.size(dimensions.cardWidth, dimensions.cardHeight))
             WastePileView(
                 topCard = wasteTopCard,
                 isHighlighted = isWasteHighlighted,
-                onClick = onWasteClick
+                boardState = boardState,
+                onClick = onWasteClick,
+                onCardDropped = onCardDropped
             )
             StockPileView(
                 cardsCount = stockCount,
@@ -108,7 +121,8 @@ fun TopRowView(
     highlightedFoundationIndex: Int? = null,
     onStockClick: (() -> Unit)? = null,
     onWasteClick: (() -> Unit)? = null,
-    onFoundationClick: ((foundationIndex: Int) -> Unit)? = null
+    onFoundationClick: ((foundationIndex: Int) -> Unit)? = null,
+    onCardDropped: ((cards: List<Card>, source: CardLocation, target: CardLocation) -> Unit)? = null
 ) {
     TopRowView(
         stockCount = boardState.stock.size,
@@ -120,8 +134,10 @@ fun TopRowView(
         isStockHighlighted = isStockHighlighted,
         isWasteHighlighted = isWasteHighlighted,
         highlightedFoundationIndex = highlightedFoundationIndex,
+        boardState = { boardState },
         onStockClick = onStockClick,
         onWasteClick = onWasteClick,
-        onFoundationClick = onFoundationClick
+        onFoundationClick = onFoundationClick,
+        onCardDropped = onCardDropped
     )
 }

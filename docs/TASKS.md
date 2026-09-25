@@ -13,7 +13,7 @@
   - Handle `StartNewGame`, `RestartGame`, and timer pause/resume lifecycle.
   - *TDD/Unit Tests:* `GameViewModelTest` verifying state initialization, new game deal, and timer ticks.
 - [x] **T-4.3: Stock Draw, Waste Extraction & Undo Processing in ViewModel**
-  - Implement `DrawStockCard`, `RecycleStock`, and `UndoMove` intent processing in `GameViewModel`.\
+  - Implement `DrawStockCard`, `RecycleStock`, and `UndoMove` intent processing in `GameViewModel`.
   - Connect `UndoManager` snapshot management and score tracking across draw/undo operations.
   - *TDD/Unit Tests:* `GameViewModelTest` verifying stock cycle, waste card extraction, and undo state restoration.
 - [x] **T-4.4: Smart Tap Move Execution & Auto-Flip Uncovered Cards**
@@ -39,11 +39,14 @@
   - If valid: dispatch `OnCardDropped` intent, update board state, auto-flip uncovered cards, and trigger haptic snap.
   - If invalid: animate dragged cards smoothly back to origin position using `Animatable` spring physics before clearing drag state.
   - Integrate `LocalHapticFeedback` for card pickup and placement clicks.
-- [ ] **T-4.9: Activity & Screen Wiring, End-to-End Gameplay & Phase 4 Review**
-  - Wire `GameViewModel` into `SolitaireGameScreen` and `MainActivity`.
-  - End-to-end verification: playable game loop with both smart tap and smooth drag-and-drop.
-  - Run `./gradlew check` and `./gradlew test` (ensuring 100% pass rate).
-  - Update `docs/STATE.md` and `docs/TASKS.md`.
+- [x] **T-4.9: Activity & Screen Wiring, End-to-End Gameplay & Phase 4 Review**
+  - Created `CardDragModifier.kt` with `Modifier.cardDragTarget` detecting drag gestures, capturing root bounds, triggering haptics on pickup, tracking continuous displacement, and resolving drops.
+  - Wired `cardDragTarget` and `onCardDropped` across `TableauColumnView`, `TableauAreaView`, `WastePileView`, `FoundationPileView`, and `TopRowView`.
+  - Integrated `DragOverlay` and provided `LocalDragDropState` and `LocalDropTargetRegistry` in `SolitaireGameScreen`.
+  - Added stateful `SolitaireGameScreen(viewModel: GameViewModel)` collecting `uiState` and routing user actions/events.
+  - Wired `MainActivity` with `gameViewModel by viewModels()` rendering the connected `SolitaireGameScreen`.
+  - Added unit and screen wiring tests in `SolitaireGameScreenTest` verifying end-to-end MVI loop and haptic feedback.
+  - Full suite passed: 413 unit tests passing (100%), 0 failures, 0 Android lint errors.
 
 ---
 

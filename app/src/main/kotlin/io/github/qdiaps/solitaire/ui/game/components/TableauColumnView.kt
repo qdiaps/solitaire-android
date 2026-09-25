@@ -9,8 +9,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
+import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.ui.game.gesture.LocalDragDropState
+import io.github.qdiaps.solitaire.ui.game.gesture.cardDragTarget
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 
 /**
@@ -55,16 +58,22 @@ fun calculateTableauOffsets(
  * @param cards List of cards in this column from bottom (index 0) to top (last index).
  * @param modifier Compose [Modifier] applied to this column container.
  * @param highlightedCard Optional card within this column that has an active hint highlight.
+ * @param columnIndex 0-based index of this tableau column (0..6).
+ * @param boardState Optional board state provider for drag drop validation.
  * @param onCardClick Optional callback invoked when a card in this column is tapped.
  * @param onEmptySlotClick Optional callback invoked when the empty column slot is tapped.
+ * @param onCardDropped Optional callback invoked when a card stack is dropped onto a valid target.
  */
 @Composable
 fun TableauColumnView(
     cards: List<Card>,
     modifier: Modifier = Modifier,
     highlightedCard: Card? = null,
+    columnIndex: Int = 0,
+    boardState: (() -> BoardState)? = null,
     onCardClick: ((card: Card) -> Unit)? = null,
-    onEmptySlotClick: (() -> Unit)? = null
+    onEmptySlotClick: (() -> Unit)? = null,
+    onCardDropped: ((cards: List<Card>, source: CardLocation, target: CardLocation) -> Unit)? = null
 ) {
     val dimensions = SolitaireTheme.cardDimensions
 
@@ -91,10 +100,29 @@ fun TableauColumnView(
         ) {
             cards.forEachIndexed { index, card ->
                 val isCardDragged = dragDropState != null && dragDropState.isCardDragged(card)
+                val dragModifier = if (card.isFaceUp && boardState != null && onCardDropped != null) {
+                    Modifier.cardDragTarget(
+                        isEnabled = true,
+                        boardState = boardState,
+                        onStartDrag = { origin ->
+                            dragDropState?.startTableauDrag(
+                                columnIndex = columnIndex,
+                                cardIndex = index,
+                                columnCards = cards,
+                                originPosition = origin
+                            ) == true
+                        },
+                        onValidDrop = onCardDropped
+                    )
+                } else {
+                    Modifier
+                }
+
                 CardView(
                     card = card,
                     modifier = Modifier
                         .offset(y = yOffsets[index])
+                        .then(dragModifier)
                         .graphicsLayer {
                             if (isCardDragged) {
                                 alpha = 0f

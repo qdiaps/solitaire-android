@@ -2,6 +2,7 @@ package io.github.qdiaps.solitaire.ui.game
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,15 +13,27 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
+import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.ui.game.components.BottomActionBarView
+import io.github.qdiaps.solitaire.ui.game.components.DragOverlay
 import io.github.qdiaps.solitaire.ui.game.components.TableauAreaView
 import io.github.qdiaps.solitaire.ui.game.components.TopRowView
 import io.github.qdiaps.solitaire.ui.game.components.TopStatusBarView
+import io.github.qdiaps.solitaire.ui.game.gesture.LocalDragDropState
+import io.github.qdiaps.solitaire.ui.game.gesture.LocalDropTargetRegistry
+import io.github.qdiaps.solitaire.ui.game.gesture.rememberDragDropState
+import io.github.qdiaps.solitaire.ui.game.gesture.rememberDropTargetRegistry
 import io.github.qdiaps.solitaire.ui.theme.CardDimensions
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
 import io.github.qdiaps.solitaire.ui.theme.SolitaireColors
@@ -32,11 +45,14 @@ import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
  * Responsively measures container width with [BoxWithConstraints] and calculates
  * exact card and column proportions via [CardDimensions.calculate].
  *
- * Vertically arranges:
- * 1. [TopStatusBarView] - Score, Moves, and Timer.
- * 2. [TopRowView] - Stock, Waste, and 4 Foundations (supports [isLeftHanded] mirroring).
- * 3. [TableauAreaView] - 7-column playing area with cascading vertical stacks.
- * 4. [BottomActionBarView] - Action controls (Undo, Hint, New Game, Settings).
+ * Sets up drag-and-drop state via [LocalDragDropState] and [LocalDropTargetRegistry],
+ * rendering the [DragOverlay] top-level floating card layer above all other board elements (ADR 003).
+ *
+ * Vertically arranges:\
+ * 1. [TopStatusBarView] - Score, Moves, and Timer.\
+ * 2. [TopRowView] - Stock, Waste, and 4 Foundations (supports [isLeftHanded] mirroring).\
+ * 3. [TableauAreaView] - 7-column playing area with cascading vertical stacks.\
+ * 4. [BottomActionBarView] - Action controls (Undo, Hint, New Game, Settings).\
  *
  * @param boardState Immutable snapshot of the playing cards and counters.
  * @param modifier Compose [Modifier] applied to root container.
@@ -51,6 +67,7 @@ import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
  * @param onFoundationClick Callback when a Foundation pile is tapped with its 0-based index.
  * @param onTableauCardClick Callback when a Tableau card is tapped with its column index and [Card].
  * @param onTableauEmptyClick Callback when an empty Tableau slot is tapped with its column index.
+ * @param onCardDropped Optional callback invoked when a card or stack is legally dropped on a target.
  * @param onUndoClick Callback when Undo button is tapped.
  * @param onHintClick Callback when Hint button is tapped.
  * @param onNewGameClick Callback when New Game button is tapped.
@@ -71,76 +88,165 @@ fun SolitaireGameScreen(
     onFoundationClick: (foundationIndex: Int) -> Unit = {},
     onTableauCardClick: (columnIndex: Int, card: Card) -> Unit = { _, _ -> },
     onTableauEmptyClick: (columnIndex: Int) -> Unit = {},
+    onCardDropped: ((cards: List<Card>, source: CardLocation, target: CardLocation) -> Unit)? = null,
     onUndoClick: () -> Unit = {},
     onHintClick: () -> Unit = {},
     onNewGameClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {}
 ) {
-    BoxWithConstraints(
-        modifier = modifier
-            .fillMaxSize()
-            .background(SolitaireColors(feltTheme = feltTheme).tableBackground)
-            .statusBarsPadding()
-            .navigationBarsPadding()
+    val dragDropState = rememberDragDropState()
+    val dropTargetRegistry = rememberDropTargetRegistry()
+
+    CompositionLocalProvider(
+        LocalDragDropState provides dragDropState,
+        LocalDropTargetRegistry provides dropTargetRegistry
     ) {
-        val dimensions = remember(maxWidth) {
-            CardDimensions.calculate(availableWidth = maxWidth)
-        }
+        BoxWithConstraints(
+            modifier = modifier
+                .fillMaxSize()
+                .background(SolitaireColors(feltTheme = feltTheme).tableBackground)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+        ) {
+            val dimensions = remember(maxWidth) {
+                CardDimensions.calculate(availableWidth = maxWidth)
+            }
 
-        SolitaireTheme(feltTheme = feltTheme, cardDimensions = dimensions) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(SolitaireTheme.colors.tableBackground),
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    TopStatusBarView(
-                        boardState = boardState,
-                        timeSeconds = timeSeconds
-                    )
+            SolitaireTheme(feltTheme = feltTheme, cardDimensions = dimensions) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(SolitaireTheme.colors.tableBackground),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            TopStatusBarView(
+                                boardState = boardState,
+                                timeSeconds = timeSeconds
+                            )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
 
-                    val isWasteHighlighted = highlightedCard != null && boardState.waste.lastOrNull() == highlightedCard
-                    val highlightedFoundationIndex = highlightedCard?.let { card ->
-                        boardState.foundations.indexOfFirst { it.lastOrNull() == card }.takeIf { it >= 0 }
+                            val isWasteHighlighted = highlightedCard != null && boardState.waste.lastOrNull() == highlightedCard
+                            val highlightedFoundationIndex = highlightedCard?.let { card ->
+                                boardState.foundations.indexOfFirst { it.lastOrNull() == card }.takeIf { it >= 0 }
+                            }
+
+                            TopRowView(
+                                boardState = boardState,
+                                isLeftHanded = isLeftHanded,
+                                isWasteHighlighted = isWasteHighlighted,
+                                highlightedFoundationIndex = highlightedFoundationIndex,
+                                onStockClick = onStockClick,
+                                onWasteClick = onWasteClick,
+                                onFoundationClick = onFoundationClick,
+                                onCardDropped = onCardDropped
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            TableauAreaView(
+                                boardState = boardState,
+                                highlightedCard = highlightedCard,
+                                onCardClick = onTableauCardClick,
+                                onEmptyColumnClick = onTableauEmptyClick,
+                                onCardDropped = onCardDropped
+                            )
+                        }
+
+                        BottomActionBarView(
+                            canUndo = canUndo,
+                            onUndoClick = onUndoClick,
+                            onHintClick = onHintClick,
+                            onNewGameClick = onNewGameClick,
+                            onSettingsClick = onSettingsClick,
+                            isHintActive = isHintActive,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
                     }
 
-                    TopRowView(
-                        boardState = boardState,
-                        isLeftHanded = isLeftHanded,
-                        isWasteHighlighted = isWasteHighlighted,
-                        highlightedFoundationIndex = highlightedFoundationIndex,
-                        onStockClick = onStockClick,
-                        onWasteClick = onWasteClick,
-                        onFoundationClick = onFoundationClick
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    TableauAreaView(
-                        boardState = boardState,
-                        highlightedCard = highlightedCard,
-                        onCardClick = onTableauCardClick,
-                        onEmptyColumnClick = onTableauEmptyClick
-                    )
+                    // Floating drag-and-drop overlay layer (ADR 003)
+                    DragOverlay(dragDropState = dragDropState)
                 }
-
-                BottomActionBarView(
-                    canUndo = canUndo,
-                    onUndoClick = onUndoClick,
-                    onHintClick = onHintClick,
-                    onNewGameClick = onNewGameClick,
-                    onSettingsClick = onSettingsClick,
-                    isHintActive = isHintActive,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
             }
         }
     }
+}
+
+/**
+ * Stateful entry point for [SolitaireGameScreen] connected directly to [GameViewModel].
+ *
+ * Collects [GameViewModel.uiState] and routes user actions as [GameIntent]s to the ViewModel.
+ * Observes single-shot [GameEvent]s to trigger tactile haptic feedback.
+ *
+ * @param viewModel Presentation [GameViewModel] orchestrating game state.
+ * @param modifier Compose [Modifier] applied to root container.
+ */
+@Composable
+fun SolitaireGameScreen(
+    viewModel: GameViewModel,
+    modifier: Modifier = Modifier
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val hapticFeedback = LocalHapticFeedback.current
+
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is GameEvent.PlayHapticTick -> {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                }
+                is GameEvent.PlayHapticSnap -> {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                }
+                is GameEvent.TriggerWinCelebration -> {
+                    // Win celebration handled in Phase 6
+                }
+                is GameEvent.ShowMessage -> {
+                    // Message snackbar / banner
+                }
+            }
+        }
+    }
+
+    SolitaireGameScreen(
+        boardState = uiState.boardState,
+        modifier = modifier,
+        timeSeconds = uiState.elapsedTimeSeconds,
+        canUndo = uiState.canUndo,
+        isLeftHanded = uiState.isLeftHanded,
+        feltTheme = uiState.feltTheme,
+        highlightedCard = uiState.highlightedCard,
+        isHintActive = uiState.isHintActive,
+        onStockClick = { viewModel.onIntent(GameIntent.DrawStockCard) },
+        onWasteClick = {
+            uiState.boardState.waste.lastOrNull()?.let { card ->
+                viewModel.onIntent(GameIntent.OnCardTapped(card, CardLocation.Waste))
+            }
+        },
+        onFoundationClick = { foundationIndex ->
+            uiState.boardState.foundations.getOrNull(foundationIndex)?.lastOrNull()?.let { card ->
+                viewModel.onIntent(GameIntent.OnCardTapped(card, CardLocation.Foundation(foundationIndex)))
+            }
+        },
+        onTableauCardClick = { columnIndex, card ->
+            val cardIndex = uiState.boardState.tableau.getOrNull(columnIndex)?.indexOf(card) ?: -1
+            if (cardIndex >= 0) {
+                viewModel.onIntent(GameIntent.OnCardTapped(card, CardLocation.Tableau(columnIndex, cardIndex)))
+            }
+        },
+        onTableauEmptyClick = { /* No-op or smart tap king if desired */ },
+        onCardDropped = { cards, source, target ->
+            viewModel.onIntent(GameIntent.OnCardDropped(cards, source, target))
+        },
+        onUndoClick = { viewModel.onIntent(GameIntent.UndoMove) },
+        onHintClick = { viewModel.onIntent(GameIntent.RequestHint) },
+        onNewGameClick = { viewModel.onIntent(GameIntent.StartNewGame) },
+        onSettingsClick = { /* Settings sheet */ }
+    )
 }
 
 /**
@@ -161,6 +267,7 @@ fun GameScreen(
     onFoundationClick: (foundationIndex: Int) -> Unit = {},
     onTableauCardClick: (columnIndex: Int, card: Card) -> Unit = { _, _ -> },
     onTableauEmptyClick: (columnIndex: Int) -> Unit = {},
+    onCardDropped: ((cards: List<Card>, source: CardLocation, target: CardLocation) -> Unit)? = null,
     onUndoClick: () -> Unit = {},
     onHintClick: () -> Unit = {},
     onNewGameClick: () -> Unit = {},
@@ -180,9 +287,24 @@ fun GameScreen(
         onFoundationClick = onFoundationClick,
         onTableauCardClick = onTableauCardClick,
         onTableauEmptyClick = onTableauEmptyClick,
+        onCardDropped = onCardDropped,
         onUndoClick = onUndoClick,
         onHintClick = onHintClick,
         onNewGameClick = onNewGameClick,
         onSettingsClick = onSettingsClick
+    )
+}
+
+/**
+ * Standard alias for stateful [SolitaireGameScreen].
+ */
+@Composable
+fun GameScreen(
+    viewModel: GameViewModel,
+    modifier: Modifier = Modifier
+) {
+    SolitaireGameScreen(
+        viewModel = viewModel,
+        modifier = modifier
     )
 }

@@ -3,24 +3,33 @@
 ## Project Overview
 - **App:** Solitaire (Klondike)
 - **Package:** `io.github.qdiaps.solitaire`
-- **Current Milestone:** Phase 4 - Drag-and-Drop & Interactive Gameplay
+- **Current Milestone:** Phase 4 - Drag-and-Drop & Interactive Gameplay (Complete)
 - **Active Branch:** `feature/phase-4-interactive-gameplay`
 
 ---
 
 ## Current Focus & Status
-- **Phase:** 4 / 6
+- **Phase:** 4 / 6 (Phase 4 Completed)
 - **Completed Milestones Summary:**
   - **Phase 1: Pure Domain Engine** — 159 unit tests (100% pass), models, rules, scoring, smart tap, undo. (Complete)
   - **Phase 2: Solvability Engine & Background Generator** — 80 unit tests (100% pass), A* solver, deadlock detector, buffered deal generator. (Complete)
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
+  - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 143 unit tests (100% pass, 413 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back spring physics, haptics, and `MainActivity` wiring. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Phase 4: Drag-and-Drop & Interactive Gameplay (Task T-4.9).
+- **Current Focus:** Phase 4 completed. Ready for Phase 5 (Visual Polish, Themes & Customization).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (T-4.9: Activity & Screen Wiring, End-to-End Gameplay & Phase 4 Review):**
+  - Created `CardDragModifier.kt` implementing `Modifier.cardDragTarget` detecting drag gestures past touch slop, tracking card bounds in root coordinates via `onGloballyPositioned`, emitting tactile haptic feedback on pickup, tracking continuous displacement via `DragDropState.onDragDelta`, resolving drop releases via `DragDropState.onDropRelease`, and animating invalid/cancelled drops via `DragDropState.snapBack()`.
+  - Wired `cardDragTarget` and `onCardDropped` callbacks into all board components: `TableauColumnView`, `TableauAreaView`, `WastePileView`, `FoundationPileView`, `FoundationRowView`, and `TopRowView`.
+  - Updated `SolitaireGameScreen` to provide `LocalDragDropState` and `LocalDropTargetRegistry` ambient compositions and render `DragOverlay` as the top-level floating card layer inside root `Box`.
+  - Added stateful `SolitaireGameScreen(viewModel: GameViewModel)` collecting `uiState`, observing single-shot `events` for haptic ticks and snaps, and routing all user intents.
+  - Updated `MainActivity` injecting `GameViewModel` via `by viewModels()` and rendering the connected `SolitaireGameScreen`.
+  - Added test suite `SolitaireGameScreenTest` verifying full end-to-end MVI loop across stock draws, waste-to-foundation promotions, waste-to-tableau drops, undo state rollback, and new game deals.
+  - Successfully ran full verification: all 413 unit tests pass (100%), `./gradlew lintDebug` succeeded with 0 issues.
 - **2026-09-25 (T-4.8: Drop Validation, Snap-Back Animation & Haptic Feedback):**
   - Implemented pure domain drop validation and execution primitives in `KlondikeRules`: `canMoveCards(state, cards, source, target)` and `moveCards(state, cards, source, target, autoExpose = true)` covering Waste->Tableau/Foundation, Tableau->Tableau/Foundation, and Foundation->Tableau.
   - Added unit test suite `KlondikeRulesDropTest` with 17 unit tests verifying pure domain move rules, illegal sources/destinations, sequence validation, and score deltas (100% pass).
@@ -28,7 +37,7 @@
   - Added `DropIntents` test suite in `GameViewModelTest` covering valid drops, illegal drops, win triggers, and undo reversibility (4 unit tests, 100% pass).
   - Extended `DragDropState` with `isSnappingBack: Boolean`, `isActive: Boolean`, `DefaultSnapBackSpec` with spring physics (`Spring.DampingRatioMediumBouncy`, `Spring.StiffnessMediumLow`), and suspend `snapBack()` returning cards smoothly to `originPosition`.
   - Added `DropTargetRegistry.findValidDropTarget` connecting geometric hitboxes with `KlondikeRules.canMoveCards`.
-  - Implemented `DragDropState.onDropRelease` resolving drops via `findValidDropTarget`, performing `HapticFeedbackType.LongPress` feedback on pickup and valid drop snap, and triggering `snapBack` on invalid/canceled releases.
+  - Implemented `DragDropState.onDropRelease` resolving drops via `findValidDropTarget`, performing `HapticFeedbackType.LongPress` feedback on pickup and valid drop snap, and triggering `snapBack` on invalid/canceled releases`.
   - Updated `DragOverlay` to check `dragDropState.isActive` ensuring lifted cards remain rendered in the floating overlay during snap-back translation.
   - Added unit tests in `DragDropStateTest` and `DropTargetRegistryTest` covering snap-back animation state, haptic feedback triggers, and drop validation (408 suite tests passing with 0 failures and 0 lint warnings).
 - **2026-09-25 (T-4.7: Global Drag Overlay Layer (DragOverlay)):**
@@ -68,7 +77,7 @@
   - Added single-shot `GameEvent.PlayHapticTick` on card draw/undo actions and `GameEvent.TriggerWinCelebration` on victory.
   - Added test suite `StockAndUndoIntents` in `GameViewModelTest` covering 9 comprehensive test scenarios (100% pass).
 - **2026-09-25 (T-4.2: GameViewModel Lifecycle, Deal Initialization & Timer):**
-  - Implemented `GameViewModel` exposing reactive `StateFlow<GameUiState>` and `SharedFlow<GameEvent>`.\
+  - Implemented `GameViewModel` exposing reactive `StateFlow<GameUiState>` and `SharedFlow<GameEvent>`.
   - Added deal initialization supporting standard shuffled deals via `dealProvider` and background solvable deals via `DealGenerator`.
   - Implemented coroutine stopwatch timer loop with `startTimer`, `pauseTimer`, `resumeTimer`, and `stopTimer` methods, guarded against ticks when game is won.
   - Added `StartNewGame`, `RestartGame`, `ToggleLeftHanded`, `SelectFeltTheme`, and `DismissHint` intent handling.
@@ -88,4 +97,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-4.9: Activity & Screen Wiring, End-to-End Gameplay & Phase 4 Review`
+- **Target Task:** Phase 4 completed. Ready for Phase 5 (Visual Polish, Themes & Customization).
