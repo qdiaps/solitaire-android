@@ -8,7 +8,7 @@
   - Define immutable `GameUiState` (`@Immutable`) containing `boardState`, `isGameWon`, `isDeadlocked`, `canUndo`, `elapsedTimeSeconds`, `feltTheme`, `isLeftHanded`, `activeHint`.
   - Define `GameIntent` sealed interface and single-shot `GameEvent` sealed interface (haptics, messages).
   - *TDD/Unit Tests:* `GameContractTest` verifying state immutability, default properties, and helper methods.
-- [ ] **T-4.2: GameViewModel Lifecycle, Deal Initialization & Timer**
+- [x] **T-4.2: GameViewModel Lifecycle, Deal Initialization & Timer**
   - Implement `GameViewModel` with `StateFlow<GameUiState>`, coroutine timer loop, and deal initialization from `KlondikeDealer` / `DealGenerator`.
   - Handle `StartNewGame`, `RestartGame`, and timer pause/resume lifecycle.
   - *TDD/Unit Tests:* `GameViewModelTest` verifying state initialization, new game deal, and timer ticks.

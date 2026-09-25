@@ -15,12 +15,19 @@
   - **Phase 2: Solvability Engine & Background Generator** — 80 unit tests (100% pass), A* solver, deadlock detector, buffered deal generator. (Complete)
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Phase 4: Drag-and-Drop & Interactive Gameplay (Task T-4.2).
+- **Current Focus:** Phase 4: Drag-and-Drop & Interactive Gameplay (Task T-4.3).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (T-4.2: GameViewModel Lifecycle, Deal Initialization & Timer):**
+  - Implemented `GameViewModel` exposing reactive `StateFlow<GameUiState>` and `SharedFlow<GameEvent>`.
+  - Added deal initialization supporting standard shuffled deals via `dealProvider` and background solvable deals via `DealGenerator`.
+  - Implemented coroutine stopwatch timer loop with `startTimer`, `pauseTimer`, `resumeTimer`, and `stopTimer` methods, guarded against ticks when game is won.
+  - Added `StartNewGame`, `RestartGame`, `ToggleLeftHanded`, `SelectFeltTheme`, and `DismissHint` intent handling.
+  - Designed timer coroutine scope injection (`coroutineScope: CoroutineScope?`) enabling test integration via `backgroundScope` to eliminate scheduler deadlocks and infinite continuation re-dispatching during tests.
+  - Added full test suite in `GameViewModelTest` with 10 unit tests covering initial deal, custom deal, timer incrementing, pause/resume, win guard, reset/restart, and `DealGenerator` integration (100% pass in ~5s).
 - **2026-09-25 (T-4.1: MVI Contract Definitions):**
   - Defined immutable `@Immutable` `GameUiState` in `GameContract.kt` encapsulating `boardState`, `isGameWon`, `isDeadlocked`, `canUndo`, `elapsedTimeSeconds`, `feltTheme`, `isLeftHanded`, `activeHint`, `isLoading`, and `isAutoCompleteAvailable`.
   - Added derived visual properties `highlightedCard` and `isHintActive` directly bound to `activeHint`.
@@ -35,4 +42,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-4.2: GameViewModel Lifecycle, Deal Initialization & Timer`
+- **Target Task:** `T-4.3: Stock Draw, Waste Extraction & Undo Processing in ViewModel`
