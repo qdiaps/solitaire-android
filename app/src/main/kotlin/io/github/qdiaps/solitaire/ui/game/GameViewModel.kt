@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.qdiaps.solitaire.domain.deck.KlondikeDealer
 import io.github.qdiaps.solitaire.domain.engine.UndoManager
 import io.github.qdiaps.solitaire.domain.model.BoardState
+import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.KlondikeRules
 import io.github.qdiaps.solitaire.domain.solver.DealGenerator
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
@@ -30,8 +31,10 @@ import kotlinx.coroutines.launch
  * @param dealGenerator Optional background deal generator providing pre-verified solvable deals.
  * @param dealProvider Factory providing freshly shuffled deals when generator is absent or fallback is needed.
  * @param timerDispatcher Coroutine dispatcher managing the timer loop (default: [Dispatchers.Default]).
- * @param timerDelayMs Interval in milliseconds between timer ticks (default: 1000ms).\n * @param initialBoardState Optional board state injected directly on initialization (for testing or restoration).
+ * @param timerDelayMs Interval in milliseconds between timer ticks (default: 1000ms).
+ * @param initialBoardState Optional board state injected directly on initialization (for testing or restoration).
  * @param autoStartTimer Whether the stopwatch timer starts ticking immediately upon creation (default: true).
+ * @param drawMode Configures whether 1 card or 3 cards are drawn from the stock pile (default: [DrawMode.DRAW_ONE]).
  * @param coroutineScope Optional coroutine scope for managing background tasks and timer (defaults to [viewModelScope]).
  */
 class GameViewModel(
@@ -41,6 +44,7 @@ class GameViewModel(
     private val timerDelayMs: Long = 1000L,
     initialBoardState: BoardState? = null,
     private val autoStartTimer: Boolean = true,
+    private val drawMode: DrawMode = DrawMode.DRAW_ONE,
     coroutineScope: CoroutineScope? = null
 ) : ViewModel() {
 
@@ -85,15 +89,64 @@ class GameViewModel(
             is GameIntent.ToggleLeftHanded -> toggleLeftHanded()
             is GameIntent.SelectFeltTheme -> selectFeltTheme(intent.theme)
             is GameIntent.DismissHint -> dismissHint()
-            is GameIntent.DrawStockCard -> { /* Handled in T-4.3 */ }
-            is GameIntent.RecycleStock -> { /* Handled in T-4.3 */ }
+            is GameIntent.DrawStockCard -> drawStockCard()
+            is GameIntent.RecycleStock -> recycleStock()
             is GameIntent.OnCardTapped -> { /* Handled in T-4.4 */ }
             is GameIntent.OnCardDropped -> { /* Handled in T-4.8 */ }
-            is GameIntent.UndoMove -> { /* Handled in T-4.3 */ }
+            is GameIntent.UndoMove -> undoMove()
             is GameIntent.RequestHint -> { /* Handled in T-5.x */ }
             is GameIntent.AutoComplete -> { /* Handled in T-5.x */ }
             is GameIntent.SkipWinAnimation -> { /* Handled in T-6 */ }
         }
+    }
+
+    /**
+     * Draws the next card(s) from the stock pile into the waste pile.
+     * If the stock pile is empty and waste contains cards, automatically recycles the waste pile.
+     */
+    fun drawStockCard() {
+        val currentBoard = _uiState.value.boardState
+        if (KlondikeRules.canDraw(currentBoard)) {
+            undoManager.record(currentBoard)
+            val nextBoard = KlondikeRules.draw(currentBoard, drawMode)
+            updateBoardStateAfterMove(nextBoard)
+        } else if (KlondikeRules.canRecycle(currentBoard)) {
+            recycleStock()
+        }
+    }
+
+    /**
+     * Recycles the entire waste pile back into the stock pile face-down.
+     */
+    fun recycleStock() {
+        val currentBoard = _uiState.value.boardState
+        if (!KlondikeRules.canRecycle(currentBoard)) return
+        undoManager.record(currentBoard)
+        val nextBoard = KlondikeRules.recycle(currentBoard)
+        updateBoardStateAfterMove(nextBoard)
+    }
+
+    /**
+     * Reverts the most recent game action using [undoManager].
+     */
+    fun undoMove() {
+        val currentBoard = _uiState.value.boardState
+        val previousBoard = undoManager.undo(currentBoard) ?: return
+        val wasWon = _uiState.value.isGameWon
+        val isWonNow = KlondikeRules.isGameWon(previousBoard)
+        _uiState.update { current ->
+            current.copy(
+                boardState = previousBoard,
+                canUndo = undoManager.canUndo,
+                isGameWon = isWonNow,
+                isDeadlocked = false,
+                activeHint = null
+            )
+        }
+        if (wasWon && !isWonNow && autoStartTimer) {
+            startTimer()
+        }
+        _events.tryEmit(GameEvent.PlayHapticTick)
     }
 
     /**
@@ -209,6 +262,24 @@ class GameViewModel(
     override fun onCleared() {
         super.onCleared()
         stopTimer()
+    }
+
+    private fun updateBoardStateAfterMove(nextBoard: BoardState) {
+        val isWon = KlondikeRules.isGameWon(nextBoard)
+        _uiState.update { current ->
+            current.copy(
+                boardState = nextBoard,
+                canUndo = undoManager.canUndo,
+                isGameWon = isWon,
+                activeHint = null
+            )
+        }
+        if (isWon) {
+            stopTimer()
+            _events.tryEmit(GameEvent.TriggerWinCelebration)
+        } else {
+            _events.tryEmit(GameEvent.PlayHapticTick)
+        }
     }
 
     private fun applyNewDeal(board: BoardState) {

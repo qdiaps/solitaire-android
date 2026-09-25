@@ -12,7 +12,7 @@
   - Implement `GameViewModel` with `StateFlow<GameUiState>`, coroutine timer loop, and deal initialization from `KlondikeDealer` / `DealGenerator`.
   - Handle `StartNewGame`, `RestartGame`, and timer pause/resume lifecycle.
   - *TDD/Unit Tests:* `GameViewModelTest` verifying state initialization, new game deal, and timer ticks.
-- [ ] **T-4.3: Stock Draw, Waste Extraction & Undo Processing in ViewModel**
+- [x] **T-4.3: Stock Draw, Waste Extraction & Undo Processing in ViewModel**
   - Implement `DrawStockCard`, `RecycleStock`, and `UndoMove` intent processing in `GameViewModel`.
   - Connect `UndoManager` snapshot management and score tracking across draw/undo operations.
   - *TDD/Unit Tests:* `GameViewModelTest` verifying stock cycle, waste card extraction, and undo state restoration.

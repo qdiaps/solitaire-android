@@ -5,6 +5,7 @@ import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.Rank
 import io.github.qdiaps.solitaire.domain.model.Suit
+import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.solver.DealGenerator
 import io.github.qdiaps.solitaire.domain.solver.SolvabilityResult
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
@@ -274,6 +275,221 @@ class GameViewModelTest {
             viewModel.onIntent(GameIntent.DismissHint)
             assertNull(viewModel.uiState.value.activeHint)
             assertFalse(viewModel.uiState.value.isHintActive)
+        }
+    }
+
+    @Nested
+    @DisplayName("Stock and Undo Intents")
+    inner class StockAndUndoIntents {
+
+        private val card1 = Card(Suit.HEARTS, Rank.TEN, isFaceUp = false, id = "c1")
+        private val card2 = Card(Suit.SPADES, Rank.NINE, isFaceUp = false, id = "c2")
+        private val card3 = Card(Suit.DIAMONDS, Rank.EIGHT, isFaceUp = false, id = "c3")
+        private val card4 = Card(Suit.CLUBS, Rank.SEVEN, isFaceUp = false, id = "c4")
+
+        @Test
+        @DisplayName("DrawStockCard moves card from stock to waste and increments movesCount")
+        fun `DrawStockCard moves card from stock to waste and increments movesCount`() = runTest(testDispatcher) {
+            val board = BoardState(stock = listOf(card1, card2))
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.DrawStockCard)
+
+            val state = viewModel.uiState.value
+            assertEquals(listOf(card2), state.boardState.stock)
+            assertEquals(listOf(card1.copy(isFaceUp = true)), state.boardState.waste)
+            assertEquals(1, state.boardState.movesCount)
+            assertTrue(state.canUndo)
+        }
+
+        @Test
+        @DisplayName("DrawStockCard in DRAW_THREE mode draws up to 3 cards to waste")
+        fun `DrawStockCard in DRAW_THREE mode draws up to 3 cards to waste`() = runTest(testDispatcher) {
+            val board = BoardState(stock = listOf(card1, card2, card3, card4))
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                drawMode = DrawMode.DRAW_THREE,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.DrawStockCard)
+
+            val state = viewModel.uiState.value
+            assertEquals(listOf(card4), state.boardState.stock)
+            assertEquals(
+                listOf(card1, card2, card3).map { it.copy(isFaceUp = true) },
+                state.boardState.waste
+            )
+            assertEquals(1, state.boardState.movesCount)
+            assertTrue(state.canUndo)
+        }
+
+        @Test
+        @DisplayName("DrawStockCard when stock is empty automatically recycles waste back into stock")
+        fun `DrawStockCard when stock is empty automatically recycles waste back into stock`() = runTest(testDispatcher) {
+            val wasteCards = listOf(card1.copy(isFaceUp = true), card2.copy(isFaceUp = true))
+            val board = BoardState(stock = emptyList(), waste = wasteCards)
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.DrawStockCard)
+
+            val state = viewModel.uiState.value
+            assertEquals(listOf(card1.copy(isFaceUp = false), card2.copy(isFaceUp = false)), state.boardState.stock)
+            assertTrue(state.boardState.waste.isEmpty())
+            assertEquals(1, state.boardState.movesCount)
+            assertTrue(state.canUndo)
+        }
+
+        @Test
+        @DisplayName("RecycleStock intent recycles waste cards face-down into stock")
+        fun `RecycleStock intent recycles waste cards face-down into stock`() = runTest(testDispatcher) {
+            val wasteCards = listOf(card1.copy(isFaceUp = true), card2.copy(isFaceUp = true))
+            val board = BoardState(stock = emptyList(), waste = wasteCards)
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.RecycleStock)
+
+            val state = viewModel.uiState.value
+            assertEquals(listOf(card1.copy(isFaceUp = false), card2.copy(isFaceUp = false)), state.boardState.stock)
+            assertTrue(state.boardState.waste.isEmpty())
+            assertEquals(1, state.boardState.movesCount)
+            assertTrue(state.canUndo)
+        }
+
+        @Test
+        @DisplayName("RecycleStock when waste is empty does nothing")
+        fun `RecycleStock when waste is empty does nothing`() = runTest(testDispatcher) {
+            val board = BoardState(stock = emptyList(), waste = emptyList())
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.RecycleStock)
+
+            val state = viewModel.uiState.value
+            assertTrue(state.boardState.stock.isEmpty())
+            assertTrue(state.boardState.waste.isEmpty())
+            assertEquals(0, state.boardState.movesCount)
+            assertFalse(state.canUndo)
+        }
+
+        @Test
+        @DisplayName("UndoMove reverts stock draw and restores previous board state and canUndo flag")
+        fun `UndoMove reverts stock draw and restores previous board state and canUndo flag`() = runTest(testDispatcher) {
+            val initialBoard = BoardState(stock = listOf(card1, card2))
+            val viewModel = GameViewModel(
+                initialBoardState = initialBoard,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.DrawStockCard)
+            assertTrue(viewModel.uiState.value.canUndo)
+
+            viewModel.onIntent(GameIntent.UndoMove)
+
+            val state = viewModel.uiState.value
+            assertEquals(initialBoard, state.boardState)
+            assertEquals(0, state.boardState.movesCount)
+            assertFalse(state.canUndo)
+        }
+
+        @Test
+        @DisplayName("UndoMove reverts stock recycle and restores waste cards")
+        fun `UndoMove reverts stock recycle and restores waste cards`() = runTest(testDispatcher) {
+            val wasteCards = listOf(card1.copy(isFaceUp = true), card2.copy(isFaceUp = true))
+            val initialBoard = BoardState(stock = emptyList(), waste = wasteCards)
+            val viewModel = GameViewModel(
+                initialBoardState = initialBoard,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.RecycleStock)
+            assertTrue(viewModel.uiState.value.canUndo)
+
+            viewModel.onIntent(GameIntent.UndoMove)
+
+            val state = viewModel.uiState.value
+            assertEquals(initialBoard, state.boardState)
+            assertFalse(state.canUndo)
+        }
+
+        @Test
+        @DisplayName("UndoMove when undo history is empty does nothing")
+        fun `UndoMove when undo history is empty does nothing`() = runTest(testDispatcher) {
+            val initialBoard = BoardState(stock = listOf(card1))
+            val viewModel = GameViewModel(
+                initialBoardState = initialBoard,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.UndoMove)
+
+            val state = viewModel.uiState.value
+            assertEquals(initialBoard, state.boardState)
+            assertFalse(state.canUndo)
+        }
+
+        @Test
+        @DisplayName("Multiple draw and undo operations properly maintain undo history stack")
+        fun `Multiple draw and undo operations properly maintain undo history stack`() = runTest(testDispatcher) {
+            val initialBoard = BoardState(stock = listOf(card1, card2, card3))
+            val viewModel = GameViewModel(
+                initialBoardState = initialBoard,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            // Draw 1
+            viewModel.onIntent(GameIntent.DrawStockCard)
+            assertEquals(1, viewModel.uiState.value.boardState.waste.size)
+            assertTrue(viewModel.uiState.value.canUndo)
+
+            // Draw 2
+            viewModel.onIntent(GameIntent.DrawStockCard)
+            assertEquals(2, viewModel.uiState.value.boardState.waste.size)
+            assertTrue(viewModel.uiState.value.canUndo)
+
+            // Draw 3
+            viewModel.onIntent(GameIntent.DrawStockCard)
+            assertEquals(3, viewModel.uiState.value.boardState.waste.size)
+            assertTrue(viewModel.uiState.value.boardState.stock.isEmpty())
+            assertTrue(viewModel.uiState.value.canUndo)
+
+            // Undo 1
+            viewModel.onIntent(GameIntent.UndoMove)
+            assertEquals(2, viewModel.uiState.value.boardState.waste.size)
+            assertEquals(1, viewModel.uiState.value.boardState.stock.size)
+            assertTrue(viewModel.uiState.value.canUndo)
+
+            // Undo 2
+            viewModel.onIntent(GameIntent.UndoMove)
+            assertEquals(1, viewModel.uiState.value.boardState.waste.size)
+            assertEquals(2, viewModel.uiState.value.boardState.stock.size)
+            assertTrue(viewModel.uiState.value.canUndo)
+
+            // Undo 3
+            viewModel.onIntent(GameIntent.UndoMove)
+            assertEquals(0, viewModel.uiState.value.boardState.waste.size)
+            assertEquals(3, viewModel.uiState.value.boardState.stock.size)
+            assertFalse(viewModel.uiState.value.canUndo)
         }
     }
 

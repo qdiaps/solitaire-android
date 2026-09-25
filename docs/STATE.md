@@ -15,12 +15,19 @@
   - **Phase 2: Solvability Engine & Background Generator** — 80 unit tests (100% pass), A* solver, deadlock detector, buffered deal generator. (Complete)
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Phase 4: Drag-and-Drop & Interactive Gameplay (Task T-4.3).
+- **Current Focus:** Phase 4: Drag-and-Drop & Interactive Gameplay (Task T-4.4).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (T-4.3: Stock Draw, Waste Extraction & Undo Processing in ViewModel):**
+  - Configured `DrawMode` (`DRAW_ONE` / `DRAW_THREE`) parameter support in `GameViewModel`.
+  - Implemented `drawStockCard()` handling standard card draw from stock to waste and automatic recycling fallback when stock is empty.
+  - Implemented `recycleStock()` restoring waste cards face-down into stock with state snapshot recording.
+  - Implemented `undoMove()` popping previous board state from `UndoManager`, updating `canUndo` flag, win status, and resuming timer if rolled back from a victory.
+  - Added single-shot `GameEvent.PlayHapticTick` on card draw/undo actions and `GameEvent.TriggerWinCelebration` on victory.
+  - Added test suite `StockAndUndoIntents` in `GameViewModelTest` covering 9 comprehensive test scenarios (100% pass).
 - **2026-09-25 (T-4.2: GameViewModel Lifecycle, Deal Initialization & Timer):**
   - Implemented `GameViewModel` exposing reactive `StateFlow<GameUiState>` and `SharedFlow<GameEvent>`.
   - Added deal initialization supporting standard shuffled deals via `dealProvider` and background solvable deals via `DealGenerator`.
@@ -42,4 +49,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-4.3: Stock Draw, Waste Extraction & Undo Processing in ViewModel`
+- **Target Task:** `T-4.4: Smart Tap Move Execution & Auto-Flip Uncovered Cards`
