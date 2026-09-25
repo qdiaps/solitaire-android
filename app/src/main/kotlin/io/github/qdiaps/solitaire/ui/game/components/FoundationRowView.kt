@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import io.github.qdiaps.solitaire.domain.model.Card
+import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.domain.model.Suit
+import io.github.qdiaps.solitaire.ui.game.gesture.dropTarget
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 
 /**
@@ -86,6 +88,7 @@ fun FoundationRowView(
             FoundationPileView(
                 topCard = topCard,
                 defaultSuit = defaultSuit,
+                modifier = Modifier.dropTarget(CardLocation.Foundation(index)),
                 isHighlighted = highlightedFoundationIndex == index,
                 onClick = onFoundationClick?.let { { it(index) } }
             )

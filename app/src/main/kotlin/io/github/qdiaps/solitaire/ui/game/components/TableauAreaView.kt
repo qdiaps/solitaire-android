@@ -9,6 +9,8 @@ import androidx.compose.ui.Modifier
 import io.github.qdiaps.solitaire.domain.deck.KlondikeDealer
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
+import io.github.qdiaps.solitaire.domain.model.CardLocation
+import io.github.qdiaps.solitaire.ui.game.gesture.dropTarget
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 
 /**
@@ -50,6 +52,7 @@ fun TableauAreaView(
             val columnCards = tableau.getOrNull(columnIndex).orEmpty()
             TableauColumnView(
                 cards = columnCards,
+                modifier = Modifier.dropTarget(CardLocation.Tableau(columnIndex)),
                 highlightedCard = highlightedCard,
                 onCardClick = onCardClick?.let { callback ->
                     { card -> callback(columnIndex, card) }
@@ -63,7 +66,7 @@ fun TableauAreaView(
 }
 
 /**
- * Convenience overload of [TableauAreaView] taking a [BoardState] snapshot directly.
+ * Convenience overload of [TableauAreaView] taking a domain [BoardState] snapshot directly.
  */
 @Composable
 fun TableauAreaView(

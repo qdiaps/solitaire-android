@@ -15,12 +15,19 @@
   - **Phase 2: Solvability Engine & Background Generator** — 80 unit tests (100% pass), A* solver, deadlock detector, buffered deal generator. (Complete)
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Phase 4: Drag-and-Drop & Interactive Gameplay (Task T-4.5).
+- **Current Focus:** Phase 4: Drag-and-Drop & Interactive Gameplay (Task T-4.6).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (T-4.5: Drop Target Hitbox Registry (DropTargetRegistry)):**
+  - Created `DropTargetRegistry` managing root-relative screen bounds (`Rect`) of Foundation slots and Tableau columns.
+  - Implemented `calculateOverlapArea` and `calculateOverlapRatio` functions handling boundary, edge-touching, and degenerate conditions.
+  - Implemented generic `findBestDropTarget` selecting the destination with maximum intersection area and supporting `minOverlapArea` tolerance thresholds.
+  - Added `Modifier.dropTarget(location, registry)` and ambient `@Composable Modifier.dropTarget(location)` backed by `LocalDropTargetRegistry`.
+  - Wired drop target modifier attachments into `FoundationRowView` (`Foundation(0..3)`) and `TableauAreaView` (`Tableau(0..6)`).
+  - Added unit test suite `DropTargetRegistryTest` with 21 unit tests covering state management, overlap calculations, ratios, and multi-target priority selection (100% pass across all 344 suite tests).
 - **2026-09-25 (T-4.4: Smart Tap Move Execution & Auto-Flip Uncovered Cards):**
   - Connected `OnCardTapped(card, location)` intent in `GameViewModel` backed by `SmartTapResolver`.
   - Added tap routing: tapping stock delegates to `drawStockCard()`, cards in tableau or waste evaluate prioritized foundation moves, revealing moves, or sequence shifts.
@@ -56,4 +63,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-4.5: Drop Target Hitbox Registry (DropTargetRegistry)`
+- **Target Task:** `T-4.6: Drag & Drop State Management (DragDropState)`

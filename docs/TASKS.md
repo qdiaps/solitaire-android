@@ -21,7 +21,7 @@
   - Auto-flip uncovered face-down cards when top card of a tableau column is vacated.
   - Check win condition (`KlondikeRules.isGameWon`) and deadlock status after every move.
   - *TDD/Unit Tests:* `GameViewModelTest` verifying tap promotions to foundation, cross-tableau sequence moves, and face-down reveals.
-- [ ] **T-4.5: Drop Target Hitbox Registry (`DropTargetRegistry`)**
+- [x] **T-4.5: Drop Target Hitbox Registry (`DropTargetRegistry`)**
   - Implement `DropTargetRegistry` storing absolute screen bounds (`Rect`) of all 4 Foundation slots and 7 Tableau columns via `Modifier.onGloballyPositioned`.
   - Implement pure helper `findBestDropTarget(draggedBounds, targets)` calculating bounding box overlap area to select the intended destination.
   - *TDD/Unit Tests:* `DropTargetRegistryTest` testing geometry overlap matching and tolerance edge cases.
