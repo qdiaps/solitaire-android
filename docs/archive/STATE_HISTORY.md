@@ -1,0 +1,167 @@
+# Project State & Progress Log Archive (Phases 1 - 3)
+
+This document preserves the completed task breakdown and daily progress logs for Phases 1 through 3.
+For the active project state and current sprint focus, refer to [docs/STATE.md](../STATE.md).
+
+---
+
+## Completed Tasks Breakdown (Phases 1 - 3)
+
+- **Completed Tasks (Phase 3):**
+  - `T-3.1`: Implement `SolitaireTheme`, typography, suit colors, 4 felt table palettes (`Classic Green`, `Deep Navy`, `Dark Charcoal`, `Wine Red`), and `CardDimensions` calculator (12 new unit tests).
+  - `T-3.2`: Implement vector `SuitEmblem` geometry, `CardView` (face-up rank indices and center emblem, face-down diamond lattice pattern), and `CardSlotPlaceholder` with watermarks (Foundations, Stock recycle, Tableau King).
+  - `T-3.3`: Implement `StockPileView`, `WastePileView`, `FoundationPileView`, `FoundationRowView`, and `TopRowView` with left-handed mode mirroring and 8 comprehensive Compose previews.
+  - `T-3.4`: Implement `TableauColumnView` with cascading face-down/face-up peek offsets, empty slot King watermark, 5 unit tests (`TableauColumnOffsetTest`), and 7 Compose previews.
+  - `T-3.5`: Implement `TableauAreaView` rendering 7 columns side-by-side with calculated `CardDimensions`, click delegation, and 4 Compose previews.
+  - `T-3.6`: Implement `TopStatusBarView` (Score, Moves, Timer) and `BottomActionBarView` (Undo, Hint, New Game, Settings), 12 unit tests (`GameFormattersTest`), and 5 Compose previews.
+  - `T-3.7`: Implement `SolitaireGameScreen` (`GameScreen`), connecting `MainActivity`, responsive layout assembly with `BoxWithConstraints` and 8 Compose previews.
+  - `T-3.8`: Phase 3 review, verification of `@Immutable` stability across theme/models, performance audit, and state synchronization.
+- **Completed Tasks (Phase 2):**
+  - `T-2.1`: Implement compact/canonical state key representation (`SolverStateKey`) normalizing symmetric tableau columns and stock-cycle states to prevent cyclic exploration.
+  - `T-2.2`: Implement legal move generator (`SolverMoveGenerator`) producing all non-redundant successor `BoardState` transitions with empty column and lateral move pruning.
+  - `T-2.3`: Implement rule-based pruning for safe foundation promotions (`SafePromotion`) collapsing unnecessary search branching.
+  - `T-2.4`: Implement core A* / heuristic search engine (`SolvabilityChecker`) with priority queue expansion, admissible heuristics, and timeout/state limits.
+  - `T-2.5`: Implement real-time unplayable deadlock detector (`DeadlockDetector`) analyzing exhausted stock, locked tableaus, and stock-cycle reachability.
+  - `T-2.6`: Implement coroutine-based background deal generator (`DealGenerator`) with buffered channel, solver verification, and instant deal provisioning.
+  - `T-2.7`: Validate solvability benchmarks against Definition of Done (< 300ms on benchmark seed), verify known unsolvable deals, timeout/maxStates cutoffs, and memory stability.
+  - `T-2.8`: Phase 2 review, code cleanliness, verification of all 239 unit tests and Android lint checks passing, and documentation synchronization.
+- **Completed Tasks (Phase 1):**
+  - `Task 1.1`: Setup project structure, Kotlin source sets, and configure JUnit 6 testing dependencies.
+  - `Task 1.2`: Implement core domain models: `Suit`, `Rank`, `Card`, `PileType`, `CardLocation`, and `BoardState`.
+  - `Task 1.3`: Implement `Deck` generator, shuffling utility, and initial Klondike 7-column deal logic with unit tests.
+  - `Task 1.4`: Implement `KlondikeRules`: Stock draw & recycling logic (Draw 1 / Draw 3) with unit tests.
+  - `Task 1.5`: Implement `KlondikeRules`: Tableau-to-Tableau and Waste-to-Tableau movement validation with unit tests.
+  - `Task 1.6`: Implement `KlondikeRules`: Foundation building validation (Ace to King by suit) with unit tests.
+  - `Task 1.7`: Implement auto-exposing face-down cards and scoring calculation on moves.
+  - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
+  - `Task 1.9`: Implement `UndoManager` (state snapshot rollback for board, score, moves) with unit tests.
+  - `Task 1.10`: Phase 1 review, refactoring to idiomatic Kotlin, completion of `Move` model, and verification of all 159 tests passing.
+
+---
+
+## Historical Progress Log (Phases 1 - 3)
+
+- **2026-09-25 (Task T-3.8):** Completed Phase 3 review, visual polish, and state synchronization:
+  - Verified `@Immutable` stability across UI models (`SolitaireColors`, `CardDimensions`, `SolitaireCardTypography`) and domain snapshots.
+  - Confirmed zero business logic in composables: pure stateless presentation with hoisted event callbacks.
+  - Validated layout responsiveness across all form factors and edge-to-edge system insets.
+  - Verified 100% test pass rate (270 unit tests) and 0 lint warnings (`./gradlew check`).
+  - Concluded Phase 3 milestone (Compose Board Layout & Static Presentation). Ready for Phase 4.
+- **2026-09-25 (Task T-3.7):** Assembled `SolitaireGameScreen` (`GameScreen`) root game layout:
+  - Integrated `TopStatusBarView`, `TopRowView`, `TableauAreaView`, and `BottomActionBarView` in vertical responsive portrait layout.
+  - Dynamically computes `CardDimensions` with `BoxWithConstraints` using `remember(maxWidth)`.
+  - Added support for Edge-to-Edge window insets (`statusBarsPadding()` and `navigationBarsPadding()`).
+  - Connected `MainActivity` to launch with `SolitaireGameScreen` rendering a fresh deal.
+  - Added 8 Compose previews in `SolitaireGameScreenPreview.kt` covering empty board, initial deal, mid-game, left-handed mode, active hint, and 4 felt table themes.
+  - Verified all 270 unit tests pass (100% pass, 0 lint warnings via `./gradlew check`).
+- **2026-09-25 (Task T-3.6):** Implemented `TopStatusBarView` and `BottomActionBarView`:
+  - Implemented `formatTime(seconds: Long)` formatting active play duration to `mm:ss`. Added unit test suite `GameFormattersTest` (12 tests).
+  - Implemented `TopStatusBarView` rendering Score (gold accent), Moves counter, and active Timer. Added `BoardState` convenience overload.
+  - Implemented `BottomActionBarView` rendering clean 48dp action buttons (Undo with disabled state, Hint with active highlight, New Game, Settings) using dedicated vector Canvas icons (`ActionIconType`).
+  - Added 5 Compose previews in `StatusBarAndActionBarPreview.kt` covering initial, active game, disabled undo, active hint, and 4 felt table themes.
+  - Verified all 270 unit tests pass (100% pass, 0 lint warnings via `./gradlew check`).
+- **2026-09-25 (Task T-3.5):** Implemented `TableauAreaView` rendering the 7-column playing area:
+  - Implemented `TableauAreaView` arranging 7 `TableauColumnView` instances side-by-side with top alignment, `columnSpacing`, and `horizontalPadding`.
+  - Added click delegation for indexed columns: `onCardClick(columnIndex, card)` and `onEmptyColumnClick(columnIndex)`.
+  - Added `BoardState` convenience overload and active hint highlight forwarding.
+  - Added 4 Compose previews in `TableauAreaPreview.kt` covering initial deal, mid-game layout, highlighted card, and 4 felt table themes.
+  - Verified all 258 unit tests pass (100% pass, 0 lint warnings via `./gradlew check`).
+- **2026-09-25 (Task T-3.4):** Implemented `TableauColumnView` rendering cascading vertical card stacks:
+  - Implemented `calculateTableauOffsets` computing vertical card offsets based on `faceDownPeek` (20% height) for hidden cards and `faceUpPeek` (35% height) for revealed cards.
+  - Implemented `TableauColumnView` displaying `CardSlotPlaceholder` with King watermark (`TableauKing`) when empty, or an overlapping `Box` cascade with natural shadow stacking when populated.
+  - Added unit test suite `TableauColumnOffsetTest` (5 tests) verifying offset math for empty, single, pure face-down, pure face-up, and mixed cascades.
+  - Added 7 Compose previews in `TableauColumnPreview.kt` covering empty, single card, initial deal, deep 13-card cascade, hint highlights, multi-column comparison, and 4 felt themes.
+  - Verified all 258 unit tests pass (100% pass, 0 lint warnings via `./gradlew check`).
+- **2026-09-25 (Task T-3.3):** Implemented `TopRowView` integrating Stock, Waste, and Foundation piles:
+  - Implemented `StockPileView` rendering face-down card back when non-empty, and `SlotWatermark.StockRecycle` when empty and recyclable.
+  - Implemented `WastePileView` rendering top face-up waste card or empty slot placeholder.
+  - Implemented `FoundationPileView` and `FoundationRowView` with 4 foundation piles showing suit watermarks (`HEARTS`, `DIAMONDS`, `CLUBS`, `SPADES`) or top banked cards.
+  - Implemented `TopRowView` integrating Stock, Waste, single-slot spacer, and Foundations with pixel-perfect 7-column alignment and left-handed mirroring (`isLeftHanded`). Added `BoardState` convenience overload.
+  - Added 8 Compose previews in `TopRowViewPreview.kt` covering initial, mid-game, empty stock recycle, exhausted, left-handed, hint highlights, victory, and 4 felt themes.
+  - Verified all 253 unit tests pass (100% pass, 0 lint warnings via `./gradlew check`).
+- **2026-09-25 (Task T-3.2):** Implemented `CardView`, `SuitEmblem`, and `CardSlotPlaceholder` with Compose Previews:
+  - Implemented resolution-independent vector Canvas `Path` suit geometry (`HEARTS`, `DIAMONDS`, `CLUBS`, `SPADES`) in `SuitEmblem.kt`.
+  - Implemented `CardView` for face-up playing cards (corner rank typography & mini suit, center emblem, hint highlight support) and face-down cards (deep navy felt with inner border and diamond lattice pattern).
+  - Implemented `CardSlotPlaceholder` with subtle border and `SlotWatermark` support (`FoundationSuit`, `StockRecycle`, `TableauKing`, `None`).
+  - Added comprehensive Compose previews in `CardViewPreview.kt` covering all suits, card back, highlighted state, watermarked empty slots, and felt themes.
+  - Verified all 253 unit tests pass (100% pass, 0 lint warnings via `./gradlew check`).
+- **2026-09-25 (Task T-3.1):** Implemented `SolitaireTheme`, felt table palettes, typography, and `CardDimensions` geometry math:
+  - Defined 4 felt table palettes (`Classic Green`, `Deep Navy`, `Dark Charcoal`, `Wine Red`) with surfaces, dark vignette edges, and contrasting suit colors in `FeltTheme` and `Color.kt`.
+  - Implemented `SolitaireTheme` providing `LocalSolitaireColors`, `LocalSolitaireCardTypography`, and `LocalCardDimensions`.
+  - Implemented `CardDimensions` calculator for 7-column portrait constraint computing card width, height (5:7 ratio), cascade peeks (20% face-down, 35% face-up), corner radii, and centering padding.
+  - Verified with 12 new unit tests (`CardDimensionsTest`, `FeltThemeTest`), expanding test suite to 251 passing unit tests (100% pass, 0 lint warnings via `./gradlew check`).
+- **2026-09-24 (Phase 3 Microtasks Decomposition):** Structured Phase 3 in `TASKS.md` into 8 atomic tasks (T-3.1 .. T-3.8) covering Compose theme/dimensions, CardView (face-up/down/placeholder), TopRow (with left-handed mode), TableauColumn cascade, TableauArea 7-column layout, Status & Action bars, GameScreen integration, and Phase 3 review.
+- **2026-09-24 (Phase 3 Initialization):** Transitioned project to Phase 3 (Compose Board Layout & Static Presentation):
+  - Merged Phase 2 PR #2 into `master`.
+  - Created and switched to working branch `feature/phase-3-compose-board`.
+  - Updated `STATE.md` and `TASKS.md` milestones.
+  - Ready for Phase 3 task decomposition and sprint planning.
+- **2026-09-24 (Task T-2.8):** Completed Phase 2 comprehensive architectural review, code cleanliness audit, and state synchronization:
+  - Conducted architectural and code review of domain solver components (`SolverStateKey`, `SolverMoveGenerator`, `SafePromotion`, `SolvabilityChecker`, `DeadlockDetector`, `DealGenerator`).
+  - Confirmed 100% pure Kotlin in domain (zero Android dependencies), strict immutability, exhaustive pattern matching, structured concurrency, and backpressure hygiene.
+  - Validated full test suite and build verification: all 239 unit tests pass across pure domain and solver engines (100% pass, 0 lint warnings via `./gradlew check`).
+  - Documented ADRs 004 through 008 in `docs/ARCHITECTURE.md`.
+  - All Phase 2 deliverables verified against Definition of Done (< 300ms resolution, deadlock detection, buffered deal provisioning).
+- **2026-09-24 (Task T-2.7):** Validated solver performance benchmarks and known deals in `SolvabilityBenchmarkTest`:
+  - Confirmed Definition of Done: benchmark seeds (Seed 23 in ~25ms, Seed 32 in ~29ms, Seed 12 in ~107ms) resolve to valid winning paths in < 300ms.
+  - Validated known unsolvable hands: trapped Aces and exhausted stock cycles terminate search gracefully and return `SolvabilityResult.Unsolvable` in finite steps without loops.
+  - Validated safety guardrails: strict `maxStates` cutoff enforcement and prompt `timeoutMs` termination.
+  - Verified heap and GC stability across sequential deal evaluations without state leaks.
+  - Expanding test suite to 239 unit tests (100% pass, 0 lint warnings).
+- **2026-09-24 (Task T-2.6):** Implemented coroutine-based background deal generator `DealGenerator`:
+  - Maintained bounded `Channel<BoardState>` buffer (capacity 2–3) of pre-verified solvable deals.
+  - Runs continuous background worker on `Dispatchers.Default` tied to structured lifecycle `CoroutineScope`.
+  - Suspends producer loop via coroutine backpressure when buffer is full, using zero CPU cycles or allocations while idle.
+  - Exposes non-blocking suspend `getSolvableDeal(): BoardState` for instantaneous game startup.
+  - Added ADR 008 in `docs/ARCHITECTURE.md`.
+  - Verified with 7 unit tests in `DealGeneratorTest`, expanding test suite to 230 unit tests (100% pass, 0 lint warnings).
+- **2026-09-24 (Task T-2.5):** Implemented real-time board analyzer `DeadlockDetector`:
+  - Detects deadlock conditions across exhausted stock (`EXHAUSTED_STOCK`), unplayable stock cycles under Draw 1 / Draw 3 (`STOCK_CYCLE_EXHAUSTED`), and locked tableaus (`LOCKED_TABLEAU`).
+  - Prunes non-productive tableau transitions (lateral King hops between empty columns and equivalent parent rank/color sequence shifts).
+  - Employs stock-cycle simulation with visited `(stock, waste)` pair tracking to evaluate reachable plays.
+  - Added ADR 007 in `docs/ARCHITECTURE.md`.
+  - Verified with 15 unit tests in `DeadlockDetectorTest`, expanding test suite to 222 unit tests (100% pass, 0 lint warnings).
+- **2026-09-23 (Task T-2.4):** Implemented core A* heuristic search engine `SolvabilityChecker`:
+  - PriorityQueue-based A* with admissible distance heuristic $h(s) = (52 - \sum \text{foundation}) + 2 \cdot \text{faceDown} + (\text{stock} + \text{waste})$.
+  - Seamless greedy collapse of safe promotions via `SafePromotion`, preserving the full move chain through search node parent pointers.
+  - Structured output `SolvabilityResult`: `Solvable(moves, path, statesEvaluated, durationMs)`, `Unsolvable`, and `Timeout`.
+  - Added ADR 006 in `docs/ARCHITECTURE.md`.
+  - Verified with 7 unit tests in `SolvabilityCheckerTest`, expanding test suite to 207 unit tests (100% pass, 0 lint warnings).
+- **2026-09-23 (Task T-2.3):** Implemented safe foundation auto-promotion heuristic `SafePromotion`:
+  - Mathematical proof implementation: Aces & Twos are unconditionally safe; Ranks $\ge 3$ are safe once both opposite-color foundation piles have reached at least rank $R - 1$.
+  - Added `findSafeTransitions` and `applyAllSafePromotions` for greedy fixed-point search space collapse.
+  - Added ADR 005 in `docs/ARCHITECTURE.md`.
+  - Verified with 12 unit tests in `SafePromotionTest`, bringing total unit tests to 200 (100% pass, 0 lint warnings).
+- **2026-09-23 (Task T-2.2):** Implemented successor move enumerator `SolverMoveGenerator`:
+  - Generates exhaustive non-redundant transitions (`SolverTransition(move, state)`) from any board state.
+  - Pruning heuristics: terminal check (won state), empty column symmetry pruning (targeting only first empty column for Kings), useless lateral King move pruning (King at index 0 prohibited from jumping between empty columns), and equivalent parent rank/color pruning.
+  - Optional support for foundation-to-tableau demotions (disabled by default).
+  - Verified with 15 unit tests in `SolverMoveGeneratorTest`, expanding test suite to 188 passing unit tests (100% pass, 0 lint warnings).
+- **2026-09-23 (Task T-2.1):** Implemented compact/canonical state key representation `SolverStateKey`:
+  - Normalized tableau column order via lexicographical `ByteArray` sorting to prune symmetric column permutations and lateral King shifts.
+  - Packed 4 foundation top card ranks into a 16-bit integer indexed by suit (`Suit.entries`), ensuring foundation pile ordering invariance.
+  - Bit-packed individual cards into single bytes (rank in bits 0..3, suit in bits 4..5, face-up in bit 6).
+  - Ensured score and movesCount invariance for pure board state equality.
+  - Added visited set cyclic stock draw pruning verification and performance benchmarks (< 500ms for 10,000 keys).
+  - Documented ADR 004 in `docs/ARCHITECTURE.md`.
+  - Verified with 14 new unit tests (`SolverStateKeyTest`), bringing test suite to 173 unit tests (100% pass, 0 lint warnings).
+- **2026-09-23 (Phase 2 Microtasks Decomposition):** Structured Phase 2 in `TASKS.md` into 8 atomic tasks (T-2.1 .. T-2.8) covering canonical state pruning, move enumeration, safe foundation heuristic, A* search loop, deadlock detection, coroutine deal buffering, and DoD benchmarks.
+- **2026-09-23 (Phase 2 Initialization):** Transitioned project to Phase 2 (Solvability Engine & Background Generator):
+  - Merged Phase 1 PR #1 into `master`.
+  - Rebased `feature/phase-2-solver` on `master`.
+  - Updated `STATE.md` and `TASKS.md` milestones.
+  - Formulated high-level architectural plan for Phase 2 components (`SolvabilityChecker`, `DeadlockDetector`, `DealGenerator`).
+- **2026-09-23 (Task 1.10):** Completed Phase 1 comprehensive review, refactoring, and model completion (159 unit tests, 0 errors/warnings).
+- **2026-09-23 (Task 1.9):** Implemented `UndoManager` with state snapshot stacks and history limits (14 tests).
+- **2026-09-23 (Task 1.8):** Implemented `SmartTapResolver` for smart card auto-moves (23 tests).
+- **2026-09-23 (Task 1.7):** Implemented auto-exposing face-down cards and scoring calculation (19 tests).
+- **2026-09-23 (Task 1.6):** Implemented foundation building rules and game won check (22 tests).
+- **2026-09-23 (Task 1.5):** Implemented tableau placement and sequence moves (25 tests).
+- **2026-09-23 (Agent Guidelines & Best Practices):** Updated `AGENTS.md` and `tdd-workflow` skill.
+- **2026-09-23 (Agent Skills & Session Protocol):** Added `session-startup` skill.
+- **2026-09-23 (Task 1.4):** Implemented `KlondikeRules` stock draw and recycling logic (15 tests).
+- **2026-09-22 (Task 1.3):** Implement `Deck` generator, shuffling utility, and initial Klondike 7-column deal logic with unit tests.
+- **2026-09-22 (Task 1.2):** Implemented core domain models in pure Kotlin.
+- **2026-09-22 (Task 1.1):** Verified Android scaffold, Compose setup, and JUnit 6 test runner.
+
+---

@@ -10,11 +10,12 @@ Package root: `io.github.qdiaps.solitaire`
 - System Specification: `docs/SPEC.md`
 - Architecture & ADR: `docs/ARCHITECTURE.md`
 - High-level Roadmap & DoD: `docs/ROADMAP.md`
-- Current Sprint Backlog: `docs/TASKS.md`
-- Dynamic Session State: `docs/STATE.md`
+- Current Sprint Backlog: `docs/TASKS.md` (active sprint and upcoming tasks only)
+- Dynamic Session State: `docs/STATE.md` (active milestone, focus, and current logs)
+- Historical Archive: `docs/archive/` (`docs/archive/TASKS_HISTORY.md`, `docs/archive/STATE_HISTORY.md` for completed phases)
 - Agent Skills: `.agents/skills/` (composable skills: `session-startup`, `tdd-workflow`, `state-and-git-sync`, `compose-solitaire-ui`)
 
-Always inspect `docs/STATE.md` and `docs/TASKS.md` before taking any action.
+Always inspect `docs/STATE.md` and `docs/TASKS.md` before taking any action. For context on completed phases, consult `docs/archive/`.
 
 ## 3. Workflow & Engineering Standards
 1. **Session Startup Protocol:** Whenever starting a new session or resuming work (triggered by "Привет", "Продолжаем разработку", "Расскажи на чём остановились"):
