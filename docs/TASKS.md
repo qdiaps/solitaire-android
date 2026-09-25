@@ -16,7 +16,7 @@
   - Implement `DrawStockCard`, `RecycleStock`, and `UndoMove` intent processing in `GameViewModel`.
   - Connect `UndoManager` snapshot management and score tracking across draw/undo operations.
   - *TDD/Unit Tests:* `GameViewModelTest` verifying stock cycle, waste card extraction, and undo state restoration.
-- [ ] **T-4.4: Smart Tap Move Execution & Auto-Flip Uncovered Cards**
+- [x] **T-4.4: Smart Tap Move Execution & Auto-Flip Uncovered Cards**
   - Implement `OnCardTapped(card, location)` intent in `GameViewModel` backed by `SmartTapResolver`.
   - Auto-flip uncovered face-down cards when top card of a tableau column is vacated.
   - Check win condition (`KlondikeRules.isGameWon`) and deadlock status after every move.

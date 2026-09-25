@@ -5,8 +5,12 @@ import androidx.lifecycle.viewModelScope
 import io.github.qdiaps.solitaire.domain.deck.KlondikeDealer
 import io.github.qdiaps.solitaire.domain.engine.UndoManager
 import io.github.qdiaps.solitaire.domain.model.BoardState
+import io.github.qdiaps.solitaire.domain.model.Card
+import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.KlondikeRules
+import io.github.qdiaps.solitaire.domain.rules.SmartTapResolver
+import io.github.qdiaps.solitaire.domain.solver.DeadlockDetector
 import io.github.qdiaps.solitaire.domain.solver.DealGenerator
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
 import kotlinx.coroutines.CoroutineDispatcher
@@ -91,12 +95,36 @@ class GameViewModel(
             is GameIntent.DismissHint -> dismissHint()
             is GameIntent.DrawStockCard -> drawStockCard()
             is GameIntent.RecycleStock -> recycleStock()
-            is GameIntent.OnCardTapped -> { /* Handled in T-4.4 */ }
+            is GameIntent.OnCardTapped -> onCardTapped(intent.card, intent.location)
             is GameIntent.OnCardDropped -> { /* Handled in T-4.8 */ }
             is GameIntent.UndoMove -> undoMove()
             is GameIntent.RequestHint -> { /* Handled in T-5.x */ }
             is GameIntent.AutoComplete -> { /* Handled in T-5.x */ }
             is GameIntent.SkipWinAnimation -> { /* Handled in T-6 */ }
+        }
+    }
+
+    /**
+     * Handles tapping a card or slot, triggering smart-tap auto-move resolution.
+     *
+     * If the tapped location is the stock pile, delegates to [drawStockCard].
+     * Otherwise, uses [SmartTapResolver] to determine the highest-priority legal move
+     * (Foundations -> Hidden Card Revealing Tableau -> Leftmost Tableau), auto-exposes
+     * newly uncovered tableau cards, checks win and deadlock states, and records undo history.
+     */
+    fun onCardTapped(card: Card, location: CardLocation) {
+        if (location is CardLocation.Stock) {
+            drawStockCard()
+            return
+        }
+
+        val currentBoard = _uiState.value.boardState
+        val nextBoard = SmartTapResolver.resolveAndApply(currentBoard, location, autoExpose = true)
+            ?: SmartTapResolver.resolveAndApply(currentBoard, card, autoExpose = true)
+
+        if (nextBoard != null) {
+            undoManager.record(currentBoard)
+            updateBoardStateAfterMove(nextBoard)
         }
     }
 
@@ -134,12 +162,13 @@ class GameViewModel(
         val previousBoard = undoManager.undo(currentBoard) ?: return
         val wasWon = _uiState.value.isGameWon
         val isWonNow = KlondikeRules.isGameWon(previousBoard)
+        val isDeadlocked = if (isWonNow) false else DeadlockDetector.detect(previousBoard, drawMode).isDeadlocked
         _uiState.update { current ->
             current.copy(
                 boardState = previousBoard,
                 canUndo = undoManager.canUndo,
                 isGameWon = isWonNow,
-                isDeadlocked = false,
+                isDeadlocked = isDeadlocked,
                 activeHint = null
             )
         }
@@ -266,11 +295,13 @@ class GameViewModel(
 
     private fun updateBoardStateAfterMove(nextBoard: BoardState) {
         val isWon = KlondikeRules.isGameWon(nextBoard)
+        val isDeadlocked = if (isWon) false else DeadlockDetector.detect(nextBoard, drawMode).isDeadlocked
         _uiState.update { current ->
             current.copy(
                 boardState = nextBoard,
                 canUndo = undoManager.canUndo,
                 isGameWon = isWon,
+                isDeadlocked = isDeadlocked,
                 activeHint = null
             )
         }

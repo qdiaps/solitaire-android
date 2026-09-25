@@ -5,6 +5,10 @@ import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.Rank
 import io.github.qdiaps.solitaire.domain.model.Suit
+import io.github.qdiaps.solitaire.domain.model.CardLocation
+import io.github.qdiaps.solitaire.domain.rules.KlondikeRules
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.solver.DealGenerator
 import io.github.qdiaps.solitaire.domain.solver.SolvabilityResult
@@ -517,6 +521,7 @@ class GameViewModelTest {
 
             val viewModel = GameViewModel(
                 dealGenerator = generator,
+                coroutineScope = this,
                 timerDispatcher = testDispatcher,
                 autoStartTimer = false
             )
@@ -529,6 +534,213 @@ class GameViewModelTest {
 
             viewModel.stopTimer()
             generator.stop()
+        }
+    }
+
+    @Nested
+    @DisplayName("Smart Tap Intents")
+    inner class SmartTapIntents {
+
+        @Test
+        @DisplayName("Tapping Ace on waste moves it to foundation")
+        fun `Tapping Ace on waste moves it to foundation`() = runTest(testDispatcher) {
+            val aceOfSpades = Card(Suit.SPADES, Rank.ACE, isFaceUp = true, id = "ace_spades")
+            val board = BoardState(waste = listOf(aceOfSpades))
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.OnCardTapped(aceOfSpades, CardLocation.Waste))
+
+            val state = viewModel.uiState.value
+            assertTrue(state.boardState.waste.isEmpty())
+            assertEquals(listOf(aceOfSpades), state.boardState.foundations[0])
+            assertEquals(1, state.boardState.movesCount)
+            assertEquals(KlondikeRules.SCORE_WASTE_TO_FOUNDATION, state.boardState.score)
+            assertTrue(state.canUndo)
+        }
+
+        @Test
+        @DisplayName("Tapping Ace on tableau moves it to foundation and exposes face-down card below")
+        fun `Tapping Ace on tableau moves it to foundation and exposes face-down card below`() = runTest(testDispatcher) {
+            val hiddenCard = Card(Suit.HEARTS, Rank.TEN, isFaceUp = false, id = "hidden")
+            val aceOfHearts = Card(Suit.HEARTS, Rank.ACE, isFaceUp = true, id = "ace_hearts")
+            val tableau = List(7) { col ->
+                if (col == 0) listOf(hiddenCard, aceOfHearts) else emptyList()
+            }
+            val board = BoardState(tableau = tableau)
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.OnCardTapped(aceOfHearts, CardLocation.Tableau(0, 1)))
+
+            val state = viewModel.uiState.value
+            assertEquals(listOf(aceOfHearts), state.boardState.foundations[0])
+            assertEquals(listOf(hiddenCard.copy(isFaceUp = true)), state.boardState.tableau[0])
+            assertEquals(1, state.boardState.movesCount)
+            assertEquals(
+                KlondikeRules.SCORE_TABLEAU_TO_FOUNDATION + KlondikeRules.SCORE_TURNOVER_TABLEAU_CARD,
+                state.boardState.score
+            )
+            assertTrue(state.canUndo)
+        }
+
+        @Test
+        @DisplayName("Tapping sequence on tableau moves sequence to valid destination column")
+        fun `Tapping sequence on tableau moves sequence to valid destination column`() = runTest(testDispatcher) {
+            val redSix = Card(Suit.HEARTS, Rank.SIX, isFaceUp = true, id = "red6")
+            val blackFive = Card(Suit.SPADES, Rank.FIVE, isFaceUp = true, id = "black5")
+            val blackSeven = Card(Suit.CLUBS, Rank.SEVEN, isFaceUp = true, id = "black7")
+
+            val tableau = List(7) { col ->
+                when (col) {
+                    0 -> listOf(redSix, blackFive)
+                    1 -> listOf(blackSeven)
+                    else -> emptyList()
+                }
+            }
+            val board = BoardState(tableau = tableau)
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.OnCardTapped(redSix, CardLocation.Tableau(0, 0)))
+
+            val state = viewModel.uiState.value
+            assertTrue(state.boardState.tableau[0].isEmpty())
+            assertEquals(listOf(blackSeven, redSix, blackFive), state.boardState.tableau[1])
+            assertEquals(1, state.boardState.movesCount)
+            assertTrue(state.canUndo)
+        }
+
+        @Test
+        @DisplayName("Tapping unmovable card produces no change in board state and does not record undo")
+        fun `Tapping unmovable card produces no change in board state and does not record undo`() = runTest(testDispatcher) {
+            val redSix = Card(Suit.HEARTS, Rank.SIX, isFaceUp = true, id = "red6")
+            val board = BoardState(tableau = List(7) { col -> if (col == 0) listOf(redSix) else emptyList() })
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.OnCardTapped(redSix, CardLocation.Tableau(0, 0)))
+
+            val state = viewModel.uiState.value
+            assertEquals(board, state.boardState)
+            assertFalse(state.canUndo)
+        }
+
+        @Test
+        @DisplayName("Tapping stock location triggers drawStockCard")
+        fun `Tapping stock location triggers drawStockCard`() = runTest(testDispatcher) {
+            val card = Card(Suit.HEARTS, Rank.TEN, isFaceUp = false, id = "c1")
+            val board = BoardState(stock = listOf(card))
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.OnCardTapped(card, CardLocation.Stock))
+
+            val state = viewModel.uiState.value
+            assertTrue(state.boardState.stock.isEmpty())
+            assertEquals(listOf(card.copy(isFaceUp = true)), state.boardState.waste)
+            assertTrue(state.canUndo)
+        }
+
+        @Test
+        @DisplayName("Winning move via smart tap triggers win state, stops timer and emits TriggerWinCelebration")
+        fun `Winning move via smart tap triggers win state, stops timer and emits TriggerWinCelebration`() = runTest(testDispatcher) {
+            val kingOfSpades = Card(Suit.SPADES, Rank.KING, isFaceUp = true, id = "king_spades")
+            val spadesFoundation = Rank.entries.filter { it != Rank.KING }.map { Card(Suit.SPADES, it, isFaceUp = true) }
+            val otherFoundations = listOf(Suit.HEARTS, Suit.DIAMONDS, Suit.CLUBS).map { suit ->
+                Rank.entries.map { Card(suit, it, isFaceUp = true) }
+            }
+            val foundations = listOf(spadesFoundation) + otherFoundations
+            val board = BoardState(
+                waste = listOf(kingOfSpades),
+                foundations = foundations
+            )
+
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                timerDelayMs = 1000L,
+                autoStartTimer = true
+            )
+
+            var celebrationEmitted = false
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.events.collect { event ->
+                    if (event is GameEvent.TriggerWinCelebration) {
+                        celebrationEmitted = true
+                    }
+                }
+            }
+
+            viewModel.onIntent(GameIntent.OnCardTapped(kingOfSpades, CardLocation.Waste))
+
+            val state = viewModel.uiState.value
+            assertTrue(state.isGameWon)
+            assertFalse(viewModel.isTimerRunning)
+            assertTrue(celebrationEmitted)
+        }
+        @Test
+        @DisplayName("Smart tap move can be undone via UndoMove restoring previous state")
+        fun `Smart tap move can be undone via UndoMove restoring previous state`() = runTest(testDispatcher) {
+            val aceOfSpades = Card(Suit.SPADES, Rank.ACE, isFaceUp = true, id = "ace_spades")
+            val initialBoard = BoardState(waste = listOf(aceOfSpades))
+            val viewModel = GameViewModel(
+                initialBoardState = initialBoard,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.OnCardTapped(aceOfSpades, CardLocation.Waste))
+            assertTrue(viewModel.uiState.value.canUndo)
+            assertEquals(1, viewModel.uiState.value.boardState.movesCount)
+
+            viewModel.onIntent(GameIntent.UndoMove)
+
+            val state = viewModel.uiState.value
+            assertEquals(initialBoard, state.boardState)
+            assertEquals(0, state.boardState.movesCount)
+            assertFalse(state.canUndo)
+        }
+
+        @Test
+        @DisplayName("Smart tap resulting in deadlock updates isDeadlocked to true")
+        fun `Smart tap resulting in deadlock updates isDeadlocked to true`() = runTest(testDispatcher) {
+            // A board where moving Ace to foundation leaves stock, waste, and tableau empty or blocked
+            val aceOfSpades = Card(Suit.SPADES, Rank.ACE, isFaceUp = true, id = "ace_spades")
+            val deadlockedBoard = BoardState(
+                stock = emptyList(),
+                waste = listOf(aceOfSpades),
+                tableau = List(7) { emptyList() }
+            )
+            val viewModel = GameViewModel(
+                initialBoardState = deadlockedBoard,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            assertFalse(viewModel.uiState.value.isDeadlocked)
+
+            viewModel.onIntent(GameIntent.OnCardTapped(aceOfSpades, CardLocation.Waste))
+
+            val state = viewModel.uiState.value
+            assertTrue(state.isDeadlocked)
+            assertFalse(state.isGameWon)
         }
     }
 }

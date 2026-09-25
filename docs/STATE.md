@@ -15,12 +15,19 @@
   - **Phase 2: Solvability Engine & Background Generator** — 80 unit tests (100% pass), A* solver, deadlock detector, buffered deal generator. (Complete)
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Phase 4: Drag-and-Drop & Interactive Gameplay (Task T-4.4).
+- **Current Focus:** Phase 4: Drag-and-Drop & Interactive Gameplay (Task T-4.5).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (T-4.4: Smart Tap Move Execution & Auto-Flip Uncovered Cards):**
+  - Connected `OnCardTapped(card, location)` intent in `GameViewModel` backed by `SmartTapResolver`.
+  - Added tap routing: tapping stock delegates to `drawStockCard()`, cards in tableau or waste evaluate prioritized foundation moves, revealing moves, or sequence shifts.
+  - Automatically exposed newly uncovered face-down cards on tableau with turnover scoring (+5 pts).
+  - Integrated `DeadlockDetector.detect` updating `isDeadlocked` state reactively after every move and undo action.
+  - Connected victory detection and win celebration flow triggering `GameEvent.TriggerWinCelebration` and halting the elapsed timer.
+  - Added test suite `SmartTapIntents` in `GameViewModelTest` covering waste-to-foundation promotions, tableau sequence moves, face-down auto-exposure, unmovable taps, win triggers, deadlock updates, and undo reversibility (8 unit tests, 100% pass across all 323 suite tests).
 - **2026-09-25 (T-4.3: Stock Draw, Waste Extraction & Undo Processing in ViewModel):**
   - Configured `DrawMode` (`DRAW_ONE` / `DRAW_THREE`) parameter support in `GameViewModel`.
   - Implemented `drawStockCard()` handling standard card draw from stock to waste and automatic recycling fallback when stock is empty.
@@ -49,4 +56,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-4.4: Smart Tap Move Execution & Auto-Flip Uncovered Cards`
+- **Target Task:** `T-4.5: Drop Target Hitbox Registry (DropTargetRegistry)`
