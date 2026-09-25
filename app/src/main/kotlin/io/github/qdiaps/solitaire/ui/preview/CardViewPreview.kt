@@ -1,4 +1,4 @@
-package io.github.qdiaps.solitaire.ui.game.components
+package io.github.qdiaps.solitaire.ui.preview
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -13,11 +13,14 @@ import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.Rank
 import io.github.qdiaps.solitaire.domain.model.Suit
+import io.github.qdiaps.solitaire.ui.game.components.CardSlotPlaceholder
+import io.github.qdiaps.solitaire.ui.game.components.CardView
+import io.github.qdiaps.solitaire.ui.game.components.SlotWatermark
 import io.github.qdiaps.solitaire.ui.theme.CardDimensions
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 
-@Preview(name = "Face-Up Cards (4 Suits)", showBackground = true)
+@Preview(name = "1. Face-Up Cards (4 Suits)", showBackground = true)
 @Composable
 fun FaceUpCardsPreview() {
     val sampleDimensions = CardDimensions.calculate(availableWidth = 393.dp)
@@ -36,7 +39,7 @@ fun FaceUpCardsPreview() {
     }
 }
 
-@Preview(name = "Face-Down & Highlighted Cards", showBackground = true)
+@Preview(name = "2. Face-Down & Highlighted Cards", showBackground = true)
 @Composable
 fun FaceDownAndHighlightedPreview() {
     val sampleDimensions = CardDimensions.calculate(availableWidth = 393.dp)
@@ -63,7 +66,7 @@ fun FaceDownAndHighlightedPreview() {
     }
 }
 
-@Preview(name = "Empty Slot Placeholders with Watermarks", showBackground = true)
+@Preview(name = "3. Empty Slot Placeholders with Watermarks", showBackground = true)
 @Composable
 fun EmptySlotsPreview() {
     val sampleDimensions = CardDimensions.calculate(availableWidth = 393.dp)
@@ -91,7 +94,7 @@ fun EmptySlotsPreview() {
     }
 }
 
-@Preview(name = "Felt Themes Comparison", showBackground = true)
+@Preview(name = "4. Felt Themes Comparison", showBackground = true)
 @Composable
 fun FeltThemesComparisonPreview() {
     val sampleDimensions = CardDimensions.calculate(availableWidth = 393.dp)
