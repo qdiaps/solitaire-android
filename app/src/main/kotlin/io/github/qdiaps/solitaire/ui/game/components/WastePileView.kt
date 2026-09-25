@@ -2,7 +2,9 @@ package io.github.qdiaps.solitaire.ui.game.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import io.github.qdiaps.solitaire.domain.model.Card
+import io.github.qdiaps.solitaire.ui.game.gesture.LocalDragDropState
 
 /**
  * Renders the Waste (discard pile) slot.
@@ -23,9 +25,16 @@ fun WastePileView(
     onClick: (() -> Unit)? = null
 ) {
     if (topCard != null) {
+        val dragDropState = LocalDragDropState.current
+        val isCardDragged = dragDropState != null && dragDropState.isCardDragged(topCard)
+
         CardView(
             card = topCard,
-            modifier = modifier,
+            modifier = modifier.graphicsLayer {
+                if (isCardDragged) {
+                    alpha = 0f
+                }
+            },
             isHighlighted = isHighlighted,
             onClick = onClick
         )

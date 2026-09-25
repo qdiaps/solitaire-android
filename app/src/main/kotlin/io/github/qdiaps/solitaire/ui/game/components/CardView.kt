@@ -24,17 +24,25 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 
 /**
  * Renders an individual playing card in either face-up or face-down state.
+ *
+ * @param card Domain [Card] model.
+ * @param modifier Compose [Modifier] applied to this card.
+ * @param elevation Shadow elevation (defaults to 2.dp, or 12.dp when lifted in drag overlay).
+ * @param isHighlighted Whether an active hint border is drawn around the card.
+ * @param onClick Optional tap callback.
  */
 @Composable
 fun CardView(
     card: Card,
     modifier: Modifier = Modifier,
+    elevation: Dp = 2.dp,
     isHighlighted: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
@@ -61,7 +69,7 @@ fun CardView(
     Box(
         modifier = modifier
             .size(dimensions.cardWidth, dimensions.cardHeight)
-            .shadow(elevation = 2.dp, shape = shape)
+            .shadow(elevation = elevation, shape = shape)
             .clip(shape)
             .then(borderModifier)
             .then(clickableModifier)

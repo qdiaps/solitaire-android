@@ -13,7 +13,7 @@
   - Handle `StartNewGame`, `RestartGame`, and timer pause/resume lifecycle.
   - *TDD/Unit Tests:* `GameViewModelTest` verifying state initialization, new game deal, and timer ticks.
 - [x] **T-4.3: Stock Draw, Waste Extraction & Undo Processing in ViewModel**
-  - Implement `DrawStockCard`, `RecycleStock`, and `UndoMove` intent processing in `GameViewModel`.
+  - Implement `DrawStockCard`, `RecycleStock`, and `UndoMove` intent processing in `GameViewModel`.\
   - Connect `UndoManager` snapshot management and score tracking across draw/undo operations.
   - *TDD/Unit Tests:* `GameViewModelTest` verifying stock cycle, waste card extraction, and undo state restoration.
 - [x] **T-4.4: Smart Tap Move Execution & Auto-Flip Uncovered Cards**
@@ -29,7 +29,7 @@
   - Implement `DragDropState` managing active drag lifecycle: `sourceLocation`, `draggedCards`, current drag `Offset`, and source visibility flags.
   - Support sub-stack dragging in tableau (dragging from index k lifts cards k..N).
   - *TDD/Unit Tests:* `DragDropStateTest` validating sub-stack slicing, active dragging state flags, and touch offset tracking.
-- [ ] **T-4.7: Global Drag Overlay Layer (`DragOverlay`)**
+- [x] **T-4.7: Global Drag Overlay Layer (`DragOverlay`)**
   - Implement `DragOverlay` composable at the root layout layer floating above all board elements (ADR 003).
   - Render moving card stacks with elevated shadow (`12.dp`) and vertical cascade spacing matching `CardDimensions`.
   - Hide source cards on the board while drag is in progress to prevent duplicate ghost cards.

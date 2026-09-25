@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.model.Card
+import io.github.qdiaps.solitaire.ui.game.gesture.LocalDragDropState
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 
 /**
@@ -82,14 +84,22 @@ fun TableauColumnView(
         }
 
         val totalHeight = yOffsets.last() + dimensions.cardHeight
+        val dragDropState = LocalDragDropState.current
 
         Box(
             modifier = modifier.size(dimensions.cardWidth, totalHeight)
         ) {
             cards.forEachIndexed { index, card ->
+                val isCardDragged = dragDropState != null && dragDropState.isCardDragged(card)
                 CardView(
                     card = card,
-                    modifier = Modifier.offset(y = yOffsets[index]),
+                    modifier = Modifier
+                        .offset(y = yOffsets[index])
+                        .graphicsLayer {
+                            if (isCardDragged) {
+                                alpha = 0f
+                            }
+                        },
                     isHighlighted = card == highlightedCard,
                     onClick = onCardClick?.let { { it(card) } }
                 )

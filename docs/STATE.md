@@ -15,12 +15,20 @@
   - **Phase 2: Solvability Engine & Background Generator** — 80 unit tests (100% pass), A* solver, deadlock detector, buffered deal generator. (Complete)
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Phase 4: Drag-and-Drop & Interactive Gameplay (Task T-4.7).
+- **Current Focus:** Phase 4: Drag-and-Drop & Interactive Gameplay (Task T-4.8).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (T-4.7: Global Drag Overlay Layer (DragOverlay)):**
+  - Implemented top-level `DragOverlay` and pure presentation `DragOverlayContent` floating above all board elements (ADR 003).
+  - Applied elevated shadow (`12.dp`) and vertical cascade spacing matching `CardDimensions.faceUpPeek`.
+  - Added layout/draw phase offset lambda `{ dragPosition() }` ensuring 60/120 FPS performance without triggering recomposition during continuous drag gestures.
+  - Added source card alpha masking (`graphicsLayer { if (isCardDragged) alpha = 0f }`) across `TableauColumnView`, `FoundationPileView`, and `WastePileView` to prevent duplicate ghost cards on the board while cards are floating.
+  - Added elevation parameter to `CardView` (defaults to `2.dp`, configurable to `12.dp`).
+  - Added interactive Compose previews: `DragOverlaySingleCardPreview` and `DragOverlayCardStackPreview`.
+  - Added unit test suite `DragOverlayTest` validating stack height calculations and cascade offsets (8 unit tests, 100% pass across all 371 suite tests).
 - **2026-09-25 (T-4.6: Drag & Drop State Management (DragDropState)):**
   - Implemented `DragDropState` managing active drag-and-drop gesture lifecycle, `sourceLocation`, `draggedCards`, `originPosition`, `dragPosition`, and displacement `dragOffset`.
   - Added tableau sub-stack slicing (`sliceTableauStack`) ensuring face-down card protection and multi-card stack extraction ($k \dots N$).
@@ -50,7 +58,7 @@
   - Added single-shot `GameEvent.PlayHapticTick` on card draw/undo actions and `GameEvent.TriggerWinCelebration` on victory.
   - Added test suite `StockAndUndoIntents` in `GameViewModelTest` covering 9 comprehensive test scenarios (100% pass).
 - **2026-09-25 (T-4.2: GameViewModel Lifecycle, Deal Initialization & Timer):**
-  - Implemented `GameViewModel` exposing reactive `StateFlow<GameUiState>` and `SharedFlow<GameEvent>`.
+  - Implemented `GameViewModel` exposing reactive `StateFlow<GameUiState>` and `SharedFlow<GameEvent>`.\
   - Added deal initialization supporting standard shuffled deals via `dealProvider` and background solvable deals via `DealGenerator`.
   - Implemented coroutine stopwatch timer loop with `startTimer`, `pauseTimer`, `resumeTimer`, and `stopTimer` methods, guarded against ticks when game is won.
   - Added `StartNewGame`, `RestartGame`, `ToggleLeftHanded`, `SelectFeltTheme`, and `DismissHint` intent handling.
@@ -70,4 +78,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-4.7: Global Drag Overlay Layer (DragOverlay)`
+- **Target Task:** `T-4.8: Drop Validation, Snap-Back Animation & Haptic Feedback`
