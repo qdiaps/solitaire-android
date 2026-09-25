@@ -3,13 +3,22 @@
 ## Project Overview
 - **App:** Solitaire (Klondike)
 - **Package:** `io.github.qdiaps.solitaire`
-- **Current Milestone:** Phase 2 - Solvability Engine & Background Generator
-- **Active Branch:** `feature/phase-2-solver`
+- **Current Milestone:** Phase 3 - Compose Board Layout & Static Presentation
+- **Active Branch:** `feature/phase-3-compose-board`
 
 ---
 
 ## Current Focus & Status
-- **Phase:** 2 / 6
+- **Phase:** 3 / 6
+- **Completed Tasks (Phase 3):**
+  - `T-3.1`: Implement `SolitaireTheme`, typography, suit colors, 4 felt table palettes (`Classic Green`, `Deep Navy`, `Dark Charcoal`, `Wine Red`), and `CardDimensions` calculator (12 new unit tests).
+  - `T-3.2`: Implement vector `SuitEmblem` geometry, `CardView` (face-up rank indices and center emblem, face-down diamond lattice pattern), and `CardSlotPlaceholder` with watermarks (Foundations, Stock recycle, Tableau King).
+  - `T-3.3`: Implement `StockPileView`, `WastePileView`, `FoundationPileView`, `FoundationRowView`, and `TopRowView` with left-handed mode mirroring and 8 comprehensive Compose previews.
+  - `T-3.4`: Implement `TableauColumnView` with cascading face-down/face-up peek offsets, empty slot King watermark, 5 unit tests (`TableauColumnOffsetTest`), and 7 Compose previews.
+  - `T-3.5`: Implement `TableauAreaView` rendering 7 columns side-by-side with calculated `CardDimensions`, click delegation, and 4 Compose previews.
+  - `T-3.6`: Implement `TopStatusBarView` (Score, Moves, Timer) and `BottomActionBarView` (Undo, Hint, New Game, Settings), 12 unit tests (`GameFormattersTest`), and 5 Compose previews.
+  - `T-3.7`: Implement `SolitaireGameScreen` (`GameScreen`), connecting `MainActivity`, responsive layout assembly with `BoxWithConstraints` and 8 Compose previews.
+  - `T-3.8`: Phase 3 review, verification of `@Immutable` stability across theme/models, performance audit, and state synchronization.
 - **Completed Tasks (Phase 2):**
   - `T-2.1`: Implement compact/canonical state key representation (`SolverStateKey`) normalizing symmetric tableau columns and stock-cycle states to prevent cyclic exploration.
   - `T-2.2`: Implement legal move generator (`SolverMoveGenerator`) producing all non-redundant successor `BoardState` transitions with empty column and lateral move pruning.
@@ -30,12 +39,67 @@
   - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
   - `Task 1.9`: Implement `UndoManager` (state snapshot rollback for board, score, moves) with unit tests.
   - `Task 1.10`: Phase 1 review, refactoring to idiomatic Kotlin, completion of `Move` model, and verification of all 159 tests passing.
-- **Current Focus:** Phase 2: Solvability Engine & Background Generator (Completed).
+- **Current Focus:** Phase 4: Drag-and-Drop & Interactive Gameplay (Task T-4.1).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (Task T-3.8):** Completed Phase 3 review, visual polish, and state synchronization:
+  - Verified `@Immutable` stability across UI models (`SolitaireColors`, `CardDimensions`, `SolitaireCardTypography`) and domain snapshots.
+  - Confirmed zero business logic in composables: pure stateless presentation with hoisted event callbacks.
+  - Validated layout responsiveness across all form factors and edge-to-edge system insets.
+  - Verified 100% test pass rate (270 unit tests) and 0 lint warnings (`./gradlew check`).
+  - Concluded Phase 3 milestone (Compose Board Layout & Static Presentation). Ready for Phase 4.
+- **2026-09-25 (Task T-3.7):** Assembled `SolitaireGameScreen` (`GameScreen`) root game layout:
+  - Integrated `TopStatusBarView`, `TopRowView`, `TableauAreaView`, and `BottomActionBarView` in vertical responsive portrait layout.
+  - Dynamically computes `CardDimensions` with `BoxWithConstraints` using `remember(maxWidth)`.
+  - Added support for Edge-to-Edge window insets (`statusBarsPadding()` and `navigationBarsPadding()`).
+  - Connected `MainActivity` to launch with `SolitaireGameScreen` rendering a fresh deal.
+  - Added 8 Compose previews in `SolitaireGameScreenPreview.kt` covering empty board, initial deal, mid-game, left-handed mode, active hint, and 4 felt table themes.
+  - Verified all 270 unit tests pass (100% pass, 0 lint warnings via `./gradlew check`).
+- **2026-09-25 (Task T-3.6):** Implemented `TopStatusBarView` and `BottomActionBarView`:
+  - Implemented `formatTime(seconds: Long)` formatting active play duration to `mm:ss`. Added unit test suite `GameFormattersTest` (12 tests).
+  - Implemented `TopStatusBarView` rendering Score (gold accent), Moves counter, and active Timer. Added `BoardState` convenience overload.
+  - Implemented `BottomActionBarView` rendering clean 48dp action buttons (Undo with disabled state, Hint with active highlight, New Game, Settings) using dedicated vector Canvas icons (`ActionIconType`).
+  - Added 5 Compose previews in `StatusBarAndActionBarPreview.kt` covering initial, active game, disabled undo, active hint, and 4 felt table themes.
+  - Verified all 270 unit tests pass (100% pass, 0 lint warnings via `./gradlew check`).
+- **2026-09-25 (Task T-3.5):** Implemented `TableauAreaView` rendering the 7-column playing area:
+  - Implemented `TableauAreaView` arranging 7 `TableauColumnView` instances side-by-side with top alignment, `columnSpacing`, and `horizontalPadding`.
+  - Added click delegation for indexed columns: `onCardClick(columnIndex, card)` and `onEmptyColumnClick(columnIndex)`.
+  - Added `BoardState` convenience overload and active hint highlight forwarding.
+  - Added 4 Compose previews in `TableauAreaPreview.kt` covering initial deal, mid-game layout, highlighted card, and 4 felt table themes.
+  - Verified all 258 unit tests pass (100% pass, 0 lint warnings via `./gradlew check`).
+- **2026-09-25 (Task T-3.4):** Implemented `TableauColumnView` rendering cascading vertical card stacks:
+  - Implemented `calculateTableauOffsets` computing vertical card offsets based on `faceDownPeek` (20% height) for hidden cards and `faceUpPeek` (35% height) for revealed cards.
+  - Implemented `TableauColumnView` displaying `CardSlotPlaceholder` with King watermark (`TableauKing`) when empty, or an overlapping `Box` cascade with natural shadow stacking when populated.
+  - Added unit test suite `TableauColumnOffsetTest` (5 tests) verifying offset math for empty, single, pure face-down, pure face-up, and mixed cascades.
+  - Added 7 Compose previews in `TableauColumnPreview.kt` covering empty, single card, initial deal, deep 13-card cascade, hint highlights, multi-column comparison, and 4 felt themes.
+  - Verified all 258 unit tests pass (100% pass, 0 lint warnings via `./gradlew check`).
+- **2026-09-25 (Task T-3.3):** Implemented `TopRowView` integrating Stock, Waste, and Foundation piles:
+  - Implemented `StockPileView` rendering face-down card back when non-empty, and `SlotWatermark.StockRecycle` when empty and recyclable.
+  - Implemented `WastePileView` rendering top face-up waste card or empty slot placeholder.
+  - Implemented `FoundationPileView` and `FoundationRowView` with 4 foundation piles showing suit watermarks (`HEARTS`, `DIAMONDS`, `CLUBS`, `SPADES`) or top banked cards.
+  - Implemented `TopRowView` integrating Stock, Waste, single-slot spacer, and Foundations with pixel-perfect 7-column alignment and left-handed mirroring (`isLeftHanded`). Added `BoardState` convenience overload.
+  - Added 8 Compose previews in `TopRowViewPreview.kt` covering initial, mid-game, empty stock recycle, exhausted, left-handed, hint highlights, victory, and 4 felt themes.
+  - Verified all 253 unit tests pass (100% pass, 0 lint warnings via `./gradlew check`).
+- **2026-09-25 (Task T-3.2):** Implemented `CardView`, `SuitEmblem`, and `CardSlotPlaceholder` with Compose Previews:
+  - Implemented resolution-independent vector Canvas `Path` suit geometry (`HEARTS`, `DIAMONDS`, `CLUBS`, `SPADES`) in `SuitEmblem.kt`.
+  - Implemented `CardView` for face-up playing cards (corner rank typography & mini suit, center emblem, hint highlight support) and face-down cards (deep navy felt with inner border and diamond lattice pattern).
+  - Implemented `CardSlotPlaceholder` with subtle border and `SlotWatermark` support (`FoundationSuit`, `StockRecycle`, `TableauKing`, `None`).
+  - Added comprehensive Compose previews in `CardViewPreview.kt` covering all suits, card back, highlighted state, watermarked empty slots, and felt themes.
+  - Verified all 253 unit tests pass (100% pass, 0 lint warnings via `./gradlew check`).
+- **2026-09-25 (Task T-3.1):** Implemented `SolitaireTheme`, felt table palettes, typography, and `CardDimensions` geometry math:
+  - Defined 4 felt table palettes (`Classic Green`, `Deep Navy`, `Dark Charcoal`, `Wine Red`) with surfaces, dark vignette edges, and contrasting suit colors in `FeltTheme` and `Color.kt`.
+  - Implemented `SolitaireTheme` providing `LocalSolitaireColors`, `LocalSolitaireCardTypography`, and `LocalCardDimensions`.
+  - Implemented `CardDimensions` calculator for 7-column portrait constraint computing card width, height (5:7 ratio), cascade peeks (20% face-down, 35% face-up), corner radii, and centering padding.
+  - Verified with 12 new unit tests (`CardDimensionsTest`, `FeltThemeTest`), expanding test suite to 251 passing unit tests (100% pass, 0 lint warnings via `./gradlew check`).
+- **2026-09-24 (Phase 3 Microtasks Decomposition):** Structured Phase 3 in `TASKS.md` into 8 atomic tasks (T-3.1 .. T-3.8) covering Compose theme/dimensions, CardView (face-up/down/placeholder), TopRow (with left-handed mode), TableauColumn cascade, TableauArea 7-column layout, Status & Action bars, GameScreen integration, and Phase 3 review.
+- **2026-09-24 (Phase 3 Initialization):** Transitioned project to Phase 3 (Compose Board Layout & Static Presentation):
+  - Merged Phase 2 PR #2 into `master`.
+  - Created and switched to working branch `feature/phase-3-compose-board`.
+  - Updated `STATE.md` and `TASKS.md` milestones.
+  - Ready for Phase 3 task decomposition and sprint planning.
 - **2026-09-24 (Task T-2.8):** Completed Phase 2 comprehensive architectural review, code cleanliness audit, and state synchronization:
   - Conducted architectural and code review of domain solver components (`SolverStateKey`, `SolverMoveGenerator`, `SafePromotion`, `SolvabilityChecker`, `DeadlockDetector`, `DealGenerator`).
   - Confirmed 100% pure Kotlin in domain (zero Android dependencies), strict immutability, exhaustive pattern matching, structured concurrency, and backpressure hygiene.
@@ -107,5 +171,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Milestone:** Transition to Phase 3: Compose Board Layout & Static Presentation.
-- **Recommended Action:** Merge branch `feature/phase-2-solver` into `master` and initialize `feature/phase-3-compose-board` upon user confirmation.
+- **Target Task:** `T-4.1: GameViewModel (MVI State Container, Timer, Lifecycle)`

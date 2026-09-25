@@ -66,10 +66,11 @@
     - Hint system with pulsing UI highlight.
     - `DataStore` persistence: autosave current game state on app pause, restore on launch.
     - Statistics tracking (games played, win %, best time, streaks) with reset option.
+    - Card theme customization: Multiple card back designs (`ClassicLattice`, `CrimsonVintage`, `EmeraldArtDeco`, `ObsidianMinimal`) and face typography styles (`ModernClean`, `ClassicSerif`, `LargePrint`) with Compose previews and settings persistence.
 - **Definition of Done (DoD):**
     - Game state persists across app kill/restart.
     - Auto-complete finishes game automatically and correctly.
-    - Settings (Draw 1/3, Left-hand, Themes) persist and apply instantly.
+    - Settings (Draw 1/3, Left-hand, Themes, Card Styles) persist and apply instantly.
 
 ---
 
