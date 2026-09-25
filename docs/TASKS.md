@@ -3,7 +3,7 @@
 > **Current Phase:** Phase 4 (Drag-and-Drop & Interactive Gameplay)
 > **Branch:** `feature/phase-4-interactive-gameplay`
 
-- [ ] **T-4.1: MVI Contract Definitions (`GameContract.kt`)**
+- [x] **T-4.1: MVI Contract Definitions (`GameContract.kt`)**
   - Define `CardLocation` hierarchy: `Stock`, `Waste`, `Foundation(index)`, `Tableau(columnIndex, cardIndex)`.
   - Define immutable `GameUiState` (`@Immutable`) containing `boardState`, `isGameWon`, `isDeadlocked`, `canUndo`, `elapsedTimeSeconds`, `feltTheme`, `isLeftHanded`, `activeHint`.
   - Define `GameIntent` sealed interface and single-shot `GameEvent` sealed interface (haptics, messages).
