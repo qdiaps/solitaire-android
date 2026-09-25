@@ -19,8 +19,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
@@ -32,8 +30,10 @@ import io.github.qdiaps.solitaire.ui.game.components.TopRowView
 import io.github.qdiaps.solitaire.ui.game.components.TopStatusBarView
 import io.github.qdiaps.solitaire.ui.game.gesture.LocalDragDropState
 import io.github.qdiaps.solitaire.ui.game.gesture.LocalDropTargetRegistry
+import io.github.qdiaps.solitaire.ui.game.gesture.LocalSolitaireHaptics
 import io.github.qdiaps.solitaire.ui.game.gesture.rememberDragDropState
 import io.github.qdiaps.solitaire.ui.game.gesture.rememberDropTargetRegistry
+import io.github.qdiaps.solitaire.ui.game.gesture.rememberSolitaireHaptics
 import io.github.qdiaps.solitaire.ui.theme.CardDimensions
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
 import io.github.qdiaps.solitaire.ui.theme.SolitaireColors
@@ -46,13 +46,14 @@ import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
  * exact card and column proportions via [CardDimensions.calculate].
  *
  * Sets up drag-and-drop state via [LocalDragDropState] and [LocalDropTargetRegistry],
- * rendering the [DragOverlay] top-level floating card layer above all other board elements (ADR 003).
+ * rendering the [DragOverlay] top-level floating card layer directly in root coordinates
+ * above all other board elements (ADR 003).
  *
- * Vertically arranges:\
- * 1. [TopStatusBarView] - Score, Moves, and Timer.\
- * 2. [TopRowView] - Stock, Waste, and 4 Foundations (supports [isLeftHanded] mirroring).\
- * 3. [TableauAreaView] - 7-column playing area with cascading vertical stacks.\
- * 4. [BottomActionBarView] - Action controls (Undo, Hint, New Game, Settings).\
+ * Vertically arranges:
+ * 1. [TopStatusBarView] - Score, Moves, and Timer.
+ * 2. [TopRowView] - Stock, Waste, and 4 Foundations (supports [isLeftHanded] mirroring).
+ * 3. [TableauAreaView] - 7-column playing area with cascading vertical stacks.
+ * 4. [BottomActionBarView] - Action controls (Undo, Hint, New Game, Settings).
  *
  * @param boardState Immutable snapshot of the playing cards and counters.
  * @param modifier Compose [Modifier] applied to root container.
@@ -96,17 +97,17 @@ fun SolitaireGameScreen(
 ) {
     val dragDropState = rememberDragDropState()
     val dropTargetRegistry = rememberDropTargetRegistry()
+    val solitaireHaptics = rememberSolitaireHaptics()
 
     CompositionLocalProvider(
         LocalDragDropState provides dragDropState,
-        LocalDropTargetRegistry provides dropTargetRegistry
+        LocalDropTargetRegistry provides dropTargetRegistry,
+        LocalSolitaireHaptics provides solitaireHaptics
     ) {
         BoxWithConstraints(
             modifier = modifier
                 .fillMaxSize()
                 .background(SolitaireColors(feltTheme = feltTheme).tableBackground)
-                .statusBarsPadding()
-                .navigationBarsPadding()
         ) {
             val dimensions = remember(maxWidth) {
                 CardDimensions.calculate(availableWidth = maxWidth)
@@ -117,7 +118,9 @@ fun SolitaireGameScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(SolitaireTheme.colors.tableBackground),
+                            .background(SolitaireTheme.colors.tableBackground)
+                            .statusBarsPadding()
+                            .navigationBarsPadding(),
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column(
@@ -168,7 +171,7 @@ fun SolitaireGameScreen(
                         )
                     }
 
-                    // Floating drag-and-drop overlay layer (ADR 003)
+                    // Floating drag-and-drop overlay layer in root window coordinates (ADR 003)
                     DragOverlay(dragDropState = dragDropState)
                 }
             }
@@ -191,19 +194,19 @@ fun SolitaireGameScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val hapticFeedback = LocalHapticFeedback.current
+    val solitaireHaptics = rememberSolitaireHaptics()
 
-    LaunchedEffect(viewModel) {
+    LaunchedEffect(viewModel, solitaireHaptics) {
         viewModel.events.collect { event ->
             when (event) {
                 is GameEvent.PlayHapticTick -> {
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    solitaireHaptics.playTick()
                 }
                 is GameEvent.PlayHapticSnap -> {
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    solitaireHaptics.playSnap()
                 }
                 is GameEvent.TriggerWinCelebration -> {
-                    // Win celebration handled in Phase 6
+                    solitaireHaptics.playSnap()
                 }
                 is GameEvent.ShowMessage -> {
                     // Message snackbar / banner

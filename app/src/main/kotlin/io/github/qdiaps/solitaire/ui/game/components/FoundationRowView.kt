@@ -3,6 +3,7 @@ package io.github.qdiaps.solitaire.ui.game.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import io.github.qdiaps.solitaire.domain.model.BoardState
@@ -52,37 +53,39 @@ fun FoundationPileView(
     onCardDropped: ((cards: List<Card>, source: CardLocation, target: CardLocation) -> Unit)? = null
 ) {
     if (topCard != null) {
-        val dragDropState = LocalDragDropState.current
-        val isCardDragged = dragDropState != null && dragDropState.isCardDragged(topCard)
-        val dragModifier = if (topCard.isFaceUp && boardState != null && onCardDropped != null) {
-            Modifier.cardDragTarget(
-                isEnabled = true,
-                boardState = boardState,
-                onStartDrag = { origin ->
-                    dragDropState?.startFoundationDrag(
-                        foundationIndex = foundationIndex,
-                        foundationCards = listOf(topCard),
-                        originPosition = origin
-                    ) == true
-                },
-                onValidDrop = onCardDropped
-            )
-        } else {
-            Modifier
-        }
+        key(topCard.id) {
+            val dragDropState = LocalDragDropState.current
+            val isCardDragged = dragDropState != null && dragDropState.isCardDragged(topCard)
+            val dragModifier = if (topCard.isFaceUp && boardState != null && onCardDropped != null) {
+                Modifier.cardDragTarget(
+                    isEnabled = true,
+                    boardState = boardState,
+                    onStartDrag = { origin ->
+                        dragDropState?.startFoundationDrag(
+                            foundationIndex = foundationIndex,
+                            foundationCards = listOf(topCard),
+                            originPosition = origin
+                        ) == true
+                    },
+                    onValidDrop = onCardDropped
+                )
+            } else {
+                Modifier
+            }
 
-        CardView(
-            card = topCard,
-            modifier = modifier
-                .then(dragModifier)
-                .graphicsLayer {
-                    if (isCardDragged) {
-                        alpha = 0f
-                    }
-                },
-            isHighlighted = isHighlighted,
-            onClick = onClick
-        )
+            CardView(
+                card = topCard,
+                modifier = modifier
+                    .then(dragModifier)
+                    .graphicsLayer {
+                        if (isCardDragged) {
+                            alpha = 0f
+                        }
+                    },
+                isHighlighted = isHighlighted,
+                onClick = onClick
+            )
+        }
     } else {
         CardSlotPlaceholder(
             modifier = modifier,

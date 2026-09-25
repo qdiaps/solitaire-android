@@ -2,9 +2,9 @@ package io.github.qdiaps.solitaire.ui.game.gesture
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
-import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.compositionLocalOf
@@ -27,13 +27,13 @@ val LocalDragDropState: ProvidableCompositionLocal<DragDropState?> =
     compositionLocalOf { null }
 
 /**
- * Default spring animation specification for smooth card snap-back returning to its origin.
+ * Default animation specification for fast and snappy card snap-back returning to its origin.
+ * Uses a smooth 160ms curve without oscillation or bounce delay.
  */
-val DefaultSnapBackSpec: AnimationSpec<Offset> = spring(
-    dampingRatio = Spring.DampingRatioMediumBouncy,
-    stiffness = Spring.StiffnessMediumLow
+val DefaultSnapBackSpec: AnimationSpec<Offset> = tween(
+    durationMillis = 160,
+    easing = FastOutSlowInEasing
 )
-
 
 /**
  * Manages the active drag-and-drop gesture lifecycle, dragged cards stack,
@@ -92,6 +92,9 @@ class DragDropState {
     /**
      * Initiates a drag operation with the given [cards] from [source].
      *
+     * If an existing snap-back animation is underway, it is immediately canceled
+     * and overridden with the new card stack.
+     *
      * @param source Board location from which cards are lifted.
      * @param cards Non-empty list of cards being moved.
      * @param originPosition Root-relative screen position of the lifted card stack.
@@ -103,6 +106,7 @@ class DragDropState {
         hapticFeedback: HapticFeedback? = null
     ) {
         require(cards.isNotEmpty()) { "Cannot start drag with empty card list" }
+        this.isSnappingBack = false
         this.isDragging = true
         this.sourceLocation = source
         this.draggedCards = cards
@@ -141,9 +145,9 @@ class DragDropState {
 
     /**
      * Animates the lifted card stack from current [dragPosition] back to [originPosition]
-     * using spring physics, then resets all drag state back to idle.
+     * using snappy interpolation, then resets all drag state back to idle.
      *
-     * @param animationSpec The [AnimationSpec] controlling spring physics (defaults to [DefaultSnapBackSpec]).
+     * @param animationSpec The [AnimationSpec] controlling motion (defaults to [DefaultSnapBackSpec]).
      */
     suspend fun snapBack(
         animationSpec: AnimationSpec<Offset> = DefaultSnapBackSpec
@@ -157,10 +161,14 @@ class DragDropState {
                 targetValue = originPosition,
                 animationSpec = animationSpec
             ) {
+                // If a new drag started while animating, break out cleanly
+                if (!isSnappingBack) return@animateTo
                 dragPosition = value
             }
         } finally {
-            reset()
+            if (isSnappingBack) {
+                reset()
+            }
         }
     }
 
@@ -303,7 +311,7 @@ class DragDropState {
      * @param draggedBounds Current screen bounding box of the moving card stack.
      * @param hapticFeedback Optional [HapticFeedback] instance for haptic snap.
      * @param onValidDrop Callback invoked when destination is legal.
-     * @return  if drop was valid and applied,  if snapped back.
+     * @return `true` if drop was valid and applied, `false` if snapped back.
      */
     suspend fun onDropRelease(
         boardState: BoardState,

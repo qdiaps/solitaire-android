@@ -33,7 +33,7 @@
   - Implement `DragOverlay` composable at the root layout layer floating above all board elements (ADR 003).
   - Render moving card stacks with elevated shadow (`12.dp`) and vertical cascade spacing matching `CardDimensions`.
   - Hide source cards on the board while drag is in progress to prevent duplicate ghost cards.
-  - *Compose Previews:* `DragOverlayPreview` showing single card and multi-card stacks floating over felt.
+  - *Compose Previews:* `DragOverlayPreview` showing single card and multi-card stacks floating over felt.\
 - [x] **T-4.8: Drop Validation, Snap-Back Animation & Haptic Feedback**
   - Implement drop gesture release handling: validate destination using `KlondikeRules.canMoveCards`.
   - If valid: dispatch `OnCardDropped` intent, update board state, auto-flip uncovered cards, and trigger haptic snap.
@@ -47,6 +47,13 @@
   - Wired `MainActivity` with `gameViewModel by viewModels()` rendering the connected `SolitaireGameScreen`.
   - Added unit and screen wiring tests in `SolitaireGameScreenTest` verifying end-to-end MVI loop and haptic feedback.
   - Full suite passed: 413 unit tests passing (100%), 0 failures, 0 Android lint errors.
+- [x] **T-4.10: Drag-and-Drop Polish, Stale Gesture Recomposition & Haptics Engine Bugfixes**
+  - Fixed stale card closures in `CardDragModifier` via `rememberUpdatedState` for drag callbacks and board state.
+  - Added `key(card.id)` across `TableauColumnView`, `WastePileView`, and `FoundationPileView` preserving item identity during stack re-ordering.
+  - Replaced sluggish spring snap-back physics with fast, responsive `DefaultSnapBackSpec` (`tween(160ms, FastOutSlowInEasing)`).
+  - Added mid-animation cancel guard in `startDrag` and `snapBack` to prevent coordinate corruption when quickly grabbing new cards.
+  - Aligned `DragOverlay` coordinates to absolute root by scoping status and navigation bar insets to child content.
+  - Added hardware vibrator engine `SolitaireHaptics` and `VIBRATE` permission in `AndroidManifest.xml` for tactile feedback on pickup, snap, and ticks.
 
 ---
 

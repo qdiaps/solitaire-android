@@ -1,6 +1,7 @@
 package io.github.qdiaps.solitaire.ui.game.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import io.github.qdiaps.solitaire.domain.model.BoardState
@@ -15,7 +16,7 @@ import io.github.qdiaps.solitaire.ui.game.gesture.cardDragTarget
  * If [topCard] is present, displays that face-up card.
  * If [topCard] is null (waste pile is empty), displays an empty [CardSlotPlaceholder].
  *
- * @param topCard The topmost face-up card in the waste pile, or `null` if waste is empty.\
+ * @param topCard The topmost face-up card in the waste pile, or `null` if waste is empty.
  * @param modifier Compose [Modifier] applied to this component.
  * @param isHighlighted Whether to render an active hint border around the waste card.
  * @param boardState Optional board state provider for drag drop validation.
@@ -32,36 +33,38 @@ fun WastePileView(
     onCardDropped: ((cards: List<Card>, source: CardLocation, target: CardLocation) -> Unit)? = null
 ) {
     if (topCard != null) {
-        val dragDropState = LocalDragDropState.current
-        val isCardDragged = dragDropState != null && dragDropState.isCardDragged(topCard)
-        val dragModifier = if (topCard.isFaceUp && boardState != null && onCardDropped != null) {
-            Modifier.cardDragTarget(
-                isEnabled = true,
-                boardState = boardState,
-                onStartDrag = { origin ->
-                    dragDropState?.startWasteDrag(
-                        wasteCards = listOf(topCard),
-                        originPosition = origin
-                    ) == true
-                },
-                onValidDrop = onCardDropped
-            )
-        } else {
-            Modifier
-        }
+        key(topCard.id) {
+            val dragDropState = LocalDragDropState.current
+            val isCardDragged = dragDropState != null && dragDropState.isCardDragged(topCard)
+            val dragModifier = if (topCard.isFaceUp && boardState != null && onCardDropped != null) {
+                Modifier.cardDragTarget(
+                    isEnabled = true,
+                    boardState = boardState,
+                    onStartDrag = { origin ->
+                        dragDropState?.startWasteDrag(
+                            wasteCards = listOf(topCard),
+                            originPosition = origin
+                        ) == true
+                    },
+                    onValidDrop = onCardDropped
+                )
+            } else {
+                Modifier
+            }
 
-        CardView(
-            card = topCard,
-            modifier = modifier
-                .then(dragModifier)
-                .graphicsLayer {
-                    if (isCardDragged) {
-                        alpha = 0f
-                    }
-                },
-            isHighlighted = isHighlighted,
-            onClick = onClick
-        )
+            CardView(
+                card = topCard,
+                modifier = modifier
+                    .then(dragModifier)
+                    .graphicsLayer {
+                        if (isCardDragged) {
+                            alpha = 0f
+                        }
+                    },
+                isHighlighted = isHighlighted,
+                onClick = onClick
+            )
+        }
     } else {
         CardSlotPlaceholder(
             modifier = modifier,

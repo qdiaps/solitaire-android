@@ -3,25 +3,33 @@
 ## Project Overview
 - **App:** Solitaire (Klondike)
 - **Package:** `io.github.qdiaps.solitaire`
-- **Current Milestone:** Phase 4 - Drag-and-Drop & Interactive Gameplay (Complete)
+- **Current Milestone:** Phase 4 - Drag-and-Drop & Interactive Gameplay (Complete & Polished)
 - **Active Branch:** `feature/phase-4-interactive-gameplay`
 
 ---
 
 ## Current Focus & Status
-- **Phase:** 4 / 6 (Phase 4 Completed)
+- **Phase:** 4 / 6 (Phase 4 Completed & Polished)
 - **Completed Milestones Summary:**
   - **Phase 1: Pure Domain Engine** — 159 unit tests (100% pass), models, rules, scoring, smart tap, undo. (Complete)
   - **Phase 2: Solvability Engine & Background Generator** — 80 unit tests (100% pass), A* solver, deadlock detector, buffered deal generator. (Complete)
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
-  - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 143 unit tests (100% pass, 413 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back spring physics, haptics, and `MainActivity` wiring. (Complete)
+  - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 143 unit tests (100% pass, 413 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, haptics, and `MainActivity` wiring. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Phase 4 completed. Ready for Phase 5 (Visual Polish, Themes & Customization).
+- **Current Focus:** Phase 4 completed and verified. Ready for Phase 5 (Visual Polish, Themes & Customization).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (T-4.10: Drag-and-Drop Polish, Stale Gesture Recomposition & Haptics Engine Bugfixes):**
+  - Resolved stale card closure bug where cards dragged from Waste or Foundation retained the identity of the first card pulled: added `rememberUpdatedState` for `currentOnStartDrag`, `currentBoardState`, and `currentOnValidDrop` in `CardDragModifier.kt`.
+  - Resolved tableau stack slicing synchronization issue when moving sequences onto columns: wrapped card renderers in `key(card.id)` across `TableauColumnView.kt`, `WastePileView.kt`, and `FoundationPileView.kt` so item compositions preserve gesture identity when card lists update.
+  - Replaced sluggish spring snap-back animation (`DampingRatioMediumBouncy`) with snappy 160ms easing curve (`tween(160, FastOutSlowInEasing)`), removing trailing oscillations and delays.
+  - Added race condition protection in `DragDropState`: `startDrag` resets `isSnappingBack` immediately, interrupting any ongoing return animation and allowing new card pickups with zero delay.
+  - Fixed coordinate offset in `SolitaireGameScreen`: moved `statusBarsPadding()` and `navigationBarsPadding()` from the outer constraint box to the inner content column, perfectly aligning `DragOverlay` coordinates with `boundsInRoot()`.
+  - Added hardware vibrator engine `SolitaireHaptics` and `rememberSolitaireHaptics()`, added `<uses-permission android:name="android.permission.VIBRATE" />` to `AndroidManifest.xml`, ensuring crisp tactile feedback on pickup, snap drop, and card dealing across physical devices.
+  - Full suite passed: 413 unit tests passing (100%), 0 failures, 0 Android lint errors.
 - **2026-09-25 (T-4.9: Activity & Screen Wiring, End-to-End Gameplay & Phase 4 Review):**
   - Created `CardDragModifier.kt` implementing `Modifier.cardDragTarget` detecting drag gestures past touch slop, tracking card bounds in root coordinates via `onGloballyPositioned`, emitting tactile haptic feedback on pickup, tracking continuous displacement via `DragDropState.onDragDelta`, resolving drop releases via `DragDropState.onDropRelease`, and animating invalid/cancelled drops via `DragDropState.snapBack()`.
   - Wired `cardDragTarget` and `onCardDropped` callbacks into all board components: `TableauColumnView`, `TableauAreaView`, `WastePileView`, `FoundationPileView`, `FoundationRowView`, and `TopRowView`.
@@ -38,7 +46,7 @@
   - Extended `DragDropState` with `isSnappingBack: Boolean`, `isActive: Boolean`, `DefaultSnapBackSpec` with spring physics (`Spring.DampingRatioMediumBouncy`, `Spring.StiffnessMediumLow`), and suspend `snapBack()` returning cards smoothly to `originPosition`.
   - Added `DropTargetRegistry.findValidDropTarget` connecting geometric hitboxes with `KlondikeRules.canMoveCards`.
   - Implemented `DragDropState.onDropRelease` resolving drops via `findValidDropTarget`, performing `HapticFeedbackType.LongPress` feedback on pickup and valid drop snap, and triggering `snapBack` on invalid/canceled releases`.
-  - Updated `DragOverlay` to check `dragDropState.isActive` ensuring lifted cards remain rendered in the floating overlay during snap-back translation.
+  - Updated `DragOverlay` to check `dragDropState.isActive` ensuring lifted cards remain rendered in the floating overlay during snap-back translation`.
   - Added unit tests in `DragDropStateTest` and `DropTargetRegistryTest` covering snap-back animation state, haptic feedback triggers, and drop validation (408 suite tests passing with 0 failures and 0 lint warnings).
 - **2026-09-25 (T-4.7: Global Drag Overlay Layer (DragOverlay)):**
   - Implemented top-level `DragOverlay` and pure presentation `DragOverlayContent` floating above all board elements (ADR 003).
@@ -53,7 +61,7 @@
   - Added tableau sub-stack slicing (`sliceTableauStack`) ensuring face-down card protection and multi-card stack extraction ($k \dots N$).
   - Added drag initiation handlers `startTableauDrag`, `startWasteDrag`, and `startFoundationDrag` with coordinates binding.
   - Implemented source card visibility flags (`isCardHidden` and `isCardDragged`) to prevent duplicate ghost cards on the board during active dragging.
-  - Provided `LocalDragDropState` and `@Composable rememberDragDropState()`.
+  - Provided `LocalDragDropState` and `@Composable rememberDragDropState()`.\
   - Added unit test suite `DragDropStateTest` with 19 unit tests covering state lifecycle, coordinate offsets, sub-stack slicing, and card masking (100% pass across all 363 suite tests).
 - **2026-09-25 (T-4.5: Drop Target Hitbox Registry (DropTargetRegistry)):**
   - Created `DropTargetRegistry` managing root-relative screen bounds (`Rect`) of Foundation slots and Tableau columns.

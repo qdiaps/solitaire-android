@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -99,38 +100,40 @@ fun TableauColumnView(
             modifier = modifier.size(dimensions.cardWidth, totalHeight)
         ) {
             cards.forEachIndexed { index, card ->
-                val isCardDragged = dragDropState != null && dragDropState.isCardDragged(card)
-                val dragModifier = if (card.isFaceUp && boardState != null && onCardDropped != null) {
-                    Modifier.cardDragTarget(
-                        isEnabled = true,
-                        boardState = boardState,
-                        onStartDrag = { origin ->
-                            dragDropState?.startTableauDrag(
-                                columnIndex = columnIndex,
-                                cardIndex = index,
-                                columnCards = cards,
-                                originPosition = origin
-                            ) == true
-                        },
-                        onValidDrop = onCardDropped
-                    )
-                } else {
-                    Modifier
-                }
+                key(card.id) {
+                    val isCardDragged = dragDropState != null && dragDropState.isCardDragged(card)
+                    val dragModifier = if (card.isFaceUp && boardState != null && onCardDropped != null) {
+                        Modifier.cardDragTarget(
+                            isEnabled = true,
+                            boardState = boardState,
+                            onStartDrag = { origin ->
+                                dragDropState?.startTableauDrag(
+                                    columnIndex = columnIndex,
+                                    cardIndex = index,
+                                    columnCards = cards,
+                                    originPosition = origin
+                                ) == true
+                            },
+                            onValidDrop = onCardDropped
+                        )
+                    } else {
+                        Modifier
+                    }
 
-                CardView(
-                    card = card,
-                    modifier = Modifier
-                        .offset(y = yOffsets[index])
-                        .then(dragModifier)
-                        .graphicsLayer {
-                            if (isCardDragged) {
-                                alpha = 0f
-                            }
-                        },
-                    isHighlighted = card == highlightedCard,
-                    onClick = onCardClick?.let { { it(card) } }
-                )
+                    CardView(
+                        card = card,
+                        modifier = Modifier
+                            .offset(y = yOffsets[index])
+                            .then(dragModifier)
+                            .graphicsLayer {
+                                if (isCardDragged) {
+                                    alpha = 0f
+                                }
+                            },
+                        isHighlighted = card == highlightedCard,
+                        onClick = onCardClick?.let { { it(card) } }
+                    )
+                }
             }
         }
     }
