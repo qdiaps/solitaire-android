@@ -41,6 +41,15 @@
 
 ---
 
+# Upcoming Sprint Backlog - Phase 5 (Preview)
+
+- [ ] **T-5.x: Card Themes & Visual Customization (Back & Face Styles)**
+  - Implement `CardBackStyle` enum: `ClassicLattice`, `CrimsonVintage`, `EmeraldArtDeco`, `ObsidianMinimal`.
+  - Implement `CardFaceStyle` enum: `ModernClean`, `ClassicSerif`, `LargePrint`.
+  - Integrate selection with `SolitaireTheme`, settings persistence (`DataStore`), and interactive `CardThemesGalleryPreview`.
+
+---
+
 # Completed Sprint Tasks - Phase 2: Solvability Engine & Background Generator
 
 > **Phase 2 Status:** Complete (239 unit tests passing, 0 lint warnings)
