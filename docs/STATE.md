@@ -13,6 +13,7 @@
 - **Completed Tasks (Phase 3):**
   - `T-3.1`: Implement `SolitaireTheme`, typography, suit colors, 4 felt table palettes (`Classic Green`, `Deep Navy`, `Dark Charcoal`, `Wine Red`), and `CardDimensions` calculator (12 new unit tests).
   - `T-3.2`: Implement vector `SuitEmblem` geometry, `CardView` (face-up rank indices and center emblem, face-down diamond lattice pattern), and `CardSlotPlaceholder` with watermarks (Foundations, Stock recycle, Tableau King).
+  - `T-3.3`: Implement `StockPileView`, `WastePileView`, `FoundationPileView`, `FoundationRowView`, and `TopRowView` with left-handed mode mirroring and 8 comprehensive Compose previews.
 - **Completed Tasks (Phase 2):**
   - `T-2.1`: Implement compact/canonical state key representation (`SolverStateKey`) normalizing symmetric tableau columns and stock-cycle states to prevent cyclic exploration.
   - `T-2.2`: Implement legal move generator (`SolverMoveGenerator`) producing all non-redundant successor `BoardState` transitions with empty column and lateral move pruning.
@@ -33,12 +34,19 @@
   - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
   - `Task 1.9`: Implement `UndoManager` (state snapshot rollback for board, score, moves) with unit tests.
   - `Task 1.10`: Phase 1 review, refactoring to idiomatic Kotlin, completion of `Move` model, and verification of all 159 tests passing.
-- **Current Focus:** Phase 3: Compose Board Layout & Static Presentation (Task T-3.3).
+- **Current Focus:** Phase 3: Compose Board Layout & Static Presentation (Task T-3.4).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (Task T-3.3):** Implemented `TopRowView` integrating Stock, Waste, and Foundation piles:
+  - Implemented `StockPileView` rendering face-down card back when non-empty, and `SlotWatermark.StockRecycle` when empty and recyclable.
+  - Implemented `WastePileView` rendering top face-up waste card or empty slot placeholder.
+  - Implemented `FoundationPileView` and `FoundationRowView` with 4 foundation piles showing suit watermarks (`HEARTS`, `DIAMONDS`, `CLUBS`, `SPADES`) or top banked cards.
+  - Implemented `TopRowView` integrating Stock, Waste, single-slot spacer, and Foundations with pixel-perfect 7-column alignment and left-handed mirroring (`isLeftHanded`). Added `BoardState` convenience overload.
+  - Added 8 Compose previews in `TopRowViewPreview.kt` covering initial, mid-game, empty stock recycle, exhausted, left-handed, hint highlights, victory, and 4 felt themes.
+  - Verified all 253 unit tests pass (100% pass, 0 lint warnings via `./gradlew check`).
 - **2026-09-25 (Task T-3.2):** Implemented `CardView`, `SuitEmblem`, and `CardSlotPlaceholder` with Compose Previews:
   - Implemented resolution-independent vector Canvas `Path` suit geometry (`HEARTS`, `DIAMONDS`, `CLUBS`, `SPADES`) in `SuitEmblem.kt`.
   - Implemented `CardView` for face-up playing cards (corner rank typography & mini suit, center emblem, hint highlight support) and face-down cards (deep navy felt with inner border and diamond lattice pattern).
@@ -127,4 +135,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-3.3: Top Row Component: Stock, Waste & Foundation Piles`
+- **Target Task:** `T-3.4: Tableau Column Component with Overlapping Vertical Cascade`

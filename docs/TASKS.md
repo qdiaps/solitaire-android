@@ -12,7 +12,7 @@
   - Implement minimal geometric card-back pattern for face-down cards.
   - Implement empty slot placeholder with subtle border and optional watermark (foundation suit or stock recycle icon).
   - *Compose Previews:* `CardViewPreview` covering face-up, face-down, empty slots, and red/black suits.
-- [ ] **T-3.3: Top Row Component: Stock, Waste & Foundation Piles**
+- [x] **T-3.3: Top Row Component: Stock, Waste & Foundation Piles**
   - Implement `StockPileView` (face-down draw pile or empty recycle slot).
   - Implement `WastePileView` (top waste card).
   - Implement `FoundationRowView` (4 foundation piles with suit watermark placeholders or top banked cards).
