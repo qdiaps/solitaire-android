@@ -7,16 +7,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.Rank
 import io.github.qdiaps.solitaire.domain.model.Suit
 import io.github.qdiaps.solitaire.ui.game.components.DragOverlayContent
+import io.github.qdiaps.solitaire.ui.theme.CardDimensions
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 
 @Preview(name = "1. Drag Overlay - Single Floating Card", widthDp = 360, heightDp = 640)
 @Composable
 fun DragOverlaySingleCardPreview() {
-    SolitaireTheme {
+    val dimensions = CardDimensions.calculate(availableWidth = 360.dp)
+    SolitaireTheme(cardDimensions = dimensions) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -35,7 +38,8 @@ fun DragOverlaySingleCardPreview() {
 @Preview(name = "2. Drag Overlay - Cascading Multi-Card Stack", widthDp = 360, heightDp = 640)
 @Composable
 fun DragOverlayCardStackPreview() {
-    SolitaireTheme {
+    val dimensions = CardDimensions.calculate(availableWidth = 360.dp)
+    SolitaireTheme(cardDimensions = dimensions) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
