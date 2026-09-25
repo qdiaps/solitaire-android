@@ -30,7 +30,7 @@
   - Implement `TopStatusBarView` displaying Score, Moves counter, and formatted Timer (`mm:ss`).
   - Implement `BottomActionBarView` with action buttons: Undo (with counter/disabled state), Hint, New Game, and Settings.
   - *Compose Previews:* `StatusBarPreview` and `ActionBarPreview` on various felt background themes.
-- [ ] **T-3.7: Game Screen Assembly & Board Layout Integration**
+- [x] **T-3.7: Game Screen Assembly & Board Layout Integration**
   - Assemble stateless `GameScreen` composable combining `TopStatusBarView`, `TopRowView`, `TableauAreaView`, and `BottomActionBarView` inside responsive `BoxWithConstraints`.
   - Connect `MainActivity` to render `GameScreen` with an initial dealt `BoardState` on launch.
   - *Compose Previews:* `GameScreenPreview` on compact, standard, and large phone form factors.

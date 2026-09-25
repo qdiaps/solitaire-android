@@ -17,6 +17,7 @@
   - `T-3.4`: Implement `TableauColumnView` with cascading face-down/face-up peek offsets, empty slot King watermark, 5 unit tests (`TableauColumnOffsetTest`), and 7 Compose previews.
   - `T-3.5`: Implement `TableauAreaView` rendering 7 columns side-by-side with calculated `CardDimensions`, click delegation, and 4 Compose previews.
   - `T-3.6`: Implement `TopStatusBarView` (Score, Moves, Timer) and `BottomActionBarView` (Undo, Hint, New Game, Settings), 12 unit tests (`GameFormattersTest`), and 5 Compose previews.
+  - `T-3.7`: Implement `SolitaireGameScreen` (`GameScreen`), connecting `MainActivity`, responsive layout assembly with `BoxWithConstraints` and 8 Compose previews.
 - **Completed Tasks (Phase 2):**
   - `T-2.1`: Implement compact/canonical state key representation (`SolverStateKey`) normalizing symmetric tableau columns and stock-cycle states to prevent cyclic exploration.
   - `T-2.2`: Implement legal move generator (`SolverMoveGenerator`) producing all non-redundant successor `BoardState` transitions with empty column and lateral move pruning.
@@ -37,12 +38,19 @@
   - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
   - `Task 1.9`: Implement `UndoManager` (state snapshot rollback for board, score, moves) with unit tests.
   - `Task 1.10`: Phase 1 review, refactoring to idiomatic Kotlin, completion of `Move` model, and verification of all 159 tests passing.
-- **Current Focus:** Phase 3: Compose Board Layout & Static Presentation (Task T-3.7).
+- **Current Focus:** Phase 3: Compose Board Layout & Static Presentation (Task T-3.8 Review & Wrap-up).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (Task T-3.7):** Assembled `SolitaireGameScreen` (`GameScreen`) root game layout:
+  - Integrated `TopStatusBarView`, `TopRowView`, `TableauAreaView`, and `BottomActionBarView` in vertical responsive portrait layout.
+  - Dynamically computes `CardDimensions` with `BoxWithConstraints` using `remember(maxWidth)`.
+  - Added support for Edge-to-Edge window insets (`statusBarsPadding()` and `navigationBarsPadding()`).
+  - Connected `MainActivity` to launch with `SolitaireGameScreen` rendering a fresh deal.
+  - Added 8 Compose previews in `SolitaireGameScreenPreview.kt` covering empty board, initial deal, mid-game, left-handed mode, active hint, and 4 felt table themes.
+  - Verified all 270 unit tests pass (100% pass, 0 lint warnings via `./gradlew check`).
 - **2026-09-25 (Task T-3.6):** Implemented `TopStatusBarView` and `BottomActionBarView`:
   - Implemented `formatTime(seconds: Long)` formatting active play duration to `mm:ss`. Added unit test suite `GameFormattersTest` (12 tests).
   - Implemented `TopStatusBarView` rendering Score (gold accent), Moves counter, and active Timer. Added `BoardState` convenience overload.
@@ -156,4 +164,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-3.7: Root Board Screen & Layout Assembly (SolitaireGameScreen)`
+- **Target Task:** `T-3.8: Phase 3 Review, Visual Polish & State Sync`
