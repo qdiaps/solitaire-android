@@ -26,7 +26,7 @@
   - Implement `TableauAreaView` rendering 7 columns side-by-side using calculated `CardDimensions`.
   - Ensure uniform horizontal spacing and prevent clipping/overflow on 7-column portrait constraint.
   - *Compose Previews:* `TableauAreaPreview` with initial dealt board and mid-game states.
-- [ ] **T-3.6: Status Bar & Bottom Action Bar Components**
+- [x] **T-3.6: Status Bar & Bottom Action Bar Components**
   - Implement `TopStatusBarView` displaying Score, Moves counter, and formatted Timer (`mm:ss`).
   - Implement `BottomActionBarView` with action buttons: Undo (with counter/disabled state), Hint, New Game, and Settings.
   - *Compose Previews:* `StatusBarPreview` and `ActionBarPreview` on various felt background themes.
