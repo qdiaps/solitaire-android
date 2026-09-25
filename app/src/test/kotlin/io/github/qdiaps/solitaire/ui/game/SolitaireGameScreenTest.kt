@@ -178,7 +178,7 @@ class SolitaireGameScreenTest {
         }
 
         @Test
-        fun `new game intent deals fresh shuffled board and resets timer`() = runTest(testDispatcher) {
+        fun `new game intent deals fresh shuffled board, resets timer, and emits deal sound event`() = runTest(testDispatcher) {
             val initialBoard = KlondikeDealer.dealShuffled(Random(1))
             val freshBoard = KlondikeDealer.dealShuffled(Random(2))
 
@@ -190,6 +190,11 @@ class SolitaireGameScreenTest {
                 autoStartTimer = false
             )
 
+            val emittedEvents = mutableListOf<GameEvent>()
+            val eventJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.events.collect { emittedEvents.add(it) }
+            }
+
             assertEquals(initialBoard, viewModel.uiState.value.boardState)
 
             viewModel.onIntent(GameIntent.StartNewGame)
@@ -199,6 +204,8 @@ class SolitaireGameScreenTest {
             assertEquals(freshBoard, uiState.boardState)
             assertEquals(0L, uiState.elapsedTimeSeconds)
             assertFalse(uiState.canUndo)
+            assertEquals(listOf(GameEvent.PlayDealSound), emittedEvents)
+            eventJob.cancel()
         }
     }
 }

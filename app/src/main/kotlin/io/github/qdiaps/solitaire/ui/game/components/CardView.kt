@@ -35,13 +35,14 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.model.Card
+import io.github.qdiaps.solitaire.ui.game.audio.LocalSolitaireAudio
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 
 /**
  * Renders an individual playing card in either face-up or face-down state.
  *
  * Performs a smooth 3D flip animation around the Y-axis when a previously hidden (face-down)
- * card is exposed face-up.
+ * card is exposed face-up, accompanied by card turnover sound feedback.
  *
  * @param card Domain [Card] model.
  * @param modifier Compose [Modifier] applied to this card.
@@ -61,12 +62,14 @@ fun CardView(
     val colors = SolitaireTheme.colors
     val density = LocalDensity.current
     val shape = RoundedCornerShape(dimensions.cornerRadius)
+    val solitaireAudio = LocalSolitaireAudio.current
 
     var previousFaceUp by remember(card.id) { mutableStateOf(card.isFaceUp) }
     val flipAnimatable = remember(card.id) { Animatable(if (card.isFaceUp) 1f else 0f) }
 
     LaunchedEffect(card.isFaceUp) {
         if (!previousFaceUp && card.isFaceUp) {
+            solitaireAudio.playFlip()
             // Animate 3D turnover when card is uncovered
             flipAnimatable.snapTo(0f)
             flipAnimatable.animateTo(

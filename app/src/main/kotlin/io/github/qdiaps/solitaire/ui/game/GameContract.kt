@@ -136,6 +136,11 @@ sealed interface GameEvent {
     data object PlayHapticSnap : GameEvent
 
     /**
+     * Trigger card deal riffle sound effect when a new game starts or restarts.
+     */
+    data object PlayDealSound : GameEvent
+
+    /**
      * Display a transient text message or snackbar alert.
      */
     data class ShowMessage(val message: String) : GameEvent

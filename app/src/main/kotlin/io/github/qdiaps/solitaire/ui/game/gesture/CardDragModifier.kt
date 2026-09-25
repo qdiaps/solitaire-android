@@ -17,6 +17,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
+import io.github.qdiaps.solitaire.ui.game.audio.LocalSolitaireAudio
 import kotlinx.coroutines.launch
 
 /**
@@ -25,7 +26,7 @@ import kotlinx.coroutines.launch
  * Implements ADR 003:
  * - Detects drag gestures past touch slop, allowing quick taps to pass through without delay.
  * - Measures root-relative bounds of the card for accurate hit-testing.
- * - Emits tactile haptic feedback on card pickup and drop placement.
+ * - Emits tactile haptic feedback and acoustic audio on card pickup and drop placement.
  * - Dispatches continuous drag delta to [DragDropState].
  * - On release, validates destination via [DropTargetRegistry] and [boardState].
  * - Automatically snaps back to origin with fast spring physics on invalid release.
@@ -53,6 +54,7 @@ fun Modifier.cardDragTarget(
     val actualDragState = dragDropState ?: LocalDragDropState.current ?: return@composed this
     val actualRegistry = dropTargetRegistry ?: LocalDropTargetRegistry.current ?: return@composed this
     val solitaireHaptics = LocalSolitaireHaptics.current
+    val solitaireAudio = LocalSolitaireAudio.current
     val coroutineScope = rememberCoroutineScope()
 
     val currentBoardState by rememberUpdatedState(boardState)
@@ -72,6 +74,7 @@ fun Modifier.cardDragTarget(
                     val started = currentOnStartDrag(origin)
                     if (started) {
                         solitaireHaptics.playPickup()
+                        solitaireAudio.playSlide()
                     }
                 },
                 onDrag = { change, dragAmount ->
@@ -106,6 +109,7 @@ fun Modifier.cardDragTarget(
                         )
                         if (dropped) {
                             solitaireHaptics.playSnap()
+                            solitaireAudio.playSnap()
                         }
                     }
                 }

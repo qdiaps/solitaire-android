@@ -3,25 +3,39 @@
 ## Project Overview
 - **App:** Solitaire (Klondike)
 - **Package:** `io.github.qdiaps.solitaire`
-- **Current Milestone:** Phase 4 - Drag-and-Drop & Interactive Gameplay (Complete & Polished)
+- **Current Milestone:** Phase 4 - Drag-and-Drop & Interactive Gameplay (Complete, Polished & Audio Feedback Added)
 - **Active Branch:** `feature/phase-4-interactive-gameplay`
 
 ---
 
 ## Current Focus & Status
-- **Phase:** 4 / 6 (Phase 4 Completed & Polished)
+- **Phase:** 4 / 6 (Phase 4 Completed, Polished & Audio-Enhanced)
 - **Completed Milestones Summary:**
   - **Phase 1: Pure Domain Engine** — 159 unit tests (100% pass), models, rules, scoring, smart tap, undo. (Complete)
   - **Phase 2: Solvability Engine & Background Generator** — 80 unit tests (100% pass), A* solver, deadlock detector, buffered deal generator. (Complete)
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
-  - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 150 unit tests (100% pass, 420 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, and `MainActivity` wiring. (Complete)
+  - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 424 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Phase 4 completed, polished with universal ERM/MediaTek haptics, 60/120 FPS flight & 3D flip animations, and verified. Ready for Phase 5 (Visual Polish, Themes & Customization).
+- **Current Focus:** Phase 4 completed, polished with universal ERM/MediaTek haptics, 60/120 FPS flight & 3D flip animations, and low-latency acoustic SoundPool audio feedback. Ready for Phase 5 (Visual Polish, Themes & Customization).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (T-4.13: Acoustic Audio Feedback Engine via SoundPool):**
+  - Designed and implemented low-latency acoustic card audio engine using Android `SoundPool` configured with `AudioAttributes.USAGE_GAME` and `CONTENT_TYPE_SONIFICATION`.
+  - Generated and bundled 4 uncompressed 16-bit 44.1kHz PCM WAV audio assets in `app/src/main/res/raw/`:
+    - `card_slide.wav` (75ms, subtle paper friction on card lift / drag start).
+    - `card_snap.wav` (65ms, crisp placement click with felt table impact resonance).
+    - `card_flip.wav` (80ms, card turnover flick & flutter on reveals and stock draws).
+    - `card_deal.wav` (160ms, multi-card cascading riffle deal on new game deals).
+  - Created `SolitaireAudio` interface and `AndroidSolitaireAudio` implementation with async sample preload tracking and fallback guards.
+  - Provided `LocalSolitaireAudio` and `rememberSolitaireAudio()` composables.
+  - Integrated `playSlide()` and `playSnap()` into `CardDragModifier.kt` for tactile pickup and drop sound.
+  - Integrated `playFlip()` into `CardView.kt` when face-down cards are turned face-up.
+  - Added `GameEvent.PlayDealSound` in `GameContract.kt` and wired it in `GameViewModel.kt` on new deals and restarts.
+  - Added unit test suite `SolitaireAudioTest`, updated `GameContractTest` and `SolitaireGameScreenTest`.
+  - Full suite passed: 424 unit tests passing (100%), 0 failures, 0 Android lint errors.
 - **2026-09-25 (T-4.12: Universal ERM Haptics Engine & MediaTek HAL Fallback):**
   - Identified silent vibration drop on MediaTek Helio G99 / rugged devices (Hotwav Cyber X) where vendor HAL ignores `createPredefined(EFFECT_CLICK)` without throwing exceptions and Compose view haptics get silenced.
   - Added `vib.areAllEffectsSupported(effect)` guard before using `createPredefined`.
@@ -47,77 +61,6 @@
   - Fixed coordinate offset in `SolitaireGameScreen`: moved `statusBarsPadding()` and `navigationBarsPadding()` from the outer constraint box to the inner content column, perfectly aligning `DragOverlay` coordinates with `boundsInRoot()`.
   - Added hardware vibrator engine `SolitaireHaptics` and `rememberSolitaireHaptics()`, added `<uses-permission android:name="android.permission.VIBRATE" />` to `AndroidManifest.xml`, ensuring crisp tactile feedback on pickup, snap drop, and card dealing across physical devices.
   - Full suite passed: 413 unit tests passing (100%), 0 failures, 0 Android lint errors.
-- **2026-09-25 (T-4.9: Activity & Screen Wiring, End-to-End Gameplay & Phase 4 Review):**
-  - Created `CardDragModifier.kt` implementing `Modifier.cardDragTarget` detecting drag gestures past touch slop, tracking card bounds in root coordinates via `onGloballyPositioned`, emitting tactile haptic feedback on pickup, tracking continuous displacement via `DragDropState.onDragDelta`, resolving drop releases via `DragDropState.onDropRelease`, and animating invalid/cancelled drops via `DragDropState.snapBack()`.
-  - Wired `cardDragTarget` and `onCardDropped` callbacks into all board components: `TableauColumnView`, `TableauAreaView`, `WastePileView`, `FoundationPileView`, `FoundationRowView`, and `TopRowView`.
-  - Updated `SolitaireGameScreen` to provide `LocalDragDropState` and `LocalDropTargetRegistry` ambient compositions and render `DragOverlay` as the top-level floating card layer inside root `Box`.
-  - Added stateful `SolitaireGameScreen(viewModel: GameViewModel)` collecting `uiState`, observing single-shot `events` for haptic ticks and snaps, and routing all user intents.
-  - Updated `MainActivity` injecting `GameViewModel` via `by viewModels()` and rendering the connected `SolitaireGameScreen`.
-  - Added test suite `SolitaireGameScreenTest` verifying full end-to-end MVI loop across stock draws, waste-to-foundation promotions, waste-to-tableau drops, undo state rollback, and new game deals.
-  - Successfully ran full verification: all 413 unit tests pass (100%), `./gradlew lintDebug` succeeded with 0 issues.
-- **2026-09-25 (T-4.8: Drop Validation, Snap-Back Animation & Haptic Feedback):**
-  - Implemented pure domain drop validation and execution primitives in `KlondikeRules`: `canMoveCards(state, cards, source, target)` and `moveCards(state, cards, source, target, autoExpose = true)` covering Waste->Tableau/Foundation, Tableau->Tableau/Foundation, and Foundation->Tableau.
-  - Added unit test suite `KlondikeRulesDropTest` with 17 unit tests verifying pure domain move rules, illegal sources/destinations, sequence validation, and score deltas (100% pass).
-  - Wired `GameIntent.OnCardDropped` in `GameViewModel`: validates drops via `KlondikeRules.canMoveCards`, records undo snapshots in `UndoManager`, applies moves with auto-flip reveals, checks win/deadlock conditions, and emits single-shot `GameEvent.PlayHapticSnap` (or `GameEvent.TriggerWinCelebration`).
-  - Added `DropIntents` test suite in `GameViewModelTest` covering valid drops, illegal drops, win triggers, and undo reversibility (4 unit tests, 100% pass).
-  - Extended `DragDropState` with `isSnappingBack: Boolean`, `isActive: Boolean`, `DefaultSnapBackSpec` with spring physics (`Spring.DampingRatioMediumBouncy`, `Spring.StiffnessMediumLow`), and suspend `snapBack()` returning cards smoothly to `originPosition`.
-  - Added `DropTargetRegistry.findValidDropTarget` connecting geometric hitboxes with `KlondikeRules.canMoveCards`.
-  - Implemented `DragDropState.onDropRelease` resolving drops via `findValidDropTarget`, performing `HapticFeedbackType.LongPress` feedback on pickup and valid drop snap, and triggering `snapBack` on invalid/canceled releases`.
-  - Updated `DragOverlay` to check `dragDropState.isActive` ensuring lifted cards remain rendered in the floating overlay during snap-back translation`.
-  - Added unit tests in `DragDropStateTest` and `DropTargetRegistryTest` covering snap-back animation state, haptic feedback triggers, and drop validation (408 suite tests passing with 0 failures and 0 lint warnings).
-- **2026-09-25 (T-4.7: Global Drag Overlay Layer (DragOverlay)):**
-  - Implemented top-level `DragOverlay` and pure presentation `DragOverlayContent` floating above all board elements (ADR 003).
-  - Applied elevated shadow (`12.dp`) and vertical cascade spacing matching `CardDimensions.faceUpPeek`.
-  - Added layout/draw phase offset lambda `{ dragPosition() }` ensuring 60/120 FPS performance without triggering recomposition during continuous drag gestures.
-  - Added source card alpha masking (`graphicsLayer { if (isCardDragged) alpha = 0f }`) across `TableauColumnView`, `FoundationPileView`, and `WastePileView` to prevent duplicate ghost cards on the board while cards are floating.
-  - Added elevation parameter to `CardView` (defaults to `2.dp`, configurable to `12.dp`).
-  - Added interactive Compose previews: `DragOverlaySingleCardPreview` and `DragOverlayCardStackPreview`.
-  - Added unit test suite `DragOverlayTest` validating stack height calculations and cascade offsets (8 unit tests, 100% pass across all 371 suite tests).
-- **2026-09-25 (T-4.6: Drag & Drop State Management (DragDropState)):**
-  - Implemented `DragDropState` managing active drag-and-drop gesture lifecycle, `sourceLocation`, `draggedCards`, `originPosition`, `dragPosition`, and displacement `dragOffset`.
-  - Added tableau sub-stack slicing (`sliceTableauStack`) ensuring face-down card protection and multi-card stack extraction ($k \dots N$).
-  - Added drag initiation handlers `startTableauDrag`, `startWasteDrag`, and `startFoundationDrag` with coordinates binding.
-  - Implemented source card visibility flags (`isCardHidden` and `isCardDragged`) to prevent duplicate ghost cards on the board during active dragging.
-  - Provided `LocalDragDropState` and `@Composable rememberDragDropState()`.
-  - Added unit test suite `DragDropStateTest` with 19 unit tests covering state lifecycle, coordinate offsets, sub-stack slicing, and card masking (100% pass across all 363 suite tests).
-- **2026-09-25 (T-4.5: Drop Target Hitbox Registry (DropTargetRegistry)):**
-  - Created `DropTargetRegistry` managing root-relative screen bounds (`Rect`) of Foundation slots and Tableau columns.
-  - Implemented `calculateOverlapArea` and `calculateOverlapRatio` functions handling boundary, edge-touching, and degenerate conditions.
-  - Implemented generic `findBestDropTarget` selecting the destination with maximum intersection area and supporting `minOverlapArea` tolerance thresholds.
-  - Added `Modifier.dropTarget(location, registry)` and ambient `@Composable Modifier.dropTarget(location)` backed by `LocalDropTargetRegistry`.
-  - Wired drop target modifier attachments into `FoundationRowView` (`Foundation(0..3)`) and `TableauAreaView` (`Tableau(0..6)`).
-  - Added unit test suite `DropTargetRegistryTest` with 21 unit tests covering state management, overlap calculations, ratios, and multi-target priority selection (100% pass across all 344 suite tests).
-- **2026-09-25 (T-4.4: Smart Tap Move Execution & Auto-Flip Uncovered Cards):**
-  - Connected `OnCardTapped(card, location)` intent in `GameViewModel` backed by `SmartTapResolver`.
-  - Added tap routing: tapping stock delegates to `drawStockCard()`, cards in tableau or waste evaluate prioritized foundation moves, revealing moves, or sequence shifts.
-  - Automatically exposed newly uncovered face-down cards on tableau with turnover scoring (+5 pts).
-  - Integrated `DeadlockDetector.detect` updating `isDeadlocked` state reactively after every move and undo action.
-  - Connected victory detection and win celebration flow triggering `GameEvent.TriggerWinCelebration` and halting the elapsed timer.
-  - Added test suite `SmartTapIntents` in `GameViewModelTest` covering waste-to-foundation promotions, tableau sequence moves, face-down auto-exposure, unmovable taps, win triggers, deadlock updates, and undo reversibility (8 unit tests, 100% pass across all 323 suite tests).
-- **2026-09-25 (T-4.3: Stock Draw, Waste Extraction & Undo Processing in ViewModel):**
-  - Configured `DrawMode` (`DRAW_ONE` / `DRAW_THREE`) parameter support in `GameViewModel`.\
-  - Implemented `drawStockCard()` handling standard card draw from stock to waste and automatic recycling fallback when stock is empty.
-  - Implemented `recycleStock()` restoring waste cards face-down into stock with state snapshot recording.
-  - Implemented `undoMove()` popping previous board state from `UndoManager`, updating `canUndo` flag, win status, and resuming timer if rolled back from a victory.
-  - Added single-shot `GameEvent.PlayHapticTick` on card draw/undo actions and `GameEvent.TriggerWinCelebration` on victory.
-  - Added test suite `StockAndUndoIntents` in `GameViewModelTest` covering 9 comprehensive test scenarios (100% pass).
-- **2026-09-25 (T-4.2: GameViewModel Lifecycle, Deal Initialization & Timer):**
-  - Implemented `GameViewModel` exposing reactive `StateFlow<GameUiState>` and `SharedFlow<GameEvent>`.
-  - Added deal initialization supporting standard shuffled deals via `dealProvider` and background solvable deals via `DealGenerator`.\
-  - Implemented coroutine stopwatch timer loop with `startTimer`, `pauseTimer`, `resumeTimer`, and `stopTimer` methods, guarded against ticks when game is won.
-  - Added `StartNewGame`, `RestartGame`, `ToggleLeftHanded`, `SelectFeltTheme`, and `DismissHint` intent handling.
-  - Designed timer coroutine scope injection (`coroutineScope: CoroutineScope?`) enabling test integration via `backgroundScope` to eliminate scheduler deadlocks and infinite continuation re-dispatching during tests.
-  - Added full test suite in `GameViewModelTest` with 10 unit tests covering initial deal, custom deal, timer incrementing, pause/resume, win guard, reset/restart, and `DealGenerator` integration (100% pass in ~5s).
-- **2026-09-25 (T-4.1: MVI Contract Definitions):**
-  - Defined immutable `@Immutable` `GameUiState` in `GameContract.kt` encapsulating `boardState`, `isGameWon`, `isDeadlocked`, `canUndo`, `elapsedTimeSeconds`, `feltTheme`, `isLeftHanded`, `activeHint`, `isLoading`, and `isAutoCompleteAvailable`.
-  - Added derived visual properties `highlightedCard` and `isHintActive` directly bound to `activeHint`.
-  - Defined comprehensive `GameIntent` sealed interface covering draw, recycle, tap, drop, undo, hint, auto-complete, deal start/restart, theme switch, and left-handed toggles.
-  - Defined single-shot `GameEvent` sealed interface for UI haptic feedbacks, snackbar messages, and win celebration trigger.
-  - Added unit test suite `GameContractTest` verifying state immutability, defaults, hint derivation, and exhaustive intent/event handling (100% pass).
-- **2026-09-25 (Phase 4 Task Decomposition & Setup):**
-  - Created working branch `feature/phase-4-interactive-gameplay` branched off clean `master` (PR #3 merged).
-  - Decomposed Phase 4 into 9 atomic tasks (T-4.1 .. T-4.9) covering MVI contract, `GameViewModel`, stock/waste moves, smart tap, drop target hitboxes, drag overlay, snap-back animations, and screen wiring.
-  - Archived completed task checklists and historical logs from Phases 1-3 into `docs/archive/TASKS_HISTORY.md` and `docs/archive/STATE_HISTORY.md`.
 
 ---
 

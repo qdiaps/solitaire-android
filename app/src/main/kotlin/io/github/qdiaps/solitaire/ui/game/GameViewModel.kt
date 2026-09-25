@@ -223,6 +223,7 @@ class GameViewModel(
         if (autoStartTimer && !isWon) {
             startTimer()
         }
+        _events.tryEmit(GameEvent.PlayDealSound)
     }
 
     /**
@@ -349,5 +350,6 @@ class GameViewModel(
         if (autoStartTimer && !isWon) {
             startTimer()
         }
+        _events.tryEmit(GameEvent.PlayDealSound)
     }
 }

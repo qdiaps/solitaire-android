@@ -128,16 +128,18 @@ class GameContractTest {
             val events: List<GameEvent> = listOf(
                 GameEvent.PlayHapticTick,
                 GameEvent.PlayHapticSnap,
+                GameEvent.PlayDealSound,
                 GameEvent.ShowMessage("Test message"),
                 GameEvent.TriggerWinCelebration
             )
 
-            assertEquals(4, events.size)
+            assertEquals(5, events.size)
 
             for (event in events) {
                 val name = when (event) {
                     is GameEvent.PlayHapticTick -> "tick"
                     is GameEvent.PlayHapticSnap -> "snap"
+                    is GameEvent.PlayDealSound -> "deal"
                     is GameEvent.ShowMessage -> "message:${event.message}"
                     is GameEvent.TriggerWinCelebration -> "celebration"
                 }

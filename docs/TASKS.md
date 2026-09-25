@@ -9,7 +9,7 @@
   - Define `GameIntent` sealed interface and single-shot `GameEvent` sealed interface (haptics, messages).
   - *TDD/Unit Tests:* `GameContractTest` verifying state immutability, default properties, and helper methods.
 - [x] **T-4.2: GameViewModel Lifecycle, Deal Initialization & Timer**
-  - Implement `GameViewModel` with `StateFlow<GameUiState>`, coroutine timer loop, and deal initialization from `KlondikeDealer` / `DealGenerator`.\
+  - Implement `GameViewModel` with `StateFlow<GameUiState>`, coroutine timer loop, and deal initialization from `KlondikeDealer` / `DealGenerator`.
   - Handle `StartNewGame`, `RestartGame`, and timer pause/resume lifecycle.
   - *TDD/Unit Tests:* `GameViewModelTest` verifying state initialization, new game deal, and timer ticks.
 - [x] **T-4.3: Stock Draw, Waste Extraction & Undo Processing in ViewModel**
@@ -33,7 +33,7 @@
   - Implement `DragOverlay` composable at the root layout layer floating above all board elements (ADR 003).
   - Render moving card stacks with elevated shadow (`12.dp`) and vertical cascade spacing matching `CardDimensions`.
   - Hide source cards on the board while drag is in progress to prevent duplicate ghost cards.
-  - *Compose Previews:* `DragOverlayPreview` showing single card and multi-card stacks floating over felt.\
+  - *Compose Previews:* `DragOverlayPreview` showing single card and multi-card stacks floating over felt.
 - [x] **T-4.8: Drop Validation, Snap-Back Animation & Haptic Feedback**
   - Implement drop gesture release handling: validate destination using `KlondikeRules.canMoveCards`.
   - If valid: dispatch `OnCardDropped` intent, update board state, auto-flip uncovered cards, and trigger haptic snap.
@@ -71,6 +71,16 @@
   - Upgraded vibration attributes to `VibrationAttributes.USAGE_HARDWARE_FEEDBACK` (API 33+) and `AudioAttributes.USAGE_GAME` (API 26+) so tactile feedback is not muted by system touch/keyboard toggle.
   - Added `SolitaireHapticsTest` unit tests.
   - Full suite passed: 420 unit tests passing (100%), 0 failures, 0 Android lint errors.
+- [x] **T-4.13: Acoustic Audio Feedback Engine (`SolitaireAudio`, `SoundPool`)**
+  - Designed lightweight low-latency acoustic card audio engine using Android `SoundPool` with `AudioAttributes.USAGE_GAME` and `CONTENT_TYPE_SONIFICATION`.
+  - Generated and embedded 4 crisp, uncompressed 16-bit 44.1kHz PCM WAV audio assets in `app/src/main/res/raw/`: `card_slide.wav` (pickup), `card_snap.wav` (placement), `card_flip.wav` (turnover / stock draw), `card_deal.wav` (riffle deal).
+  - Added `SolitaireAudio` interface, `AndroidSolitaireAudio`, `LocalSolitaireAudio`, and `rememberSolitaireAudio()` composable helper.
+  - Integrated `playSlide()` and `playSnap()` into `CardDragModifier.kt` for tactile pickup and drop sound.
+  - Integrated `playFlip()` into `CardView.kt` when face-down cards are turned face-up.
+  - Added `GameEvent.PlayDealSound` in `GameContract.kt` and wired it in `GameViewModel.kt` on new deals and game restarts.
+  - Provided `LocalSolitaireAudio` in `SolitaireGameScreen` with event mapping.
+  - *TDD/Unit Tests:* `SolitaireAudioTest`, `GameContractTest`, and `SolitaireGameScreenTest` verifying audio contracts, event handling, and deal sound emissions.
+  - Full suite passed: 424 unit tests passing (100%), 0 failures, 0 Android lint errors.
 
 ---
 
@@ -79,7 +89,7 @@
 - [ ] **T-5.x: Card Themes & Visual Customization (Back & Face Styles)**
   - Implement `CardBackStyle` enum: `ClassicLattice`, `CrimsonVintage`, `EmeraldArtDeco`, `ObsidianMinimal`.
   - Implement `CardFaceStyle` enum: `ModernClean`, `ClassicSerif`, `LargePrint`.
-  - Integrate selection with `SolitaireTheme`, settings persistence (`DataStore`), and interactive `CardThemesGalleryPreview`.\
+  - Integrate selection with `SolitaireTheme`, settings persistence (`DataStore`), and interactive `CardThemesGalleryPreview`.
 
 ---
 

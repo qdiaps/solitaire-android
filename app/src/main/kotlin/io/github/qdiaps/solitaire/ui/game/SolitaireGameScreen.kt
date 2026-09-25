@@ -31,6 +31,8 @@ import io.github.qdiaps.solitaire.domain.rules.SmartTapResolver
 import io.github.qdiaps.solitaire.ui.game.animation.AnimatedMoveOverlay
 import io.github.qdiaps.solitaire.ui.game.animation.LocalCardFlightState
 import io.github.qdiaps.solitaire.ui.game.animation.rememberCardFlightState
+import io.github.qdiaps.solitaire.ui.game.audio.LocalSolitaireAudio
+import io.github.qdiaps.solitaire.ui.game.audio.rememberSolitaireAudio
 import io.github.qdiaps.solitaire.ui.game.components.BottomActionBarView
 import io.github.qdiaps.solitaire.ui.game.components.DragOverlay
 import io.github.qdiaps.solitaire.ui.game.components.TableauAreaView
@@ -109,6 +111,7 @@ fun SolitaireGameScreen(
     val dragDropState = rememberDragDropState()
     val dropTargetRegistry = rememberDropTargetRegistry()
     val solitaireHaptics = rememberSolitaireHaptics()
+    val solitaireAudio = rememberSolitaireAudio()
     val cardFlightState = rememberCardFlightState()
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -117,6 +120,7 @@ fun SolitaireGameScreen(
         LocalDragDropState provides dragDropState,
         LocalDropTargetRegistry provides dropTargetRegistry,
         LocalSolitaireHaptics provides solitaireHaptics,
+        LocalSolitaireAudio provides solitaireAudio,
         LocalCardFlightState provides cardFlightState
     ) {
         BoxWithConstraints(
@@ -355,7 +359,7 @@ private fun calculateFlightTargetOffset(
  * Stateful entry point for [SolitaireGameScreen] connected directly to [GameViewModel].
  *
  * Collects [GameViewModel.uiState] and routes user actions as [GameIntent]s to the ViewModel.
- * Observes single-shot [GameEvent]s to trigger tactile haptic feedback.
+ * Observes single-shot [GameEvent]s to trigger tactile haptic and audio feedback.
  *
  * @param viewModel Presentation [GameViewModel] orchestrating game state.
  * @param modifier Compose [Modifier] applied to root container.
@@ -367,18 +371,25 @@ fun SolitaireGameScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val solitaireHaptics = rememberSolitaireHaptics()
+    val solitaireAudio = rememberSolitaireAudio()
 
-    LaunchedEffect(viewModel, solitaireHaptics) {
+    LaunchedEffect(viewModel, solitaireHaptics, solitaireAudio) {
         viewModel.events.collect { event ->
             when (event) {
                 is GameEvent.PlayHapticTick -> {
                     solitaireHaptics.playTick()
+                    solitaireAudio.playFlip()
                 }
                 is GameEvent.PlayHapticSnap -> {
                     solitaireHaptics.playSnap()
+                    solitaireAudio.playSnap()
+                }
+                is GameEvent.PlayDealSound -> {
+                    solitaireAudio.playDeal()
                 }
                 is GameEvent.TriggerWinCelebration -> {
                     solitaireHaptics.playSnap()
+                    solitaireAudio.playSnap()
                 }
                 is GameEvent.ShowMessage -> {
                     // Message snackbar / banner
