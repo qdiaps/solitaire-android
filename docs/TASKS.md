@@ -18,7 +18,7 @@
   - Implement `FoundationRowView` (4 foundation piles with suit watermark placeholders or top banked cards).
   - Implement `TopRowView` integrating Stock, Waste, and Foundations with `isLeftHanded: Boolean` mirroring support.
   - *Compose Previews:* `TopRowViewPreview` for standard and left-handed layouts in empty, partial, and full configurations.
-- [ ] **T-3.4: Tableau Column Component with Overlapping Vertical Cascade**
+- [x] **T-3.4: Tableau Column Component with Overlapping Vertical Cascade**
   - Implement `TableauColumnView` rendering vertical card stacks with distinct peek offsets for hidden (face-down) vs revealed (face-up) cards.
   - Support empty column placeholder slot.
   - *Compose Previews:* `TableauColumnPreview` for empty, single card, mixed hidden/exposed, and deep 13-card cascade columns.

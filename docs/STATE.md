@@ -14,6 +14,7 @@
   - `T-3.1`: Implement `SolitaireTheme`, typography, suit colors, 4 felt table palettes (`Classic Green`, `Deep Navy`, `Dark Charcoal`, `Wine Red`), and `CardDimensions` calculator (12 new unit tests).
   - `T-3.2`: Implement vector `SuitEmblem` geometry, `CardView` (face-up rank indices and center emblem, face-down diamond lattice pattern), and `CardSlotPlaceholder` with watermarks (Foundations, Stock recycle, Tableau King).
   - `T-3.3`: Implement `StockPileView`, `WastePileView`, `FoundationPileView`, `FoundationRowView`, and `TopRowView` with left-handed mode mirroring and 8 comprehensive Compose previews.
+  - `T-3.4`: Implement `TableauColumnView` with cascading face-down/face-up peek offsets, empty slot King watermark, 5 unit tests (`TableauColumnOffsetTest`), and 7 Compose previews.
 - **Completed Tasks (Phase 2):**
   - `T-2.1`: Implement compact/canonical state key representation (`SolverStateKey`) normalizing symmetric tableau columns and stock-cycle states to prevent cyclic exploration.
   - `T-2.2`: Implement legal move generator (`SolverMoveGenerator`) producing all non-redundant successor `BoardState` transitions with empty column and lateral move pruning.
@@ -34,12 +35,18 @@
   - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
   - `Task 1.9`: Implement `UndoManager` (state snapshot rollback for board, score, moves) with unit tests.
   - `Task 1.10`: Phase 1 review, refactoring to idiomatic Kotlin, completion of `Move` model, and verification of all 159 tests passing.
-- **Current Focus:** Phase 3: Compose Board Layout & Static Presentation (Task T-3.4).
+- **Current Focus:** Phase 3: Compose Board Layout & Static Presentation (Task T-3.5).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (Task T-3.4):** Implemented `TableauColumnView` rendering cascading vertical card stacks:
+  - Implemented `calculateTableauOffsets` computing vertical card offsets based on `faceDownPeek` (20% height) for hidden cards and `faceUpPeek` (35% height) for revealed cards.
+  - Implemented `TableauColumnView` displaying `CardSlotPlaceholder` with King watermark (`TableauKing`) when empty, or an overlapping `Box` cascade with natural shadow stacking when populated.
+  - Added unit test suite `TableauColumnOffsetTest` (5 tests) verifying offset math for empty, single, pure face-down, pure face-up, and mixed cascades.
+  - Added 7 Compose previews in `TableauColumnPreview.kt` covering empty, single card, initial deal, deep 13-card cascade, hint highlights, multi-column comparison, and 4 felt themes.
+  - Verified all 258 unit tests pass (100% pass, 0 lint warnings via `./gradlew check`).
 - **2026-09-25 (Task T-3.3):** Implemented `TopRowView` integrating Stock, Waste, and Foundation piles:
   - Implemented `StockPileView` rendering face-down card back when non-empty, and `SlotWatermark.StockRecycle` when empty and recyclable.
   - Implemented `WastePileView` rendering top face-up waste card or empty slot placeholder.
@@ -135,4 +142,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-3.4: Tableau Column Component with Overlapping Vertical Cascade`
+- **Target Task:** `T-3.5: Full Tableau Area Component (7 Columns Layout)`
