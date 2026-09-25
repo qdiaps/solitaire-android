@@ -15,6 +15,7 @@
   - `T-3.2`: Implement vector `SuitEmblem` geometry, `CardView` (face-up rank indices and center emblem, face-down diamond lattice pattern), and `CardSlotPlaceholder` with watermarks (Foundations, Stock recycle, Tableau King).
   - `T-3.3`: Implement `StockPileView`, `WastePileView`, `FoundationPileView`, `FoundationRowView`, and `TopRowView` with left-handed mode mirroring and 8 comprehensive Compose previews.
   - `T-3.4`: Implement `TableauColumnView` with cascading face-down/face-up peek offsets, empty slot King watermark, 5 unit tests (`TableauColumnOffsetTest`), and 7 Compose previews.
+  - `T-3.5`: Implement `TableauAreaView` rendering 7 columns side-by-side with calculated `CardDimensions`, click delegation, and 4 Compose previews.
 - **Completed Tasks (Phase 2):**
   - `T-2.1`: Implement compact/canonical state key representation (`SolverStateKey`) normalizing symmetric tableau columns and stock-cycle states to prevent cyclic exploration.
   - `T-2.2`: Implement legal move generator (`SolverMoveGenerator`) producing all non-redundant successor `BoardState` transitions with empty column and lateral move pruning.
@@ -35,12 +36,18 @@
   - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
   - `Task 1.9`: Implement `UndoManager` (state snapshot rollback for board, score, moves) with unit tests.
   - `Task 1.10`: Phase 1 review, refactoring to idiomatic Kotlin, completion of `Move` model, and verification of all 159 tests passing.
-- **Current Focus:** Phase 3: Compose Board Layout & Static Presentation (Task T-3.5).
+- **Current Focus:** Phase 3: Compose Board Layout & Static Presentation (Task T-3.6).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (Task T-3.5):** Implemented `TableauAreaView` rendering the 7-column playing area:
+  - Implemented `TableauAreaView` arranging 7 `TableauColumnView` instances side-by-side with top alignment, `columnSpacing`, and `horizontalPadding`.
+  - Added click delegation for indexed columns: `onCardClick(columnIndex, card)` and `onEmptyColumnClick(columnIndex)`.
+  - Added `BoardState` convenience overload and active hint highlight forwarding.
+  - Added 4 Compose previews in `TableauAreaPreview.kt` covering initial deal, mid-game layout, highlighted card, and 4 felt table themes.
+  - Verified all 258 unit tests pass (100% pass, 0 lint warnings via `./gradlew check`).
 - **2026-09-25 (Task T-3.4):** Implemented `TableauColumnView` rendering cascading vertical card stacks:
   - Implemented `calculateTableauOffsets` computing vertical card offsets based on `faceDownPeek` (20% height) for hidden cards and `faceUpPeek` (35% height) for revealed cards.
   - Implemented `TableauColumnView` displaying `CardSlotPlaceholder` with King watermark (`TableauKing`) when empty, or an overlapping `Box` cascade with natural shadow stacking when populated.
@@ -142,4 +149,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-3.5: Full Tableau Area Component (7 Columns Layout)`
+- **Target Task:** `T-3.6: Status Bar & Bottom Action Bar Components`

@@ -22,7 +22,7 @@
   - Implement `TableauColumnView` rendering vertical card stacks with distinct peek offsets for hidden (face-down) vs revealed (face-up) cards.
   - Support empty column placeholder slot.
   - *Compose Previews:* `TableauColumnPreview` for empty, single card, mixed hidden/exposed, and deep 13-card cascade columns.
-- [ ] **T-3.5: Full Tableau Area Component (7 Columns Layout)**
+- [x] **T-3.5: Full Tableau Area Component (7 Columns Layout)**
   - Implement `TableauAreaView` rendering 7 columns side-by-side using calculated `CardDimensions`.
   - Ensure uniform horizontal spacing and prevent clipping/overflow on 7-column portrait constraint.
   - *Compose Previews:* `TableauAreaPreview` with initial dealt board and mid-game states.
