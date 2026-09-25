@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
+import io.github.qdiaps.solitaire.ui.game.animation.LocalCardFlightState
 import io.github.qdiaps.solitaire.ui.game.gesture.LocalDragDropState
 import io.github.qdiaps.solitaire.ui.game.gesture.cardDragTarget
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
@@ -87,6 +88,7 @@ fun TableauColumnView(
 
     val totalHeight = if (cards.isEmpty()) dimensions.cardHeight else yOffsets.last() + dimensions.cardHeight
     val dragDropState = LocalDragDropState.current
+    val flightState = LocalCardFlightState.current
 
     Box(
         modifier = modifier.size(dimensions.cardWidth, totalHeight)
@@ -102,6 +104,9 @@ fun TableauColumnView(
         cards.forEachIndexed { index, card ->
             key(card.id) {
                 val isCardDragged = dragDropState != null && dragDropState.isCardDragged(card)
+                val isCardFlying = flightState != null && flightState.isCardFlying(card)
+                val isCardHidden = isCardDragged || isCardFlying
+
                 val dragModifier = if (card.isFaceUp && boardState != null && onCardDropped != null) {
                     Modifier.cardDragTarget(
                         isEnabled = true,
@@ -126,7 +131,7 @@ fun TableauColumnView(
                         .offset(y = yOffsets[index])
                         .then(dragModifier)
                         .graphicsLayer {
-                            if (isCardDragged) {
+                            if (isCardHidden) {
                                 alpha = 0f
                             }
                         },

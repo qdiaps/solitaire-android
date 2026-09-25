@@ -18,16 +18,26 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
+import io.github.qdiaps.solitaire.domain.rules.SmartTapResolver
+import io.github.qdiaps.solitaire.ui.game.animation.AnimatedMoveOverlay
+import io.github.qdiaps.solitaire.ui.game.animation.LocalCardFlightState
+import io.github.qdiaps.solitaire.ui.game.animation.rememberCardFlightState
 import io.github.qdiaps.solitaire.ui.game.components.BottomActionBarView
 import io.github.qdiaps.solitaire.ui.game.components.DragOverlay
 import io.github.qdiaps.solitaire.ui.game.components.TableauAreaView
 import io.github.qdiaps.solitaire.ui.game.components.TopRowView
 import io.github.qdiaps.solitaire.ui.game.components.TopStatusBarView
+import io.github.qdiaps.solitaire.ui.game.components.calculateTableauOffsets
+import io.github.qdiaps.solitaire.ui.game.gesture.DropTargetRegistry
 import io.github.qdiaps.solitaire.ui.game.gesture.LocalDragDropState
 import io.github.qdiaps.solitaire.ui.game.gesture.LocalDropTargetRegistry
 import io.github.qdiaps.solitaire.ui.game.gesture.LocalSolitaireHaptics
@@ -38,6 +48,7 @@ import io.github.qdiaps.solitaire.ui.theme.CardDimensions
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
 import io.github.qdiaps.solitaire.ui.theme.SolitaireColors
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
+import kotlinx.coroutines.launch
 
 /**
  * Root game screen component for Klondike Solitaire.
@@ -46,7 +57,7 @@ import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
  * exact card and column proportions via [CardDimensions.calculate].
  *
  * Sets up drag-and-drop state via [LocalDragDropState] and [LocalDropTargetRegistry],
- * rendering the [DragOverlay] top-level floating card layer directly in root coordinates
+ * rendering the [DragOverlay] and [AnimatedMoveOverlay] floating layers directly in root coordinates
  * above all other board elements (ADR 003).
  *
  * Vertically arranges:
@@ -98,11 +109,15 @@ fun SolitaireGameScreen(
     val dragDropState = rememberDragDropState()
     val dropTargetRegistry = rememberDropTargetRegistry()
     val solitaireHaptics = rememberSolitaireHaptics()
+    val cardFlightState = rememberCardFlightState()
+    val coroutineScope = rememberCoroutineScope()
+    val density = LocalDensity.current
 
     CompositionLocalProvider(
         LocalDragDropState provides dragDropState,
         LocalDropTargetRegistry provides dropTargetRegistry,
-        LocalSolitaireHaptics provides solitaireHaptics
+        LocalSolitaireHaptics provides solitaireHaptics,
+        LocalCardFlightState provides cardFlightState
     ) {
         BoxWithConstraints(
             modifier = modifier
@@ -111,6 +126,122 @@ fun SolitaireGameScreen(
         ) {
             val dimensions = remember(maxWidth) {
                 CardDimensions.calculate(availableWidth = maxWidth)
+            }
+
+            // Animated Smart Tap and Stock Draw handlers
+            val animatedStockClick: () -> Unit = {
+                if (cardFlightState.activeFlight == null && boardState.stock.isNotEmpty()) {
+                    val stockBounds = dropTargetRegistry.getBounds(CardLocation.Stock)
+                    val wasteBounds = dropTargetRegistry.getBounds(CardLocation.Waste)
+
+                    if (stockBounds != null && wasteBounds != null) {
+                        val movingCard = boardState.stock.last()
+                        coroutineScope.launch {
+                            cardFlightState.startFlight(
+                                cards = listOf(movingCard),
+                                startOffset = stockBounds.topLeft,
+                                targetOffset = wasteBounds.topLeft,
+                                isStockFlip = true,
+                                durationMillis = 180
+                            ) {
+                                onStockClick()
+                            }
+                        }
+                    } else {
+                        onStockClick()
+                    }
+                } else {
+                    onStockClick()
+                }
+            }
+
+            val animatedWasteClick: () -> Unit = {
+                if (cardFlightState.activeFlight == null && boardState.waste.isNotEmpty()) {
+                    val wasteCard = boardState.waste.last()
+                    val move = SmartTapResolver.resolveMove(boardState, CardLocation.Waste)
+                    val wasteBounds = dropTargetRegistry.getBounds(CardLocation.Waste)
+
+                    if (move != null && wasteBounds != null) {
+                        val targetOffset = calculateFlightTargetOffset(
+                            target = move.to,
+                            boardState = boardState,
+                            registry = dropTargetRegistry,
+                            dimensions = dimensions,
+                            density = density
+                        )
+
+                        if (targetOffset != null) {
+                            coroutineScope.launch {
+                                cardFlightState.startFlight(
+                                    cards = listOf(wasteCard),
+                                    startOffset = wasteBounds.topLeft,
+                                    targetOffset = targetOffset,
+                                    durationMillis = 180
+                                ) {
+                                    onWasteClick()
+                                }
+                            }
+                        } else {
+                            onWasteClick()
+                        }
+                    } else {
+                        onWasteClick()
+                    }
+                } else {
+                    onWasteClick()
+                }
+            }
+
+            val animatedTableauCardClick: (columnIndex: Int, card: Card) -> Unit = { columnIndex, card ->
+                if (cardFlightState.activeFlight == null) {
+                    val column = boardState.tableau.getOrNull(columnIndex).orEmpty()
+                    val cardIndex = column.indexOf(card)
+
+                    if (cardIndex >= 0 && card.isFaceUp) {
+                        val source = CardLocation.Tableau(columnIndex, cardIndex)
+                        val move = SmartTapResolver.resolveMove(boardState, source)
+                        val colBounds = dropTargetRegistry.getBounds(CardLocation.Tableau(columnIndex))
+
+                        if (move != null && colBounds != null) {
+                            val movingCards = column.subList(cardIndex, column.size)
+                            val yOffsets = calculateTableauOffsets(
+                                cards = column,
+                                faceDownPeek = dimensions.faceDownPeek,
+                                faceUpPeek = dimensions.faceUpPeek
+                            )
+                            val cardTopPx = with(density) { yOffsets[cardIndex].toPx() }
+                            val startOffset = Offset(colBounds.left, colBounds.top + cardTopPx)
+                            val targetOffset = calculateFlightTargetOffset(
+                                target = move.to,
+                                boardState = boardState,
+                                registry = dropTargetRegistry,
+                                dimensions = dimensions,
+                                density = density
+                            )
+
+                            if (targetOffset != null) {
+                                coroutineScope.launch {
+                                    cardFlightState.startFlight(
+                                        cards = movingCards,
+                                        startOffset = startOffset,
+                                        targetOffset = targetOffset,
+                                        durationMillis = 180
+                                    ) {
+                                        onTableauCardClick(columnIndex, card)
+                                    }
+                                }
+                            } else {
+                                onTableauCardClick(columnIndex, card)
+                            }
+                        } else {
+                            onTableauCardClick(columnIndex, card)
+                        }
+                    } else {
+                        onTableauCardClick(columnIndex, card)
+                    }
+                } else {
+                    onTableauCardClick(columnIndex, card)
+                }
             }
 
             SolitaireTheme(feltTheme = feltTheme, cardDimensions = dimensions) {
@@ -143,8 +274,8 @@ fun SolitaireGameScreen(
                                 isLeftHanded = isLeftHanded,
                                 isWasteHighlighted = isWasteHighlighted,
                                 highlightedFoundationIndex = highlightedFoundationIndex,
-                                onStockClick = onStockClick,
-                                onWasteClick = onWasteClick,
+                                onStockClick = animatedStockClick,
+                                onWasteClick = animatedWasteClick,
                                 onFoundationClick = onFoundationClick,
                                 onCardDropped = onCardDropped
                             )
@@ -154,7 +285,7 @@ fun SolitaireGameScreen(
                             TableauAreaView(
                                 boardState = boardState,
                                 highlightedCard = highlightedCard,
-                                onCardClick = onTableauCardClick,
+                                onCardClick = animatedTableauCardClick,
                                 onEmptyColumnClick = onTableauEmptyClick,
                                 onCardDropped = onCardDropped
                             )
@@ -171,11 +302,52 @@ fun SolitaireGameScreen(
                         )
                     }
 
+                    // Floating animated card flight overlay (Smart Tap & Stock Flip)
+                    AnimatedMoveOverlay(flightState = cardFlightState)
+
                     // Floating drag-and-drop overlay layer in root window coordinates (ADR 003)
                     DragOverlay(dragDropState = dragDropState)
                 }
             }
         }
+    }
+}
+
+/**
+ * Calculates absolute root screen coordinates for destination slot [target].
+ */
+private fun calculateFlightTargetOffset(
+    target: CardLocation,
+    boardState: BoardState,
+    registry: DropTargetRegistry,
+    dimensions: CardDimensions,
+    density: Density
+): Offset? {
+    return when (target) {
+        is CardLocation.Foundation -> {
+            registry.getBounds(target)?.topLeft
+        }
+        is CardLocation.Tableau -> {
+            val colBounds = registry.getBounds(CardLocation.Tableau(target.columnIndex)) ?: return null
+            val colCards = boardState.tableau.getOrNull(target.columnIndex).orEmpty()
+            if (colCards.isEmpty()) {
+                colBounds.topLeft
+            } else {
+                val yOffsets = calculateTableauOffsets(
+                    cards = colCards,
+                    faceDownPeek = dimensions.faceDownPeek,
+                    faceUpPeek = dimensions.faceUpPeek
+                )
+                val targetTopPx = with(density) {
+                    (yOffsets.last() + dimensions.faceUpPeek).toPx()
+                }
+                Offset(colBounds.left, colBounds.top + targetTopPx)
+            }
+        }
+        is CardLocation.Waste -> {
+            registry.getBounds(CardLocation.Waste)?.topLeft
+        }
+        else -> null
     }
 }
 

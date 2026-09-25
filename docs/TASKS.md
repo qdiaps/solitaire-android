@@ -9,7 +9,7 @@
   - Define `GameIntent` sealed interface and single-shot `GameEvent` sealed interface (haptics, messages).
   - *TDD/Unit Tests:* `GameContractTest` verifying state immutability, default properties, and helper methods.
 - [x] **T-4.2: GameViewModel Lifecycle, Deal Initialization & Timer**
-  - Implement `GameViewModel` with `StateFlow<GameUiState>`, coroutine timer loop, and deal initialization from `KlondikeDealer` / `DealGenerator`.
+  - Implement `GameViewModel` with `StateFlow<GameUiState>`, coroutine timer loop, and deal initialization from `KlondikeDealer` / `DealGenerator`.\
   - Handle `StartNewGame`, `RestartGame`, and timer pause/resume lifecycle.
   - *TDD/Unit Tests:* `GameViewModelTest` verifying state initialization, new game deal, and timer ticks.
 - [x] **T-4.3: Stock Draw, Waste Extraction & Undo Processing in ViewModel**
@@ -54,6 +54,16 @@
   - Added mid-animation cancel guard in `startDrag` and `snapBack` to prevent coordinate corruption when quickly grabbing new cards.
   - Aligned `DragOverlay` coordinates to absolute root by scoping status and navigation bar insets to child content.
   - Added hardware vibrator engine `SolitaireHaptics` and `VIBRATE` permission in `AndroidManifest.xml` for tactile feedback on pickup, snap, and ticks.
+- [x] **T-4.11: Smooth Flight Animations & 3D Flips (`AnimatedMoveOverlay`, `CardFlightState`)**
+  - Implemented `CardFlightState` managing in-flight card interpolation, 3D flip rotation, and source card masking.
+  - Implemented `AnimatedMoveOverlay` floating overlay layer rendering flying cards with elevation shadow and 3D Y-axis rotation.
+  - Added smart tap flight animation: when tapping a card that can move to Foundation or Tableau, it smoothly flies to the target destination over 180ms before completing the move.
+  - Added Stock draw flip animation: 3D rotation and flight from Stock to Waste pile (0°..90° back -> 90°..0° face).
+  - Added 3D card reveal flip in `CardView`: uncovering face-down cards animates rotation around Y-axis with perspective camera distance.
+  - Mounted permanent baseline placeholders in `TableauColumnView`, `FoundationPileView`, and `WastePileView` with `underCard` rendering so empty slots never pop visually.
+  - Registered `Stock` and `Waste` bounds in `DropTargetRegistry` for reliable trajectory calculation in normal and left-handed modes.
+  - *TDD/Unit Tests:* `CardFlightStateTest` verifying interpolation, rotation, cancellation, and callbacks.
+  - Full suite passed: 418 unit tests passing (100%), 0 failures, 0 Android lint errors.
 
 ---
 
@@ -62,7 +72,7 @@
 - [ ] **T-5.x: Card Themes & Visual Customization (Back & Face Styles)**
   - Implement `CardBackStyle` enum: `ClassicLattice`, `CrimsonVintage`, `EmeraldArtDeco`, `ObsidianMinimal`.
   - Implement `CardFaceStyle` enum: `ModernClean`, `ClassicSerif`, `LargePrint`.
-  - Integrate selection with `SolitaireTheme`, settings persistence (`DataStore`), and interactive `CardThemesGalleryPreview`.
+  - Integrate selection with `SolitaireTheme`, settings persistence (`DataStore`), and interactive `CardThemesGalleryPreview`.\
 
 ---
 

@@ -12,6 +12,7 @@ import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.domain.model.Suit
+import io.github.qdiaps.solitaire.ui.game.animation.LocalCardFlightState
 import io.github.qdiaps.solitaire.ui.game.gesture.LocalDragDropState
 import io.github.qdiaps.solitaire.ui.game.gesture.cardDragTarget
 import io.github.qdiaps.solitaire.ui.game.gesture.dropTarget
@@ -57,6 +58,7 @@ fun FoundationPileView(
     onCardDropped: ((cards: List<Card>, source: CardLocation, target: CardLocation) -> Unit)? = null
 ) {
     val dimensions = SolitaireTheme.cardDimensions
+    val flightState = LocalCardFlightState.current
 
     Box(
         modifier = modifier.size(dimensions.cardWidth, dimensions.cardHeight)
@@ -78,6 +80,9 @@ fun FoundationPileView(
             key(topCard.id) {
                 val dragDropState = LocalDragDropState.current
                 val isCardDragged = dragDropState != null && dragDropState.isCardDragged(topCard)
+                val isCardFlying = flightState != null && flightState.isCardFlying(topCard)
+                val isCardHidden = isCardDragged || isCardFlying
+
                 val dragModifier = if (topCard.isFaceUp && boardState != null && onCardDropped != null) {
                     Modifier.cardDragTarget(
                         isEnabled = true,
@@ -101,7 +106,7 @@ fun FoundationPileView(
                         .size(dimensions.cardWidth, dimensions.cardHeight)
                         .then(dragModifier)
                         .graphicsLayer {
-                            if (isCardDragged) {
+                            if (isCardHidden) {
                                 alpha = 0f
                             }
                         },

@@ -14,14 +14,24 @@
   - **Phase 1: Pure Domain Engine** — 159 unit tests (100% pass), models, rules, scoring, smart tap, undo. (Complete)
   - **Phase 2: Solvability Engine & Background Generator** — 80 unit tests (100% pass), A* solver, deadlock detector, buffered deal generator. (Complete)
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
-  - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 143 unit tests (100% pass, 413 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, haptics, and `MainActivity` wiring. (Complete)
+  - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 148 unit tests (100% pass, 418 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, haptics, flight animations, 3D card flips, and `MainActivity` wiring. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Phase 4 completed and verified. Ready for Phase 5 (Visual Polish, Themes & Customization).
+- **Current Focus:** Phase 4 completed, polished with 60/120 FPS flight & 3D flip animations, and verified. Ready for Phase 5 (Visual Polish, Themes & Customization).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (T-4.11: Smooth Flight Animations & 3D Flips):**
+  - Implemented `CardFlightState` managing in-flight card interpolation, 3D flip rotation, and source card masking without triggering recomposition loops.
+  - Implemented `AnimatedMoveOverlay` floating overlay layer rendering flying cards with elevation shadow (10.dp) and 3D Y-axis rotation with perspective camera distance.
+  - Added smart tap flight animation: when tapping a card that can move to Foundation or Tableau, it smoothly flies to the target destination over 180ms before completing the move and playing tactile haptics.
+  - Added Stock draw flip animation: 3D rotation and flight from Stock to Waste pile (0°..90° back -> 90°..0° face) over 180ms.
+  - Added 3D card reveal flip in `CardView`: uncovering face-down cards animates rotation around Y-axis with perspective camera distance over 200ms.
+  - Mounted permanent baseline placeholders in `TableauColumnView`, `FoundationPileView`, and `WastePileView` with `underCard` rendering so empty slots never pop visually.
+  - Registered `Stock` and `Waste` bounds in `DropTargetRegistry` for reliable trajectory calculation in normal and left-handed modes.
+  - Added unit test suite `CardFlightStateTest` with 5 unit tests covering state lifecycle, linear offset interpolation, 3D angle calculations, cancellation, and callbacks.
+  - Full suite passed: 418 unit tests passing (100%), 0 failures, 0 Android lint errors.
 - **2026-09-25 (T-4.10: Drag-and-Drop Polish, Stale Gesture Recomposition & Haptics Engine Bugfixes):**
   - Resolved stale card closure bug where cards dragged from Waste or Foundation retained the identity of the first card pulled: added `rememberUpdatedState` for `currentOnStartDrag`, `currentBoardState`, and `currentOnValidDrop` in `CardDragModifier.kt`.
   - Resolved tableau stack slicing synchronization issue when moving sequences onto columns: wrapped card renderers in `key(card.id)` across `TableauColumnView.kt`, `WastePileView.kt`, and `FoundationPileView.kt` so item compositions preserve gesture identity when card lists update.
@@ -44,7 +54,7 @@
   - Wired `GameIntent.OnCardDropped` in `GameViewModel`: validates drops via `KlondikeRules.canMoveCards`, records undo snapshots in `UndoManager`, applies moves with auto-flip reveals, checks win/deadlock conditions, and emits single-shot `GameEvent.PlayHapticSnap` (or `GameEvent.TriggerWinCelebration`).
   - Added `DropIntents` test suite in `GameViewModelTest` covering valid drops, illegal drops, win triggers, and undo reversibility (4 unit tests, 100% pass).
   - Extended `DragDropState` with `isSnappingBack: Boolean`, `isActive: Boolean`, `DefaultSnapBackSpec` with spring physics (`Spring.DampingRatioMediumBouncy`, `Spring.StiffnessMediumLow`), and suspend `snapBack()` returning cards smoothly to `originPosition`.
-  - Added `DropTargetRegistry.findValidDropTarget` connecting geometric hitboxes with `KlondikeRules.canMoveCards`.
+  - Added `DropTargetRegistry.findValidDropTarget` connecting geometric hitboxes with `KlondikeRules.canMoveCards`.\
   - Implemented `DragDropState.onDropRelease` resolving drops via `findValidDropTarget`, performing `HapticFeedbackType.LongPress` feedback on pickup and valid drop snap, and triggering `snapBack` on invalid/canceled releases`.
   - Updated `DragOverlay` to check `dragDropState.isActive` ensuring lifted cards remain rendered in the floating overlay during snap-back translation`.
   - Added unit tests in `DragDropStateTest` and `DropTargetRegistryTest` covering snap-back animation state, haptic feedback triggers, and drop validation (408 suite tests passing with 0 failures and 0 lint warnings).
@@ -61,13 +71,13 @@
   - Added tableau sub-stack slicing (`sliceTableauStack`) ensuring face-down card protection and multi-card stack extraction ($k \dots N$).
   - Added drag initiation handlers `startTableauDrag`, `startWasteDrag`, and `startFoundationDrag` with coordinates binding.
   - Implemented source card visibility flags (`isCardHidden` and `isCardDragged`) to prevent duplicate ghost cards on the board during active dragging.
-  - Provided `LocalDragDropState` and `@Composable rememberDragDropState()`.\
+  - Provided `LocalDragDropState` and `@Composable rememberDragDropState()`.
   - Added unit test suite `DragDropStateTest` with 19 unit tests covering state lifecycle, coordinate offsets, sub-stack slicing, and card masking (100% pass across all 363 suite tests).
 - **2026-09-25 (T-4.5: Drop Target Hitbox Registry (DropTargetRegistry)):**
   - Created `DropTargetRegistry` managing root-relative screen bounds (`Rect`) of Foundation slots and Tableau columns.
   - Implemented `calculateOverlapArea` and `calculateOverlapRatio` functions handling boundary, edge-touching, and degenerate conditions.
   - Implemented generic `findBestDropTarget` selecting the destination with maximum intersection area and supporting `minOverlapArea` tolerance thresholds.
-  - Added `Modifier.dropTarget(location, registry)` and ambient `@Composable Modifier.dropTarget(location)` backed by `LocalDropTargetRegistry`.
+  - Added `Modifier.dropTarget(location, registry)` and ambient `@Composable Modifier.dropTarget(location)` backed by `LocalDropTargetRegistry`.\
   - Wired drop target modifier attachments into `FoundationRowView` (`Foundation(0..3)`) and `TableauAreaView` (`Tableau(0..6)`).
   - Added unit test suite `DropTargetRegistryTest` with 21 unit tests covering state management, overlap calculations, ratios, and multi-target priority selection (100% pass across all 344 suite tests).
 - **2026-09-25 (T-4.4: Smart Tap Move Execution & Auto-Flip Uncovered Cards):**
@@ -85,7 +95,7 @@
   - Added single-shot `GameEvent.PlayHapticTick` on card draw/undo actions and `GameEvent.TriggerWinCelebration` on victory.
   - Added test suite `StockAndUndoIntents` in `GameViewModelTest` covering 9 comprehensive test scenarios (100% pass).
 - **2026-09-25 (T-4.2: GameViewModel Lifecycle, Deal Initialization & Timer):**
-  - Implemented `GameViewModel` exposing reactive `StateFlow<GameUiState>` and `SharedFlow<GameEvent>`.
+  - Implemented `GameViewModel` exposing reactive `StateFlow<GameUiState>` and `SharedFlow<GameEvent>`.\
   - Added deal initialization supporting standard shuffled deals via `dealProvider` and background solvable deals via `DealGenerator`.
   - Implemented coroutine stopwatch timer loop with `startTimer`, `pauseTimer`, `resumeTimer`, and `stopTimer` methods, guarded against ticks when game is won.
   - Added `StartNewGame`, `RestartGame`, `ToggleLeftHanded`, `SelectFeltTheme`, and `DismissHint` intent handling.

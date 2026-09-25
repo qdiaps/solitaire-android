@@ -1,5 +1,8 @@
 package io.github.qdiaps.solitaire.ui.game.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,7 +16,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +31,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.model.Card
@@ -31,6 +39,9 @@ import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 
 /**
  * Renders an individual playing card in either face-up or face-down state.
+ *
+ * Performs a smooth 3D flip animation around the Y-axis when a previously hidden (face-down)
+ * card is exposed face-up.
  *
  * @param card Domain [Card] model.
  * @param modifier Compose [Modifier] applied to this card.
@@ -48,7 +59,43 @@ fun CardView(
 ) {
     val dimensions = SolitaireTheme.cardDimensions
     val colors = SolitaireTheme.colors
+    val density = LocalDensity.current
     val shape = RoundedCornerShape(dimensions.cornerRadius)
+
+    var previousFaceUp by remember(card.id) { mutableStateOf(card.isFaceUp) }
+    val flipAnimatable = remember(card.id) { Animatable(if (card.isFaceUp) 1f else 0f) }
+
+    LaunchedEffect(card.isFaceUp) {
+        if (!previousFaceUp && card.isFaceUp) {
+            // Animate 3D turnover when card is uncovered
+            flipAnimatable.snapTo(0f)
+            flipAnimatable.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
+            )
+            previousFaceUp = true
+        } else {
+            flipAnimatable.snapTo(if (card.isFaceUp) 1f else 0f)
+            previousFaceUp = card.isFaceUp
+        }
+    }
+
+    val isFlipping = flipAnimatable.value < 1f && card.isFaceUp
+    val rotationY = if (isFlipping) {
+        if (flipAnimatable.value <= 0.5f) {
+            flipAnimatable.value * 180f
+        } else {
+            (flipAnimatable.value - 1f) * 180f
+        }
+    } else {
+        0f
+    }
+
+    val renderFaceUp = if (isFlipping) {
+        flipAnimatable.value > 0.5f
+    } else {
+        card.isFaceUp
+    }
 
     val borderModifier = if (isHighlighted) {
         Modifier.border(width = 2.dp, color = colors.hintHighlight, shape = shape)
@@ -70,11 +117,17 @@ fun CardView(
         modifier = modifier
             .size(dimensions.cardWidth, dimensions.cardHeight)
             .shadow(elevation = elevation, shape = shape)
+            .graphicsLayer {
+                if (isFlipping) {
+                    this.rotationY = rotationY
+                    cameraDistance = 12f * density.density
+                }
+            }
             .clip(shape)
             .then(borderModifier)
             .then(clickableModifier)
     ) {
-        if (card.isFaceUp) {
+        if (renderFaceUp) {
             FaceUpCardContent(card = card)
         } else {
             FaceDownCardContent()
