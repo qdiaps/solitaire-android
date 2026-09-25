@@ -25,7 +25,7 @@
   - Implement `DropTargetRegistry` storing absolute screen bounds (`Rect`) of all 4 Foundation slots and 7 Tableau columns via `Modifier.onGloballyPositioned`.
   - Implement pure helper `findBestDropTarget(draggedBounds, targets)` calculating bounding box overlap area to select the intended destination.
   - *TDD/Unit Tests:* `DropTargetRegistryTest` testing geometry overlap matching and tolerance edge cases.
-- [ ] **T-4.6: Drag & Drop State Management (`DragDropState`)**
+- [x] **T-4.6: Drag & Drop State Management (`DragDropState`)**
   - Implement `DragDropState` managing active drag lifecycle: `sourceLocation`, `draggedCards`, current drag `Offset`, and source visibility flags.
   - Support sub-stack dragging in tableau (dragging from index k lifts cards k..N).
   - *TDD/Unit Tests:* `DragDropStateTest` validating sub-stack slicing, active dragging state flags, and touch offset tracking.

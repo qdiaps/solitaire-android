@@ -15,12 +15,19 @@
   - **Phase 2: Solvability Engine & Background Generator** — 80 unit tests (100% pass), A* solver, deadlock detector, buffered deal generator. (Complete)
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Phase 4: Drag-and-Drop & Interactive Gameplay (Task T-4.6).
+- **Current Focus:** Phase 4: Drag-and-Drop & Interactive Gameplay (Task T-4.7).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (T-4.6: Drag & Drop State Management (DragDropState)):**
+  - Implemented `DragDropState` managing active drag-and-drop gesture lifecycle, `sourceLocation`, `draggedCards`, `originPosition`, `dragPosition`, and displacement `dragOffset`.
+  - Added tableau sub-stack slicing (`sliceTableauStack`) ensuring face-down card protection and multi-card stack extraction ($k \dots N$).
+  - Added drag initiation handlers `startTableauDrag`, `startWasteDrag`, and `startFoundationDrag` with coordinates binding.
+  - Implemented source card visibility flags (`isCardHidden` and `isCardDragged`) to prevent duplicate ghost cards on the board during active dragging.
+  - Provided `LocalDragDropState` and `@Composable rememberDragDropState()`.
+  - Added unit test suite `DragDropStateTest` with 19 unit tests covering state lifecycle, coordinate offsets, sub-stack slicing, and card masking (100% pass across all 363 suite tests).
 - **2026-09-25 (T-4.5: Drop Target Hitbox Registry (DropTargetRegistry)):**
   - Created `DropTargetRegistry` managing root-relative screen bounds (`Rect`) of Foundation slots and Tableau columns.
   - Implemented `calculateOverlapArea` and `calculateOverlapRatio` functions handling boundary, edge-touching, and degenerate conditions.
@@ -63,4 +70,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-4.6: Drag & Drop State Management (DragDropState)`
+- **Target Task:** `T-4.7: Global Drag Overlay Layer (DragOverlay)`
