@@ -34,7 +34,7 @@
   - Assemble stateless `GameScreen` composable combining `TopStatusBarView`, `TopRowView`, `TableauAreaView`, and `BottomActionBarView` inside responsive `BoxWithConstraints`.
   - Connect `MainActivity` to render `GameScreen` with an initial dealt `BoardState` on launch.
   - *Compose Previews:* `GameScreenPreview` on compact, standard, and large phone form factors.
-- [ ] **T-3.8: Phase 3 Review, Visual Polish & State Sync**
+- [x] **T-3.8: Phase 3 Review, Visual Polish & State Sync**
   - Performance audit: verify stable state parameters (`@Immutable`), zero business logic in composables, and smooth preview rendering.
   - Verification: `./gradlew check` and `./gradlew test`.
   - Update `docs/STATE.md` and prepare milestone transition.

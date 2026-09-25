@@ -18,6 +18,7 @@
   - `T-3.5`: Implement `TableauAreaView` rendering 7 columns side-by-side with calculated `CardDimensions`, click delegation, and 4 Compose previews.
   - `T-3.6`: Implement `TopStatusBarView` (Score, Moves, Timer) and `BottomActionBarView` (Undo, Hint, New Game, Settings), 12 unit tests (`GameFormattersTest`), and 5 Compose previews.
   - `T-3.7`: Implement `SolitaireGameScreen` (`GameScreen`), connecting `MainActivity`, responsive layout assembly with `BoxWithConstraints` and 8 Compose previews.
+  - `T-3.8`: Phase 3 review, verification of `@Immutable` stability across theme/models, performance audit, and state synchronization.
 - **Completed Tasks (Phase 2):**
   - `T-2.1`: Implement compact/canonical state key representation (`SolverStateKey`) normalizing symmetric tableau columns and stock-cycle states to prevent cyclic exploration.
   - `T-2.2`: Implement legal move generator (`SolverMoveGenerator`) producing all non-redundant successor `BoardState` transitions with empty column and lateral move pruning.
@@ -38,12 +39,18 @@
   - `Task 1.8`: Implement `SmartTapResolver` (Priority: Foundation > Expose hidden > Leftmost valid tableau) with unit tests.
   - `Task 1.9`: Implement `UndoManager` (state snapshot rollback for board, score, moves) with unit tests.
   - `Task 1.10`: Phase 1 review, refactoring to idiomatic Kotlin, completion of `Move` model, and verification of all 159 tests passing.
-- **Current Focus:** Phase 3: Compose Board Layout & Static Presentation (Task T-3.8 Review & Wrap-up).
+- **Current Focus:** Phase 4: Drag-and-Drop & Interactive Gameplay (Task T-4.1).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-25 (Task T-3.8):** Completed Phase 3 review, visual polish, and state synchronization:
+  - Verified `@Immutable` stability across UI models (`SolitaireColors`, `CardDimensions`, `SolitaireCardTypography`) and domain snapshots.
+  - Confirmed zero business logic in composables: pure stateless presentation with hoisted event callbacks.
+  - Validated layout responsiveness across all form factors and edge-to-edge system insets.
+  - Verified 100% test pass rate (270 unit tests) and 0 lint warnings (`./gradlew check`).
+  - Concluded Phase 3 milestone (Compose Board Layout & Static Presentation). Ready for Phase 4.
 - **2026-09-25 (Task T-3.7):** Assembled `SolitaireGameScreen` (`GameScreen`) root game layout:
   - Integrated `TopStatusBarView`, `TopRowView`, `TableauAreaView`, and `BottomActionBarView` in vertical responsive portrait layout.
   - Dynamically computes `CardDimensions` with `BoxWithConstraints` using `remember(maxWidth)`.
@@ -164,4 +171,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-3.8: Phase 3 Review, Visual Polish & State Sync`
+- **Target Task:** `T-4.1: GameViewModel (MVI State Container, Timer, Lifecycle)`
