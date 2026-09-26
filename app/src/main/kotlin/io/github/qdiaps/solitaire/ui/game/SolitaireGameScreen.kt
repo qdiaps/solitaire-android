@@ -239,11 +239,20 @@ fun SolitaireGameScreen(
                     if (stockBounds != null && wasteBounds != null) {
                         val drawCount = minOf(if (drawMode == DrawMode.DRAW_ONE) 1 else 3, boardState.stock.size)
                         val movingCard = boardState.stock.take(drawCount).last()
+                        val newVisibleCount = minOf(if (drawMode == DrawMode.DRAW_THREE) 3 else 1, boardState.waste.size + drawCount)
+                        val fanOffsetPx = with(density) { (dimensions.cardWidth * 0.32f).coerceIn(14.dp, 20.dp).toPx() }
+                        val sign = if (isLeftHanded) -1f else 1f
+                        val targetOffset = if (drawMode == DrawMode.DRAW_THREE && newVisibleCount > 1) {
+                            Offset(wasteBounds.topLeft.x + sign * (newVisibleCount - 1) * fanOffsetPx, wasteBounds.topLeft.y)
+                        } else {
+                            wasteBounds.topLeft
+                        }
+
                         coroutineScope.launch {
                             cardFlightState.startFlight(
                                 cards = listOf(movingCard),
                                 startOffset = stockBounds.topLeft,
-                                targetOffset = wasteBounds.topLeft,
+                                targetOffset = targetOffset,
                                 isStockFlip = true,
                                 durationMillis = 180
                             ) {
@@ -274,10 +283,19 @@ fun SolitaireGameScreen(
                         )
 
                         if (targetOffset != null) {
+                            val visibleCount = minOf(if (drawMode == DrawMode.DRAW_THREE) 3 else 1, boardState.waste.size)
+                            val fanOffsetPx = with(density) { (dimensions.cardWidth * 0.32f).coerceIn(14.dp, 20.dp).toPx() }
+                            val sign = if (isLeftHanded) -1f else 1f
+                            val startOffset = if (drawMode == DrawMode.DRAW_THREE && visibleCount > 1) {
+                                Offset(wasteBounds.topLeft.x + sign * (visibleCount - 1) * fanOffsetPx, wasteBounds.topLeft.y)
+                            } else {
+                                wasteBounds.topLeft
+                            }
+
                             coroutineScope.launch {
                                 cardFlightState.startFlight(
                                     cards = listOf(wasteCard),
-                                    startOffset = wasteBounds.topLeft,
+                                    startOffset = startOffset,
                                     targetOffset = targetOffset,
                                     durationMillis = 180
                                 ) {
@@ -390,6 +408,7 @@ fun SolitaireGameScreen(
 
                             TopRowView(
                                 boardState = boardState,
+                                drawMode = drawMode,
                                 isLeftHanded = isLeftHanded,
                                 isStockHighlighted = isStockHighlighted,
                                 isWasteHighlighted = isWasteHighlighted,

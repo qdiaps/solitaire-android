@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.Rank
 import io.github.qdiaps.solitaire.domain.model.Suit
+import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.ui.game.components.TopRowView
 import io.github.qdiaps.solitaire.ui.theme.CardDimensions
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
@@ -216,6 +217,32 @@ fun TopRowFeltThemesPreview() {
                     )
                 }
             }
+        }
+    }
+}
+
+@Preview(name = "9. Draw 3 Fanned Waste", showBackground = true)
+@Composable
+fun TopRowDrawThreePreview() {
+    val sampleDimensions = CardDimensions.calculate(availableWidth = 393.dp)
+    SolitaireTheme(cardDimensions = sampleDimensions) {
+        Column(
+            modifier = Modifier
+                .background(SolitaireTheme.colors.tableBackground)
+                .padding(vertical = 16.dp)
+        ) {
+            TopRowView(
+                stockCount = 18,
+                wasteTopCard = Card(suit = Suit.CLUBS, rank = Rank.EIGHT, isFaceUp = true),
+                wasteCards = listOf(
+                    Card(suit = Suit.HEARTS, rank = Rank.SIX, isFaceUp = true),
+                    Card(suit = Suit.SPADES, rank = Rank.SEVEN, isFaceUp = true),
+                    Card(suit = Suit.CLUBS, rank = Rank.EIGHT, isFaceUp = true)
+                ),
+                drawMode = DrawMode.DRAW_THREE,
+                foundations = SAMPLE_FOUNDATIONS_PARTIAL,
+                isLeftHanded = false
+            )
         }
     }
 }
