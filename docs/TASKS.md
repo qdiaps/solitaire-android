@@ -16,7 +16,7 @@
   - *TDD/Unit Tests:* `CardFaceStyleTest` verifying font families, index scale factors, and formatting.
   - *Compose Previews:* `CardThemesGalleryPreview` rendering canonical face style across all 4 card backs.
 
-- [ ] **T-5.3: Pure Domain Hint Resolver Engine (`HintResolver`)**
+- [x] **T-5.3: Pure Domain Hint Resolver Engine (`HintResolver`)**
   - Implement pure Kotlin `HintResolver` evaluating valid productive moves following SPEC priorities:
     1. Tableau move uncovering a hidden face-down card.
     2. Foundation promotion from Tableau or Waste.
