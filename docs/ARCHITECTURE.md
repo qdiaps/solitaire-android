@@ -6,26 +6,26 @@ The project follows strict layered Clean Architecture principles coupled with un
 ```text
        ┌────────────────────────────────────────────────────────┐
        │                   UI Layer (Presentation)              │
-       │  Jetpack Compose Screen  ◄── StateFlow<UiState> ──┐     │
-       │          │                                        │     │
+       │  Jetpack Compose Screen  ◄─── StateFlow<UiState> ───┐  │
+       │          │                                        │  │
        │       GameIntent                             GameViewModel
-       │          └────────────────────────────────────────┘     │
-       └──────────────────────────┬─────────────────────────────┘
+       │          └────────────────────────────────────────┘  │
+       └──────────────────────────┬───────────────────────────┘
                                   │ Invokes UseCases / Engine
-       ┌──────────────────────────▼─────────────────────────────┐
-       │                   Domain Layer (Pure Kotlin)           │
-       │  Models: Card, Suit, Rank, BoardState, Move            │
-       │  Rules: KlondikeRules, MoveValidator, SmartTapResolver │
-       │  Engine: SolitaireEngine, UndoStack                    │
-       │  Solver: SolverStateKey, SolverMoveGenerator,          │
-       │          SafePromotion, SolvabilityChecker, ...        │
-       └──────────────────────────┬─────────────────────────────┘
+       ┌──────────────────────────▼───────────────────────────┐
+       │                   Domain Layer (Pure Kotlin)         │
+       │  Models: Card, Suit, Rank, BoardState, Move          │
+       │  Rules: KlondikeRules, MoveValidator, SmartTapResolver│
+       │  Engine: SolitaireEngine, UndoStack                  │
+       │  Solver: SolverStateKey, SolverMoveGenerator,        │
+       │          SafePromotion, SolvabilityChecker, ...      │
+       └──────────────────────────┬───────────────────────────┘
                                   │ Depends on abstractions
-       ┌──────────────────────────▼─────────────────────────────┐
-       │                   Data Layer                           │
-       │  PreferencesRepository (Jetpack DataStore)             │
-       │  GamePersistence (JSON serialization of BoardState)    │
-       └────────────────────────────────────────────────────────┘
+       ┌──────────────────────────▼───────────────────────────┐
+       │                   Data Layer                         │
+       │  PreferencesRepository (Jetpack DataStore)           │
+       │  GamePersistence (JSON serialization of BoardState)  │
+       └──────────────────────────────────────────────────────┘
 ```
 
 ### Architectural Guardrails
@@ -49,7 +49,9 @@ io.github.qdiaps.solitaire/
 │   │   └── Move.kt               // Source, destination, cards moved, score delta
 │   ├── rules/
 │   │   ├── KlondikeRules.kt      // Move legality validation
-│   │   └── SmartTapResolver.kt   // Logic for auto-moving card on tap
+│   │   ├── SmartTapResolver.kt   // Logic for auto-moving card on tap
+│   │   ├── HintResolver.kt       // Multi-tier productive hint suggestion engine
+│   │   └── AutoCompleteResolver.kt// Safe rank-first foundation cascade resolver
 │   ├── engine/
 │   │   ├── SolitaireEngine.kt    // Applies moves, exposes cards, manages score & undo
 │   │   └── UndoManager.kt        // Manages ArrayDeque of BoardState snapshots
@@ -63,23 +65,28 @@ io.github.qdiaps.solitaire/
 │
 ├── data/
 │   ├── local/
-│   │   ├── DataStoreManager.kt   // Preferences DataStore wrapper
-│   │   └── GameStateSerializer.kt// kotlinx.serialization for autosave
+│   │   └── DataStoreManager.kt   // Preferences DataStore wrapper with error boundaries
+│   ├── model/
+│   │   ├── GameSettings.kt       // User customization preferences (Draw mode, theme, card styles)
+│   │   ├── GameStats.kt          // Player records & win streaks
+│   │   └── SavedGameSession.kt   // Serializable snapshot of active game session
 │   └── repository/
-│       ├── SettingsRepository.kt // Draw mode, left-handed, themes
-│       └── StatsRepository.kt    // Wins, streaks, best time, high score
+│       ├── SettingsRepository.kt // Reactive Flow<GameSettings> & preference persistence
+│       ├── StatsRepository.kt    // Games played, streaks, best time, high score
+│       └── GamePersistenceRepository.kt // Active game session save & restore
 │
 └── ui/
+    ├── MainActivity.kt           // Single-activity host with lifecycle wiring
     ├── game/
     │   ├── GameContract.kt       // GameUiState, GameIntent, GameEvent (single-shot)
     │   ├── GameViewModel.kt      // Holds StateFlow<GameUiState>, processes intents
-    │   ├── GameScreen.kt         // Main portrait board layout
-    │   ├── components/           // StockPile, WastePile, FoundationRow, TableauColumn, CardView
-    │   ├── gesture/              // DragDropState, DragOverlay
-    │   └── win/                  // VictoryCanvas (particle physics bounce animation)
-    ├── settings/                 // SettingsBottomSheet
-    ├── stats/                    // StatsDialog
-    └── theme/                    // Color palettes, Felt surfaces, Typography
+    │   ├── SolitaireGameScreen.kt// Main portrait board layout & interaction coordinator
+    │   ├── animation/            // CardFlightState, AnimatedMoveOverlay (3D flips & flight)
+    │   ├── audio/                // Low-latency SoundPool audio feedback engine
+    │   ├── components/           // Stock, Waste, Foundations, Tableau, Overlays, Settings, Stats
+    │   └── gesture/              // DragDropState, SolitaireHaptics, Hitbox registry
+    ├── preview/                  // Comprehensive Compose @Preview suites across themes & sizes
+    └── theme/                    // Color palettes, Felt surfaces, Typography, Styles
 ```
 
 ---
@@ -222,3 +229,14 @@ sealed interface GameEvent {
   3. Backpressure-driven producer suspension when the buffer is full, using zero CPU cycles or memory allocations while idle.
   4. Immediate, non-blocking retrieval via `suspend fun getSolvableDeal(): BoardState` from the channel buffer.
 - **Rationale:** Ensures instant new game provisioning for players while preserving battery life and mobile memory limits through natural coroutine backpressure.
+
+### ADR 009: Resilient Multi-Layer Session Persistence and Deferred Game Activation
+- **Context:** Active game state (`BoardState`, elapsed timer, move count, score, undo history) must survive process death and app suspension. Concurrently:
+  1. Newly dealt games must not tick the timer or pollute player statistics until the player performs their first card move.
+  2. DataStore JSON serialization must never crash or wipe settings if corrupted data or schema migrations occur.
+  3. Autosave triggers must cover both state transitions (moves, undo) and Android lifecycle events (`ON_PAUSE`).
+- **Decision:** Implement:
+  1. `@Serializable` data model `SavedGameSession` containing complete snapshot state, timestamp, elapsed time, draw mode, and undo history.
+  2. `DataStoreGamePersistenceRepository` using a non-cancellable persistence coroutine scope and `IOException`/serialization try-catch fallbacks.
+  3. First-move activation guard (`hasMoved = false` until first card placement or stock draw), keeping the timer at `00:00` and postponing `recordGameStarted()` until actual gameplay begins.
+- **Rationale:** Guarantees zero data loss on backgrounding, eliminates misleading 0-second abandoned game statistics for idle deals, and guarantees fail-safe fallback to clean deals if storage corruption occurs.

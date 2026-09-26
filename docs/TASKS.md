@@ -93,7 +93,7 @@
   - Restore active game on app startup if a saved session exists, or initialize fresh deal if none. Clear persisted game on win, restart, or fresh deal.
   - *TDD/Unit Tests:* `GamePersistenceRepositoryTest` and `GameViewModelTest` verifying save/restore, lifecycle resilience, corrupted JSON fallback, and clean state after win.
 
-- [ ] **T-5.12: Phase 5 Review, State Synchronization & Comprehensive Polish**
+- [x] **T-5.12: Phase 5 Review, State Synchronization & Comprehensive Polish**
   - Architectural review of `data/` layer, pure domain separation, and lifecycle hygiene.
   - Full suite verification: `./gradlew test` (100% pass) and `./gradlew check` (0 Android lint errors).
   - Synchronize `docs/STATE.md`, `docs/TASKS.md`, and prepare milestone transition to Phase 6.

@@ -9,19 +9,30 @@
 ---
 
 ## Current Focus & Status
-- **Phase:** 5 / 7 (Game Loop, Scoring, Auto-Complete & Persistence)
+- **Phase:** 5 / 7 (Game Loop, Scoring, Auto-Complete & Persistence) — Complete.
 - **Completed Milestones Summary:**
   - **Phase 1: Pure Domain Engine** — 159 unit tests (100% pass), models, rules, scoring, smart tap, undo. (Complete)
   - **Phase 2: Solvability Engine & Background Generator** — 80 unit tests (100% pass), A* solver, deadlock detector, buffered deal generator. (Complete)
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
+  - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-5.11` (`GamePersistenceRepository`). Ready to proceed to `T-5.12` (`Phase 5 Review, State Synchronization & Comprehensive Polish`).
+- **Current Focus:** Completed `T-5.12` (`Phase 5 Review, State Synchronization & Comprehensive Polish`). All tasks of Phase 5 are complete. Ready for milestone transition to Phase 6 (`feature/phase-6-victory-screen-and-polish`).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-26 (T-5.12: Phase 5 Review, State Synchronization & Comprehensive Polish):**
+  - Performed comprehensive architectural review across `domain/`, `data/`, and `ui/` layers:
+    - Pure domain separation verified: 0 dependencies on Android SDK (`android.*`, `androidx.*`) in `domain/` layer.
+    - Clean unidirectional data flow (MVI) verified: `GameViewModel` cleanly exposes immutable `StateFlow<GameUiState>`, consumes `GameIntent`, and emits single-shot `GameEvent`.
+    - DataStore persistence resilience verified: all preferences and session serializers protected with `NonCancellable` persistence scopes, error boundaries, and safe fallbacks.
+    - Lifecycle hygiene verified: `MainActivity` and `SolitaireGameScreen` cleanly coordinate `ON_PAUSE` autosave and background tasks.
+  - Documented ADR 009 in `docs/ARCHITECTURE.md` covering multi-layer session persistence and deferred game activation.
+  - Verified entire project test suite: 555 unit tests passing (100% pass), 0 Android lint errors (`./gradlew test check`).
+  - Synchronized project state across `docs/STATE.md`, `docs/TASKS.md`, and `docs/ARCHITECTURE.md`.
+  - Marked all Phase 5 sprint backlog tasks complete.
 - **2026-09-26 (T-5.11: Game Session Persistence & Lifecycle Restoration):**
   - Implemented `@Serializable` data model `SavedGameSession` in `io.github.qdiaps.solitaire.data.model` capturing `boardState`, `elapsedTimeSeconds`, `drawMode`, `undoHistory`, `savedAtTimestamp`, and `hasMoved`.
   - Implemented `GamePersistenceRepository` interface and `DataStoreGamePersistenceRepository` in `io.github.qdiaps.solitaire.data.repository` utilizing Jetpack DataStore Preferences and JSON serialization with error resilience.
@@ -180,4 +191,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-5.9: Statistics Repository (StatsRepository)`
+- **Target Task:** Phase 6 Transition — User confirmation to create and switch to branch `feature/phase-6-victory-screen-and-polish` and initiate Phase 6: Victory Screen & Polish (`T-6.1`).
