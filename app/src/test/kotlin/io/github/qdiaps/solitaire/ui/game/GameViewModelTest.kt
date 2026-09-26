@@ -1141,6 +1141,168 @@ class GameViewModelTest {
             assertNull(viewModel.uiState.value.activeHint)
             assertFalse(viewModel.uiState.value.isHintActive)
         }
+
+        @Test
+        @DisplayName("Idle auto-hint triggers hint after 10 seconds when autoHintEnabled is true")
+        fun `idle auto-hint triggers hint after 10 seconds when autoHintEnabled is true`() = runTest(testDispatcher) {
+            val ace = Card(Suit.HEARTS, Rank.ACE, isFaceUp = true, id = "ace_hearts")
+            val board = BoardState(tableau = List(7) { col -> if (col == 0) listOf(ace) else emptyList() })
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                idleHintDelayMs = 10_000L,
+                initialAutoHintEnabled = true,
+                autoStartTimer = false
+            )
+
+            assertNull(viewModel.uiState.value.activeHint)
+            assertFalse(viewModel.uiState.value.isHintActive)
+            assertTrue(viewModel.isIdleHintActive)
+
+            testScheduler.advanceTimeBy(5_000)
+            testScheduler.runCurrent()
+            assertNull(viewModel.uiState.value.activeHint)
+
+            testScheduler.advanceTimeBy(5_000)
+            testScheduler.runCurrent()
+            assertTrue(viewModel.uiState.value.isHintActive)
+            assertEquals(ace, viewModel.uiState.value.highlightedCard)
+
+            viewModel.stopTimer()
+        }
+
+        @Test
+        @DisplayName("Idle auto-hint does not trigger when autoHintEnabled is false")
+        fun `idle auto-hint does not trigger when autoHintEnabled is false`() = runTest(testDispatcher) {
+            val ace = Card(Suit.HEARTS, Rank.ACE, isFaceUp = true, id = "ace_hearts")
+            val board = BoardState(tableau = List(7) { col -> if (col == 0) listOf(ace) else emptyList() })
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                idleHintDelayMs = 10_000L,
+                initialAutoHintEnabled = false,
+                autoStartTimer = false
+            )
+
+            assertFalse(viewModel.isIdleHintActive)
+            testScheduler.advanceTimeBy(15_000)
+            testScheduler.runCurrent()
+            assertNull(viewModel.uiState.value.activeHint)
+            assertFalse(viewModel.uiState.value.isHintActive)
+
+            viewModel.stopTimer()
+        }
+
+        @Test
+        @DisplayName("User interaction resets idle auto-hint timer")
+        fun `user interaction resets idle auto-hint timer`() = runTest(testDispatcher) {
+            val ace = Card(Suit.HEARTS, Rank.ACE, isFaceUp = true, id = "ace_hearts")
+            val stockCard = Card(Suit.CLUBS, Rank.FIVE, isFaceUp = false, id = "stock5")
+            val board = BoardState(
+                stock = listOf(stockCard),
+                tableau = List(7) { col -> if (col == 0) listOf(ace) else emptyList() }
+            )
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                idleHintDelayMs = 10_000L,
+                initialAutoHintEnabled = true,
+                autoStartTimer = false
+            )
+
+            testScheduler.advanceTimeBy(8_000)
+            testScheduler.runCurrent()
+            assertNull(viewModel.uiState.value.activeHint)
+
+            // User draws a stock card at second 8
+            viewModel.onIntent(GameIntent.DrawStockCard)
+            testScheduler.runCurrent()
+            assertNull(viewModel.uiState.value.activeHint)
+
+            // 5 seconds after draw (total 13s from start, but only 5s after interaction)
+            testScheduler.advanceTimeBy(5_000)
+            testScheduler.runCurrent()
+            assertNull(viewModel.uiState.value.activeHint)
+
+            // Another 5 seconds (10s total after interaction)
+            testScheduler.advanceTimeBy(5_000)
+            testScheduler.runCurrent()
+            assertTrue(viewModel.uiState.value.isHintActive)
+
+            viewModel.stopTimer()
+        }
+
+        @Test
+        @DisplayName("OpenSettings pauses idle auto-hint timer and CloseSettings resumes it")
+        fun `openSettings pauses idle auto-hint timer and closeSettings resumes it`() = runTest(testDispatcher) {
+            val ace = Card(Suit.HEARTS, Rank.ACE, isFaceUp = true, id = "ace_hearts")
+            val board = BoardState(tableau = List(7) { col -> if (col == 0) listOf(ace) else emptyList() })
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                idleHintDelayMs = 10_000L,
+                initialAutoHintEnabled = true,
+                autoStartTimer = false
+            )
+
+            testScheduler.advanceTimeBy(5_000)
+            testScheduler.runCurrent()
+
+            viewModel.onIntent(GameIntent.OpenSettings)
+            testScheduler.runCurrent()
+            assertFalse(viewModel.isIdleHintActive)
+
+            testScheduler.advanceTimeBy(15_000)
+            testScheduler.runCurrent()
+            assertNull(viewModel.uiState.value.activeHint)
+
+            viewModel.onIntent(GameIntent.CloseSettings)
+            testScheduler.runCurrent()
+            assertTrue(viewModel.isIdleHintActive)
+
+            testScheduler.advanceTimeBy(10_000)
+            testScheduler.runCurrent()
+            assertTrue(viewModel.uiState.value.isHintActive)
+
+            viewModel.stopTimer()
+        }
+
+        @Test
+        @DisplayName("SetAutoHintEnabled toggles idle hint timer")
+        fun `SetAutoHintEnabled toggles idle hint timer`() = runTest(testDispatcher) {
+            val ace = Card(Suit.HEARTS, Rank.ACE, isFaceUp = true, id = "ace_hearts")
+            val board = BoardState(tableau = List(7) { col -> if (col == 0) listOf(ace) else emptyList() })
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                idleHintDelayMs = 10_000L,
+                initialAutoHintEnabled = false,
+                autoStartTimer = false
+            )
+
+            assertFalse(viewModel.isIdleHintActive)
+
+            viewModel.onIntent(GameIntent.SetAutoHintEnabled(true))
+            testScheduler.runCurrent()
+            assertTrue(viewModel.isIdleHintActive)
+            assertTrue(viewModel.uiState.value.autoHintEnabled)
+
+            testScheduler.advanceTimeBy(10_000)
+            testScheduler.runCurrent()
+            assertTrue(viewModel.uiState.value.isHintActive)
+
+            viewModel.onIntent(GameIntent.SetAutoHintEnabled(false))
+            testScheduler.runCurrent()
+            assertFalse(viewModel.isIdleHintActive)
+            assertFalse(viewModel.uiState.value.autoHintEnabled)
+
+            viewModel.stopTimer()
+        }
     }
 
     private fun createAutoCompleteReadyBoard(): BoardState {

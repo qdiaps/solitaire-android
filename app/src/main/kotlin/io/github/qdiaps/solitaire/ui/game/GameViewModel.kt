@@ -63,7 +63,9 @@ class GameViewModel(
     private val drawMode: DrawMode = DrawMode.DRAW_ONE,
     coroutineScope: CoroutineScope? = null,
     private val autoCompleteDelayMs: Long = 120L,
-    private val settingsRepository: SettingsRepository? = null
+    private val settingsRepository: SettingsRepository? = null,
+    private val idleHintDelayMs: Long = DEFAULT_IDLE_HINT_DELAY_MS,
+    initialAutoHintEnabled: Boolean = false
 ) : ViewModel() {
 
     private val scope: CoroutineScope = coroutineScope ?: viewModelScope
@@ -76,7 +78,8 @@ class GameViewModel(
             boardState = initialDealState,
             isGameWon = initialIsWon,
             isAutoCompleteAvailable = if (initialIsWon) false else AutoCompleteResolver.isAutoCompleteReady(initialDealState),
-            drawMode = drawMode
+            drawMode = drawMode,
+            autoHintEnabled = initialAutoHintEnabled
         )
     )
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
@@ -86,6 +89,13 @@ class GameViewModel(
 
     private var timerJob: Job? = null
     private var autoCompleteJob: Job? = null
+    private var idleHintJob: Job? = null
+
+    /**
+     * Indicates whether the idle auto-hint timer coroutine is currently active.
+     */
+    val isIdleHintActive: Boolean
+        get() = idleHintJob?.isActive == true
 
     /**
      * Indicates whether the stopwatch timer coroutine is currently active.
@@ -103,10 +113,14 @@ class GameViewModel(
         if (autoStartTimer && !_uiState.value.isGameWon) {
             startTimer()
         }
+        if (initialAutoHintEnabled && !_uiState.value.isGameWon) {
+            resetIdleHintTimer()
+        }
 
         if (settingsRepository != null) {
             scope.launch {
                 settingsRepository.settingsFlow.collect { settings ->
+                    val wasAutoHint = _uiState.value.autoHintEnabled
                     _uiState.update { current ->
                         current.copy(
                             drawMode = settings.drawMode,
@@ -118,6 +132,13 @@ class GameViewModel(
                             hapticsEnabled = settings.hapticsEnabled,
                             autoHintEnabled = settings.autoHintEnabled
                         )
+                    }
+                    if (settings.autoHintEnabled != wasAutoHint) {
+                        if (settings.autoHintEnabled) {
+                            resetIdleHintTimer()
+                        } else {
+                            cancelIdleHintTimer()
+                        }
                     }
                 }
             }
@@ -161,12 +182,41 @@ class GameViewModel(
         }
     }
 
+    private fun cancelIdleHintTimer() {
+        idleHintJob?.cancel()
+        idleHintJob = null
+    }
+
+    private fun resetIdleHintTimer() {
+        cancelIdleHintTimer()
+        if (!_uiState.value.autoHintEnabled ||
+            _uiState.value.isGameWon ||
+            _uiState.value.isAutoCompleting ||
+            _uiState.value.isSettingsOpen ||
+            _uiState.value.isHintActive
+        ) {
+            return
+        }
+        idleHintJob = scope.launch(timerDispatcher) {
+            delay(idleHintDelayMs)
+            if (isActive &&
+                _uiState.value.autoHintEnabled &&
+                !_uiState.value.isGameWon &&
+                !_uiState.value.isAutoCompleting &&
+                !_uiState.value.isSettingsOpen
+            ) {
+                requestHint()
+            }
+        }
+    }
+
     /**
      * Opens the modal settings bottom sheet and pauses elapsed timer.
      */
     fun openSettings() {
         _uiState.update { it.copy(isSettingsOpen = true) }
         pauseTimer()
+        cancelIdleHintTimer()
     }
 
     /**
@@ -176,6 +226,9 @@ class GameViewModel(
         _uiState.update { it.copy(isSettingsOpen = false) }
         if (autoStartTimer && !_uiState.value.isGameWon) {
             startTimer()
+        }
+        if (_uiState.value.autoHintEnabled && !_uiState.value.isGameWon) {
+            resetIdleHintTimer()
         }
     }
 
@@ -244,6 +297,11 @@ class GameViewModel(
      */
     fun setAutoHintEnabled(enabled: Boolean) {
         _uiState.update { it.copy(autoHintEnabled = enabled) }
+        if (enabled) {
+            resetIdleHintTimer()
+        } else {
+            cancelIdleHintTimer()
+        }
         settingsRepository?.let { repo ->
             scope.launch { repo.setAutoHintEnabled(enabled) }
         }
@@ -256,6 +314,7 @@ class GameViewModel(
         if (settingsRepository != null) {
             scope.launch { settingsRepository.resetToDefaults() }
         } else {
+            cancelIdleHintTimer()
             _uiState.update {
                 it.copy(
                     drawMode = DrawMode.DRAW_ONE,
@@ -275,6 +334,7 @@ class GameViewModel(
      * Finds and sets a productive move hint for the current board state using [HintResolver].
      */
     fun requestHint() {
+        cancelIdleHintTimer()
         val currentBoard = _uiState.value.boardState
         val hint = HintResolver.findHint(currentBoard, _uiState.value.drawMode)
         _uiState.update { it.copy(activeHint = hint) }
@@ -285,6 +345,7 @@ class GameViewModel(
      */
     fun dismissHint() {
         _uiState.update { it.copy(activeHint = null) }
+        resetIdleHintTimer()
     }
 
     /**
@@ -297,6 +358,7 @@ class GameViewModel(
      */
     fun onCardTapped(card: Card, location: CardLocation) {
         if (autoCompleteJob?.isActive == true) return
+        resetIdleHintTimer()
         if (_uiState.value.activeHint != null) {
             dismissHint()
         }
@@ -322,6 +384,7 @@ class GameViewModel(
      */
     fun drawStockCard() {
         if (autoCompleteJob?.isActive == true) return
+        resetIdleHintTimer()
         if (_uiState.value.activeHint != null) {
             dismissHint()
         }
@@ -342,6 +405,7 @@ class GameViewModel(
      */
     fun recycleStock() {
         if (autoCompleteJob?.isActive == true) return
+        resetIdleHintTimer()
         if (_uiState.value.activeHint != null) {
             dismissHint()
         }
@@ -358,6 +422,7 @@ class GameViewModel(
      */
     fun undoMove() {
         cancelAutoComplete()
+        resetIdleHintTimer()
 
         val currentBoard = _uiState.value.boardState
         val previousBoard = undoManager.undo(currentBoard) ?: return
@@ -431,6 +496,9 @@ class GameViewModel(
         if (autoStartTimer && !isWon) {
             startTimer()
         }
+        if (_uiState.value.autoHintEnabled && !isWon) {
+            resetIdleHintTimer()
+        }
         _events.tryEmit(GameEvent.PlayDealSound)
     }
 
@@ -463,6 +531,7 @@ class GameViewModel(
         if (autoCompleteJob?.isActive == true || _uiState.value.isGameWon) return
         if (!_uiState.value.isAutoCompleteAvailable) return
 
+        cancelIdleHintTimer()
         dismissHint()
         _uiState.update { it.copy(isAutoCompleting = true) }
         autoCompleteJob = scope.launch {
@@ -506,6 +575,7 @@ class GameViewModel(
      */
     fun startAutoComplete() {
         if (_uiState.value.isGameWon) return
+        cancelIdleHintTimer()
         dismissHint()
         _uiState.update { it.copy(isAutoCompleting = true) }
     }
@@ -582,6 +652,7 @@ class GameViewModel(
     fun pauseTimer() {
         timerJob?.cancel()
         timerJob = null
+        cancelIdleHintTimer()
     }
 
     /**
@@ -589,6 +660,9 @@ class GameViewModel(
      */
     fun resumeTimer() {
         startTimer()
+        if (_uiState.value.autoHintEnabled && !_uiState.value.isGameWon) {
+            resetIdleHintTimer()
+        }
     }
 
     /**
@@ -597,12 +671,14 @@ class GameViewModel(
     fun stopTimer() {
         timerJob?.cancel()
         timerJob = null
+        cancelIdleHintTimer()
     }
 
     override fun onCleared() {
         super.onCleared()
         stopTimer()
         cancelAutoComplete()
+        cancelIdleHintTimer()
     }
 
     /**
@@ -614,6 +690,7 @@ class GameViewModel(
      */
     fun onCardDropped(cards: List<Card>, source: CardLocation, target: CardLocation) {
         if (autoCompleteJob?.isActive == true) return
+        resetIdleHintTimer()
         if (_uiState.value.activeHint != null) {
             dismissHint()
         }
@@ -642,10 +719,12 @@ class GameViewModel(
         }
         if (isWon) {
             stopTimer()
+            cancelIdleHintTimer()
             _events.tryEmit(GameEvent.TriggerWinCelebration)
         } else {
             val event = if (isDrop) GameEvent.PlayHapticSnap else GameEvent.PlayHapticTick
             _events.tryEmit(event)
+            resetIdleHintTimer()
         }
     }
 
@@ -671,10 +750,15 @@ class GameViewModel(
         if (autoStartTimer && !isWon) {
             startTimer()
         }
+        if (_uiState.value.autoHintEnabled && !isWon) {
+            resetIdleHintTimer()
+        }
         _events.tryEmit(GameEvent.PlayDealSound)
     }
 
     companion object {
+        const val DEFAULT_IDLE_HINT_DELAY_MS: Long = 10_000L
+
         fun provideFactory(
             context: Context,
             dealGenerator: DealGenerator? = null
