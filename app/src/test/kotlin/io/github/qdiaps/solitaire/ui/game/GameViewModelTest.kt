@@ -13,6 +13,8 @@ import io.github.qdiaps.solitaire.domain.solver.SolvabilityResult
 import io.github.qdiaps.solitaire.data.model.GameSettings
 import io.github.qdiaps.solitaire.data.model.GameStats
 import io.github.qdiaps.solitaire.data.repository.SettingsRepository
+import io.github.qdiaps.solitaire.data.model.SavedGameSession
+import io.github.qdiaps.solitaire.data.repository.GamePersistenceRepository
 import io.github.qdiaps.solitaire.data.repository.StatsRepository
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
 import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
@@ -187,7 +189,7 @@ class GameViewModelTest {
     inner class TimerLifecycleTests {
 
         @Test
-        @DisplayName("Timer increments elapsedTimeSeconds every second")
+        @DisplayName("Timer does not start until first move, then increments elapsedTimeSeconds every second")
         fun `timer increments elapsedTimeSeconds every second`() = runTest(testDispatcher) {
             val viewModel = GameViewModel(
                 initialBoardState = createCustomBoard(),
@@ -198,6 +200,15 @@ class GameViewModelTest {
             )
 
             assertEquals(0L, viewModel.uiState.value.elapsedTimeSeconds)
+            assertFalse(viewModel.isTimerRunning)
+
+            testScheduler.advanceTimeBy(2000)
+            testScheduler.runCurrent()
+            assertEquals(0L, viewModel.uiState.value.elapsedTimeSeconds)
+
+            // Make first move
+            viewModel.drawStockCard()
+            testScheduler.runCurrent()
             assertTrue(viewModel.isTimerRunning)
 
             testScheduler.advanceTimeBy(1000)
@@ -221,6 +232,9 @@ class GameViewModelTest {
                 timerDelayMs = 1000L,
                 autoStartTimer = true
             )
+            viewModel.drawStockCard()
+            testScheduler.runCurrent()
+            assertTrue(viewModel.isTimerRunning)
 
             testScheduler.advanceTimeBy(2000)
             testScheduler.runCurrent()
@@ -280,11 +294,12 @@ class GameViewModelTest {
                 autoStartTimer = true
             )
 
+            viewModel.drawStockCard()
             testScheduler.advanceTimeBy(3000)
             testScheduler.runCurrent()
             assertEquals(3L, viewModel.uiState.value.elapsedTimeSeconds)
             assertEquals(1L, viewModel.uiState.value.gameSessionId)
-            assertEquals("deal_1", viewModel.uiState.value.boardState.stock.first().id)
+            assertEquals("deal_1", viewModel.uiState.value.boardState.waste.first().id)
 
             viewModel.onIntent(GameIntent.StartNewGame)
             testScheduler.runCurrent()
@@ -292,7 +307,9 @@ class GameViewModelTest {
             assertEquals("deal_2", viewModel.uiState.value.boardState.stock.first().id)
             assertEquals(2L, viewModel.uiState.value.gameSessionId)
             assertEquals(0L, viewModel.uiState.value.elapsedTimeSeconds)
+            assertFalse(viewModel.isTimerRunning)
 
+            viewModel.drawStockCard()
             testScheduler.advanceTimeBy(1000)
             testScheduler.runCurrent()
             assertEquals(1L, viewModel.uiState.value.elapsedTimeSeconds)
@@ -312,6 +329,7 @@ class GameViewModelTest {
                 autoStartTimer = true
             )
 
+            viewModel.drawStockCard()
             testScheduler.advanceTimeBy(5000)
             testScheduler.runCurrent()
             assertEquals(5L, viewModel.uiState.value.elapsedTimeSeconds)
@@ -323,7 +341,7 @@ class GameViewModelTest {
             assertEquals(initialBoard, viewModel.uiState.value.boardState)
             assertEquals(2L, viewModel.uiState.value.gameSessionId)
             assertEquals(0L, viewModel.uiState.value.elapsedTimeSeconds)
-            assertTrue(viewModel.isTimerRunning)
+            assertFalse(viewModel.isTimerRunning)
 
             viewModel.stopTimer()
         }
@@ -1583,6 +1601,8 @@ class GameViewModelTest {
                 autoStartTimer = true
             )
 
+            viewModel.drawStockCard()
+            testScheduler.runCurrent()
             assertTrue(viewModel.isTimerRunning)
             testScheduler.advanceTimeBy(2000)
             testScheduler.runCurrent()
@@ -1785,10 +1805,10 @@ class GameViewModelTest {
     inner class StatsIntegrationTests {
 
         @Test
-        @DisplayName("recordGameStarted is invoked on ViewModel init when not won")
-        fun `recordGameStarted is invoked on ViewModel init when not won`() = runTest(testDispatcher) {
+        @DisplayName("recordGameStarted is NOT invoked on ViewModel init before first move, invoked on first move")
+        fun `recordGameStarted is NOT invoked on ViewModel init before first move, invoked on first move`() = runTest(testDispatcher) {
             val fakeStats = FakeStatsRepository()
-            GameViewModel(
+            val viewModel = GameViewModel(
                 initialBoardState = createCustomBoard(),
                 coroutineScope = backgroundScope,
                 timerDispatcher = testDispatcher,
@@ -1796,7 +1816,10 @@ class GameViewModelTest {
                 statsRepository = fakeStats
             )
             testScheduler.runCurrent()
+            assertEquals(0, fakeStats.gameStartedCount)
 
+            viewModel.drawStockCard()
+            testScheduler.runCurrent()
             assertEquals(1, fakeStats.gameStartedCount)
         }
 
@@ -1846,7 +1869,6 @@ class GameViewModelTest {
                 statsRepository = fakeStats
             )
             testScheduler.runCurrent()
-            assertEquals(1, fakeStats.gameStartedCount)
 
             viewModel.onIntent(GameIntent.OnCardTapped(kingOfHearts, CardLocation.Tableau(0, 0)))
             testScheduler.runCurrent()
@@ -1858,8 +1880,8 @@ class GameViewModelTest {
         }
 
         @Test
-        @DisplayName("restartGame triggers recordGameStarted")
-        fun `restartGame triggers recordGameStarted`() = runTest(testDispatcher) {
+        @DisplayName("restartGame resets session and triggers recordGameStarted on first move")
+        fun `restartGame resets session and triggers recordGameStarted on first move`() = runTest(testDispatcher) {
             val fakeStats = FakeStatsRepository()
             val viewModel = GameViewModel(
                 initialBoardState = createCustomBoard(),
@@ -1869,9 +1891,17 @@ class GameViewModelTest {
                 statsRepository = fakeStats
             )
             testScheduler.runCurrent()
+            assertEquals(0, fakeStats.gameStartedCount)
+
+            viewModel.drawStockCard()
+            testScheduler.runCurrent()
             assertEquals(1, fakeStats.gameStartedCount)
 
             viewModel.onIntent(GameIntent.RestartGame)
+            testScheduler.runCurrent()
+            assertEquals(1, fakeStats.gameStartedCount)
+
+            viewModel.drawStockCard()
             testScheduler.runCurrent()
             assertEquals(2, fakeStats.gameStartedCount)
         }
@@ -1889,6 +1919,8 @@ class GameViewModelTest {
                 statsRepository = fakeStats
             )
 
+            viewModel.drawStockCard()
+            testScheduler.runCurrent()
             assertTrue(viewModel.isTimerRunning)
             testScheduler.advanceTimeBy(2000)
             testScheduler.runCurrent()
@@ -1967,6 +1999,8 @@ class GameViewModelTest {
                 statsRepository = fakeStats
             )
 
+            viewModel.drawStockCard()
+            testScheduler.runCurrent()
             assertTrue(viewModel.isTimerRunning)
             testScheduler.advanceTimeBy(2000)
             testScheduler.runCurrent()
@@ -1997,6 +2031,214 @@ class GameViewModelTest {
             testScheduler.advanceTimeBy(2000)
             testScheduler.runCurrent()
             assertEquals(4L, viewModel.uiState.value.elapsedTimeSeconds)
+        }
+    }
+
+    private class FakeGamePersistenceRepository(
+        initialSession: SavedGameSession? = null
+    ) : GamePersistenceRepository {
+        private val _flow = MutableStateFlow<SavedGameSession?>(initialSession)
+        override val savedSessionFlow: kotlinx.coroutines.flow.Flow<SavedGameSession?> = _flow.asStateFlow()
+
+        var savedCount: Int = 0
+        var clearCount: Int = 0
+        var lastSavedSession: SavedGameSession? = initialSession
+
+        override suspend fun getSavedSession(): SavedGameSession? = _flow.value
+
+        override suspend fun saveGameSession(session: SavedGameSession) {
+            savedCount++
+            lastSavedSession = session
+            _flow.value = session
+        }
+
+        override suspend fun clearSavedSession() {
+            clearCount++
+            lastSavedSession = null
+            _flow.value = null
+        }
+    }
+
+    @Nested
+    @DisplayName("Persistence Integration Tests")
+    inner class PersistenceIntegrationTests {
+
+        @Test
+        @DisplayName("Restores active saved session on startup if one exists without incrementing games played")
+        fun `Restores active saved session on startup if one exists without incrementing games played`() = runTest(testDispatcher) {
+            val customCard = Card(Suit.SPADES, Rank.ACE, isFaceUp = true, id = "s_ace_persisted")
+            val priorBoard = createCustomBoard()
+            val currentBoard = BoardState(
+                waste = listOf(customCard),
+                score = 300,
+                movesCount = 42
+            )
+            val savedSession = SavedGameSession(
+                boardState = currentBoard,
+                elapsedTimeSeconds = 245L,
+                drawMode = DrawMode.DRAW_THREE,
+                undoHistory = listOf(priorBoard),
+                savedAtTimestamp = 1727376000000L
+            )
+
+            val fakePersistence = FakeGamePersistenceRepository(savedSession)
+            val fakeStats = FakeStatsRepository()
+
+            val viewModel = GameViewModel(
+                initialBoardState = null,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                timerDelayMs = 1000L,
+                autoStartTimer = false,
+                persistenceRepository = fakePersistence,
+                statsRepository = fakeStats
+            )
+            testScheduler.runCurrent()
+
+            assertEquals(currentBoard, viewModel.uiState.value.boardState)
+            assertEquals(245L, viewModel.uiState.value.elapsedTimeSeconds)
+            assertEquals(DrawMode.DRAW_THREE, viewModel.uiState.value.drawMode)
+            assertTrue(viewModel.uiState.value.canUndo)
+            assertEquals(0, fakeStats.gameStartedCount)
+
+            viewModel.onIntent(GameIntent.UndoMove)
+            testScheduler.runCurrent()
+            assertEquals(priorBoard, viewModel.uiState.value.boardState)
+        }
+
+        @Test
+        @DisplayName("Deals fresh game and records game started on first move when no saved session exists")
+        fun `Deals fresh game and records game started on first move when no saved session exists`() = runTest(testDispatcher) {
+            val fakePersistence = FakeGamePersistenceRepository(initialSession = null)
+            val fakeStats = FakeStatsRepository()
+
+            val viewModel = GameViewModel(
+                initialBoardState = null,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                persistenceRepository = fakePersistence,
+                statsRepository = fakeStats
+            )
+            testScheduler.runCurrent()
+
+            assertEquals(0, fakeStats.gameStartedCount)
+            assertEquals(0L, viewModel.uiState.value.elapsedTimeSeconds)
+
+            viewModel.drawStockCard()
+            testScheduler.runCurrent()
+            assertEquals(1, fakeStats.gameStartedCount)
+        }
+
+        @Test
+        @DisplayName("saveCurrentSession does not persist when no moves have been made")
+        fun `saveCurrentSession does not persist when no moves have been made`() = runTest(testDispatcher) {
+            val initialBoard = createCustomBoard()
+            val fakePersistence = FakeGamePersistenceRepository(initialSession = null)
+
+            val viewModel = GameViewModel(
+                initialBoardState = initialBoard,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                timerDelayMs = 1000L,
+                autoStartTimer = true,
+                persistenceRepository = fakePersistence
+            )
+
+            testScheduler.runCurrent()
+            assertFalse(viewModel.isTimerRunning)
+            assertFalse(viewModel.hasMoved)
+
+            viewModel.onIntent(GameIntent.SaveSession)
+            testScheduler.runCurrent()
+
+            assertEquals(0, fakePersistence.savedCount)
+            assertNull(fakePersistence.lastSavedSession)
+        }
+
+        @Test
+        @DisplayName("saveCurrentSession persists snapshot of active session with elapsed time and undo stack")
+        fun `saveCurrentSession persists snapshot of active session with elapsed time and undo stack`() = runTest(testDispatcher) {
+            val initialBoard = createCustomBoard()
+            val fakePersistence = FakeGamePersistenceRepository(initialSession = null)
+
+            val viewModel = GameViewModel(
+                initialBoardState = initialBoard,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                timerDelayMs = 1000L,
+                autoStartTimer = true,
+                persistenceRepository = fakePersistence
+            )
+
+            viewModel.drawStockCard()
+            testScheduler.runCurrent()
+            assertTrue(viewModel.isTimerRunning)
+            assertEquals(1, fakePersistence.savedCount)
+
+            testScheduler.advanceTimeBy(3000)
+            testScheduler.runCurrent()
+            assertEquals(3L, viewModel.uiState.value.elapsedTimeSeconds)
+
+            viewModel.onIntent(GameIntent.SaveSession)
+            testScheduler.runCurrent()
+
+            assertEquals(2, fakePersistence.savedCount)
+            val saved = fakePersistence.lastSavedSession
+            assertEquals(viewModel.uiState.value.boardState, saved?.boardState)
+            assertEquals(listOf(initialBoard), saved?.undoHistory)
+            assertEquals(3L, saved?.elapsedTimeSeconds)
+            assertEquals(DrawMode.DRAW_ONE, saved?.drawMode)
+        }
+
+        @Test
+        @DisplayName("saveCurrentSession does not persist a game that is already won")
+        fun `saveCurrentSession does not persist a game that is already won`() = runTest(testDispatcher) {
+            val wonBoard = BoardState(
+                foundations = Suit.entries.map { suit ->
+                    Rank.entries.map { rank -> Card(suit, rank, isFaceUp = true, id = "${suit.name}_${rank.name}") }
+                }
+            )
+            val fakePersistence = FakeGamePersistenceRepository(initialSession = null)
+
+            val viewModel = GameViewModel(
+                initialBoardState = wonBoard,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                persistenceRepository = fakePersistence
+            )
+            testScheduler.runCurrent()
+
+            viewModel.saveCurrentSession()
+            testScheduler.runCurrent()
+
+            assertEquals(0, fakePersistence.savedCount)
+            assertNull(fakePersistence.lastSavedSession)
+        }
+
+        @Test
+        @DisplayName("Starting a new game or restarting clears saved session")
+        fun `Starting a new game or restarting clears saved session`() = runTest(testDispatcher) {
+            val activeSession = SavedGameSession(boardState = createCustomBoard(), elapsedTimeSeconds = 50L)
+            val fakePersistence = FakeGamePersistenceRepository(activeSession)
+
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                persistenceRepository = fakePersistence
+            )
+            testScheduler.runCurrent()
+
+            viewModel.onIntent(GameIntent.StartNewGame)
+            testScheduler.runCurrent()
+            assertEquals(1, fakePersistence.clearCount)
+
+            viewModel.onIntent(GameIntent.RestartGame)
+            testScheduler.runCurrent()
+            assertEquals(2, fakePersistence.clearCount)
         }
     }
 }

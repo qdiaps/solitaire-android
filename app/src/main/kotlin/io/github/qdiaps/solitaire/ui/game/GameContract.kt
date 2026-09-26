@@ -244,6 +244,11 @@ sealed interface GameIntent {
      * Reset all lifetime gameplay statistics and records.
      */
     data object ResetStats : GameIntent
+
+    /**
+     * Persists active gameplay session snapshot to persistent storage (e.g. on lifecycle pause).
+     */
+    data object SaveSession : GameIntent
 }
 
 /**

@@ -16,12 +16,21 @@
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-5.10` (`StatsDialog`). Ready to proceed to `T-5.11` (`GamePersistenceRepository`).
+- **Current Focus:** Completed `T-5.11` (`GamePersistenceRepository`). Ready to proceed to `T-5.12` (`Phase 5 Review, State Synchronization & Comprehensive Polish`).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-26 (T-5.11: Game Session Persistence & Lifecycle Restoration):**
+  - Implemented `@Serializable` data model `SavedGameSession` in `io.github.qdiaps.solitaire.data.model` capturing `boardState`, `elapsedTimeSeconds`, `drawMode`, `undoHistory`, `savedAtTimestamp`, and `hasMoved`.
+  - Implemented `GamePersistenceRepository` interface and `DataStoreGamePersistenceRepository` in `io.github.qdiaps.solitaire.data.repository` utilizing Jetpack DataStore Preferences and JSON serialization with error resilience.
+  - Connected background session persistence to `GameViewModel`: autosaves on every board move, on undo, and on `ON_PAUSE` lifecycle events in `MainActivity` and `SolitaireGameScreen` with non-cancellable `persistenceScope`.
+  - Implemented session restoration on app startup with proper `initialDealState` reconstruction from `savedSession.undoHistory.firstOrNull() ?: boardState`.
+  - Enforced first-move game activation rule: stopwatch timer remains strictly at `00:00` and game is not counted in lifetime statistics until the player makes their first card move (`hasMoved = true`).
+  - Added session clearing on victory, restart, and fresh deal generation.
+  - Added comprehensive test suites: `GamePersistenceRepositoryTest` (9 tests) and `GameViewModelTest` (`PersistenceIntegrationTests` and timer lifecycle integration).
+  - Total test suite: 555 tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
 - **2026-09-26 (T-5.10: Statistics Dialog UI):**
   - Implemented modal `StatsDialog.kt` in `io.github.qdiaps.solitaire.ui.game.components` displaying formatted gameplay metrics:
     - Overview: Played, Won, Win Rate Percentage.

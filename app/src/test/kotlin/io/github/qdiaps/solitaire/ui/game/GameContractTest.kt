@@ -149,10 +149,11 @@ class GameContractTest {
                 GameIntent.ResetSettingsToDefaults,
                 GameIntent.OpenStats,
                 GameIntent.CloseStats,
-                GameIntent.ResetStats
+                GameIntent.ResetStats,
+                GameIntent.SaveSession
             )
 
-            assertEquals(30, intents.size)
+            assertEquals(31, intents.size)
 
             for (intent in intents) {
                 val label = when (intent) {
@@ -186,6 +187,7 @@ class GameContractTest {
                     is GameIntent.OpenStats -> "OpenStats"
                     is GameIntent.CloseStats -> "CloseStats"
                     is GameIntent.ResetStats -> "ResetStats"
+                    is GameIntent.SaveSession -> "SaveSession"
                 }
                 assertTrue(label.isNotEmpty())
             }

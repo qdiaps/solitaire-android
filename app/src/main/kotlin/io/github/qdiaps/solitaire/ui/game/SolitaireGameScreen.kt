@@ -18,7 +18,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -622,6 +626,26 @@ fun SolitaireGameScreen(
     val uiState by viewModel.uiState.collectAsState()
     val solitaireHaptics = rememberSolitaireHaptics(enabled = uiState.hapticsEnabled)
     val solitaireAudio = rememberSolitaireAudio(enabled = uiState.soundEnabled)
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
+                    viewModel.pauseTimer()
+                    viewModel.saveCurrentSession()
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    viewModel.resumeTimer()
+                }
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     LaunchedEffect(viewModel, solitaireHaptics, solitaireAudio) {
         viewModel.events.collect { event ->

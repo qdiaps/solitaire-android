@@ -86,11 +86,12 @@
   - Wire stats dialog action in top status bar and bottom action bar.
   - *Compose Previews:* `StatsDialogPreview` with empty and populated statistics.
 
-- [ ] **T-5.11: Game Session Persistence & Lifecycle Restoration (`GamePersistenceRepository`)**
+- [x] **T-5.11: Game Session Persistence & Lifecycle Restoration (`GamePersistenceRepository`)**
   - Implement `GamePersistenceRepository` serializing active session (`BoardState`, `elapsedTimeSeconds`, `score`, `movesCount`, `drawMode`, and undo snapshots) to JSON via `kotlinx.serialization` in DataStore.
-  - Wire Android lifecycle `ON_PAUSE` in `MainActivity` / `SolitaireGameScreen` to trigger autosave.
-  - Restore active game on app startup if a saved session exists, or initialize fresh deal if none.
-  - *TDD/Unit Tests:* `GamePersistenceRepositoryTest` and `GameViewModelTest` verifying save/restore and clean state after win.
+  - Wire Android lifecycle `ON_PAUSE` in `MainActivity` / `SolitaireGameScreen` to trigger autosave, along with autosave on every board move and undo.
+  - Guard timer and game session registration so timer doesn't tick and game isn't registered in statistics until the first move is made (`hasMoved`).
+  - Restore active game on app startup if a saved session exists, or initialize fresh deal if none. Clear persisted game on win, restart, or fresh deal.
+  - *TDD/Unit Tests:* `GamePersistenceRepositoryTest` and `GameViewModelTest` verifying save/restore, lifecycle resilience, corrupted JSON fallback, and clean state after win.
 
 - [ ] **T-5.12: Phase 5 Review, State Synchronization & Comprehensive Polish**
   - Architectural review of `data/` layer, pure domain separation, and lifecycle hygiene.

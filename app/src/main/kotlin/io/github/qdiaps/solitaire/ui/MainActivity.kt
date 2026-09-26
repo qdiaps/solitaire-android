@@ -18,4 +18,15 @@ class MainActivity : ComponentActivity() {
             SolitaireGameScreen(viewModel = gameViewModel)
         }
     }
+
+    override fun onPause() {
+        super.onPause()
+        gameViewModel.pauseTimer()
+        gameViewModel.saveCurrentSession()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        gameViewModel.resumeTimer()
+    }
 }

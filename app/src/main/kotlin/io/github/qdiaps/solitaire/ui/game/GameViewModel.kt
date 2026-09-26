@@ -5,6 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.github.qdiaps.solitaire.data.local.DataStoreManager
+import io.github.qdiaps.solitaire.data.model.SavedGameSession
+import io.github.qdiaps.solitaire.data.repository.DataStoreGamePersistenceRepository
+import io.github.qdiaps.solitaire.data.repository.GamePersistenceRepository
 import io.github.qdiaps.solitaire.data.repository.DataStoreSettingsRepository
 import io.github.qdiaps.solitaire.data.repository.DataStoreStatsRepository
 import io.github.qdiaps.solitaire.data.repository.SettingsRepository
@@ -29,6 +32,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -67,15 +71,19 @@ class GameViewModel(
     private val autoCompleteDelayMs: Long = 120L,
     private val settingsRepository: SettingsRepository? = null,
     private val statsRepository: StatsRepository? = null,
+    private val persistenceRepository: GamePersistenceRepository? = null,
     private val idleHintDelayMs: Long = DEFAULT_IDLE_HINT_DELAY_MS,
     initialAutoHintEnabled: Boolean = false
 ) : ViewModel() {
 
     private val scope: CoroutineScope = coroutineScope ?: viewModelScope
+    private val persistenceScope: CoroutineScope = coroutineScope ?: CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val undoManager = UndoManager()
     private var initialDealState: BoardState = initialBoardState ?: dealProvider()
 
     private val initialIsWon = KlondikeRules.isGameWon(initialDealState)
+    var hasMoved: Boolean = (initialBoardState != null && initialBoardState.movesCount > 0)
+        private set
     private val _uiState = MutableStateFlow(
         GameUiState(
             boardState = initialDealState,
@@ -113,7 +121,7 @@ class GameViewModel(
         get() = autoCompleteJob?.isActive == true
 
     init {
-        if (autoStartTimer && !_uiState.value.isGameWon) {
+        if (hasMoved && autoStartTimer && !_uiState.value.isGameWon) {
             startTimer()
         }
         if (initialAutoHintEnabled && !_uiState.value.isGameWon) {
@@ -155,8 +163,13 @@ class GameViewModel(
             }
         }
 
-        if (statsRepository != null && !initialIsWon) {
-            scope.launch { statsRepository.recordGameStarted() }
+        if (persistenceRepository != null && initialBoardState == null) {
+            scope.launch {
+                val savedSession = persistenceRepository.getSavedSession()
+                if (savedSession != null && !KlondikeRules.isGameWon(savedSession.boardState)) {
+                    restoreGameSession(savedSession)
+                }
+            }
         }
     }
 
@@ -183,6 +196,7 @@ class GameViewModel(
             is GameIntent.StartAutoComplete -> startAutoComplete()
             is GameIntent.FinishAutoComplete -> finishAutoComplete()
             is GameIntent.ApplyAutoCompleteMove -> applyAutoCompleteMove(intent.move)
+            is GameIntent.SaveSession -> saveCurrentSession()
             is GameIntent.SkipWinAnimation -> { /* Handled in T-6 */ }
             is GameIntent.OpenSettings -> openSettings()
             is GameIntent.CloseSettings -> closeSettings()
@@ -244,7 +258,7 @@ class GameViewModel(
      */
     fun closeSettings() {
         _uiState.update { it.copy(isSettingsOpen = false) }
-        if (autoStartTimer && !_uiState.value.isGameWon && !_uiState.value.isStatsDialogOpen) {
+        if (hasMoved && autoStartTimer && !_uiState.value.isGameWon && !_uiState.value.isStatsDialogOpen) {
             startTimer()
         }
         if (_uiState.value.autoHintEnabled && !_uiState.value.isGameWon && !_uiState.value.isStatsDialogOpen) {
@@ -266,7 +280,7 @@ class GameViewModel(
      */
     fun closeStats() {
         _uiState.update { it.copy(isStatsDialogOpen = false) }
-        if (autoStartTimer && !_uiState.value.isGameWon && !_uiState.value.isSettingsOpen) {
+        if (hasMoved && autoStartTimer && !_uiState.value.isGameWon && !_uiState.value.isSettingsOpen) {
             startTimer()
         }
         if (_uiState.value.autoHintEnabled && !_uiState.value.isGameWon && !_uiState.value.isSettingsOpen) {
@@ -282,6 +296,52 @@ class GameViewModel(
             scope.launch {
                 repo.resetStats()
             }
+        }
+    }
+
+    /**
+     * Serializes and persists current board state, undo history, elapsed time, and metadata.
+     */
+    fun saveCurrentSession() {
+        val state = _uiState.value
+        if (state.isGameWon || !hasMoved) return
+        val repository = persistenceRepository ?: return
+        val session = SavedGameSession(
+            boardState = state.boardState,
+            elapsedTimeSeconds = state.elapsedTimeSeconds,
+            drawMode = state.drawMode,
+            undoHistory = undoManager.getUndoHistory(),
+            savedAtTimestamp = System.currentTimeMillis(),
+            hasMoved = hasMoved
+        )
+        persistenceScope.launch {
+            repository.saveGameSession(session)
+        }
+    }
+
+    private fun restoreGameSession(savedSession: SavedGameSession) {
+        val board = savedSession.boardState
+        val isWon = KlondikeRules.isGameWon(board)
+        initialDealState = savedSession.undoHistory.firstOrNull() ?: board
+        undoManager.restoreHistory(savedSession.undoHistory)
+        hasMoved = savedSession.hasMoved
+        _uiState.update { current ->
+            current.copy(
+                boardState = board,
+                elapsedTimeSeconds = savedSession.elapsedTimeSeconds,
+                drawMode = savedSession.drawMode,
+                isGameWon = isWon,
+                isDeadlocked = false,
+                canUndo = undoManager.canUndo,
+                isAutoCompleteAvailable = if (isWon) false else AutoCompleteResolver.isAutoCompleteReady(board),
+                gameSessionId = current.gameSessionId + 1L
+            )
+        }
+        if (hasMoved && autoStartTimer && !isWon && !_uiState.value.isSettingsOpen && !_uiState.value.isStatsDialogOpen) {
+            startTimer()
+        }
+        if (_uiState.value.autoHintEnabled && !isWon && !_uiState.value.isSettingsOpen && !_uiState.value.isStatsDialogOpen) {
+            resetIdleHintTimer()
         }
     }
 
@@ -494,7 +554,7 @@ class GameViewModel(
                 activeHint = null
             )
         }
-        if (wasWon && !isWonNow && autoStartTimer) {
+        if (wasWon && !isWonNow && autoStartTimer && hasMoved) {
             startTimer()
         }
         _events.tryEmit(GameEvent.PlayHapticTick)
@@ -528,8 +588,13 @@ class GameViewModel(
      * Restarts the current game layout from its initial dealt state, resetting moves, score, and timer.
      */
     fun restartGame() {
+        if (persistenceRepository != null) {
+            persistenceScope.launch { persistenceRepository.clearSavedSession() }
+        }
         cancelAutoComplete()
         stopTimer()
+        cancelIdleHintTimer()
+        hasMoved = false
         undoManager.clear()
         val isWon = KlondikeRules.isGameWon(initialDealState)
         val isAutoComplete = if (isWon) false else AutoCompleteResolver.isAutoCompleteReady(initialDealState)
@@ -545,15 +610,6 @@ class GameViewModel(
                 isAutoCompleteAvailable = isAutoComplete,
                 gameSessionId = current.gameSessionId + 1L
             )
-        }
-        if (autoStartTimer && !isWon) {
-            startTimer()
-        }
-        if (_uiState.value.autoHintEnabled && !isWon) {
-            resetIdleHintTimer()
-        }
-        if (statsRepository != null && !isWon) {
-            scope.launch { statsRepository.recordGameStarted() }
         }
         _events.tryEmit(GameEvent.PlayDealSound)
     }
@@ -716,8 +772,10 @@ class GameViewModel(
      * Resumes the stopwatch timer if paused.
      */
     fun resumeTimer() {
-        startTimer()
-        if (_uiState.value.autoHintEnabled && !_uiState.value.isGameWon) {
+        if (hasMoved && autoStartTimer && !_uiState.value.isGameWon && !_uiState.value.isSettingsOpen && !_uiState.value.isStatsDialogOpen) {
+            startTimer()
+        }
+        if (_uiState.value.autoHintEnabled && !_uiState.value.isGameWon && !_uiState.value.isSettingsOpen && !_uiState.value.isStatsDialogOpen) {
             resetIdleHintTimer()
         }
     }
@@ -761,6 +819,18 @@ class GameViewModel(
     }
 
     private fun updateBoardStateAfterMove(nextBoard: BoardState, isDrop: Boolean = false) {
+        if (!hasMoved) {
+            hasMoved = true
+            if (autoStartTimer && !KlondikeRules.isGameWon(nextBoard) && !_uiState.value.isSettingsOpen && !_uiState.value.isStatsDialogOpen) {
+                startTimer()
+            }
+            if (_uiState.value.autoHintEnabled && !KlondikeRules.isGameWon(nextBoard) && !_uiState.value.isSettingsOpen && !_uiState.value.isStatsDialogOpen) {
+                resetIdleHintTimer()
+            }
+            if (statsRepository != null && !KlondikeRules.isGameWon(nextBoard)) {
+                scope.launch { statsRepository.recordGameStarted() }
+            }
+        }
         val isWon = KlondikeRules.isGameWon(nextBoard)
         val isDeadlocked = if (isWon) false else DeadlockDetector.detect(nextBoard, _uiState.value.drawMode).isDeadlocked
         val isAutoComplete = if (isWon) false else AutoCompleteResolver.isAutoCompleteReady(nextBoard)
@@ -783,11 +853,18 @@ class GameViewModel(
             val event = if (isDrop) GameEvent.PlayHapticSnap else GameEvent.PlayHapticTick
             _events.tryEmit(event)
             resetIdleHintTimer()
+            saveCurrentSession()
         }
     }
 
     private fun applyNewDeal(board: BoardState) {
+        if (persistenceRepository != null) {
+            persistenceScope.launch { persistenceRepository.clearSavedSession() }
+        }
         cancelAutoComplete()
+        stopTimer()
+        cancelIdleHintTimer()
+        hasMoved = false
         initialDealState = board
         undoManager.clear()
         val isWon = KlondikeRules.isGameWon(board)
@@ -805,15 +882,6 @@ class GameViewModel(
                 gameSessionId = current.gameSessionId + 1L
             )
         }
-        if (autoStartTimer && !isWon) {
-            startTimer()
-        }
-        if (_uiState.value.autoHintEnabled && !isWon) {
-            resetIdleHintTimer()
-        }
-        if (statsRepository != null && !isWon) {
-            scope.launch { statsRepository.recordGameStarted() }
-        }
         _events.tryEmit(GameEvent.PlayDealSound)
     }
 
@@ -829,15 +897,20 @@ class GameViewModel(
                 val dataStoreManager = DataStoreManager.fromContext(context)
                 val settingsRepo = DataStoreSettingsRepository(dataStoreManager)
                 val statsRepo = DataStoreStatsRepository(dataStoreManager)
+                val persistenceRepo = DataStoreGamePersistenceRepository(dataStoreManager)
                 return GameViewModel(
                     dealGenerator = dealGenerator,
                     settingsRepository = settingsRepo,
-                    statsRepository = statsRepo
+                    statsRepository = statsRepo,
+                    persistenceRepository = persistenceRepo
                 ) as T
             }
         }
     }
     private fun recordVictoryInStats() {
+        if (persistenceRepository != null) {
+            persistenceScope.launch { persistenceRepository.clearSavedSession() }
+        }
         statsRepository?.let { repo ->
             val currentState = _uiState.value
             scope.launch {
