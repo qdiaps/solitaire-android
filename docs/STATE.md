@@ -16,12 +16,21 @@
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-5.5` (Pure Domain Auto-Complete Resolver). Ready to proceed to `T-5.6` (Auto-Complete Cascade Execution in ViewModel & UI).
+- **Current Focus:** Completed `T-5.6` (Auto-Complete Cascade Execution in ViewModel & UI). Ready to proceed to `T-5.7` (Victory Celebration Overlay & Cascading Card Physics / Confetti).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-26 (T-5.6: Auto-Complete Cascade Execution in ViewModel & UI):**
+  - Updated `GameUiState.isAutoCompleteAvailable` to reactively flag when auto-complete conditions are met (`AutoCompleteResolver.isAutoCompleteReady(state)`).
+  - Implemented `GameIntent.AutoComplete` coroutine loop in `GameViewModel`: sequentially applies foundation promotions with 120ms delay (configurable via `autoCompleteDelayMs`), emitting `GameEvent.PlayHapticSnap` per step, updating moves/score, and emitting `GameEvent.TriggerWinCelebration` upon victory.
+  - Guarded user interactions (`onCardTapped`, `drawStockCard`, `recycleStock`, `onCardDropped`) by ignoring user input while cascade job is active.
+  - Automatically cancels auto-complete loop on user interrupt actions (`undoMove`, `startNewGame`, `restartGame`, `onCleared`).
+  - Implemented `AutoCompleteBannerView.kt` in `io.github.qdiaps.solitaire.ui.game.components` with animated slide/fade entry, gold border styling, and vector fast-forward chevrons.
+  - Integrated auto-complete banner into `SolitaireGameScreen` layout right above `BottomActionBarView`, delegating clicks to `GameIntent.AutoComplete`.
+  - Added unit test suite in `GameViewModelTest` and end-to-end wiring tests in `SolitaireGameScreenTest` verifying cascade loop execution, state updates, cancellation on restart, and win event trigger.
+  - Full suite verified: 478 unit tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
 - **2026-09-26 (T-5.5: Pure Domain Auto-Complete Resolver):**
   - Implemented pure Kotlin `AutoCompleteResolver` (`io.github.qdiaps.solitaire.domain.rules`) detecting when all tableau columns contain zero face-down cards, stock is exhausted, and all remaining cards across tableau and waste can be safely cascaded to foundations without deadlock.
   - Implemented `AutoCompleteMove` model (`card`, `from`, `to`, `resultingState`, with aliases `source` and `destination`).

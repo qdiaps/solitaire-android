@@ -1085,4 +1085,177 @@ class GameViewModelTest {
             assertFalse(viewModel.uiState.value.isHintActive)
         }
     }
+
+    private fun createAutoCompleteReadyBoard(): BoardState {
+        val foundations = Suit.entries.map { suit ->
+            Rank.entries.filter { it != Rank.KING }.map { rank -> Card(suit, rank, isFaceUp = true) }
+        }
+        val tableau = List(7) { col ->
+            if (col < 4) {
+                listOf(Card(Suit.entries[col], Rank.KING, isFaceUp = true))
+            } else {
+                emptyList()
+            }
+        }
+        return BoardState(
+            stock = emptyList(),
+            waste = emptyList(),
+            tableau = tableau,
+            foundations = foundations
+        )
+    }
+
+    @Nested
+    @DisplayName("Auto-Complete Intents")
+    inner class AutoCompleteIntents {
+
+        @Test
+        @DisplayName("isAutoCompleteAvailable is true on initial state when board meets criteria")
+        fun `isAutoCompleteAvailable is true on initial state when board meets criteria`() = runTest(testDispatcher) {
+            val readyBoard = createAutoCompleteReadyBoard()
+            val viewModel = GameViewModel(
+                initialBoardState = readyBoard,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            assertTrue(viewModel.uiState.value.isAutoCompleteAvailable)
+            assertFalse(viewModel.uiState.value.isGameWon)
+        }
+
+        @Test
+        @DisplayName("isAutoCompleteAvailable updates to true after uncovering last face-down card")
+        fun `isAutoCompleteAvailable updates to true after uncovering last face-down card`() = runTest(testDispatcher) {
+            val aceHearts = Card(Suit.HEARTS, Rank.ACE, isFaceUp = true, id = "ace_hearts")
+            val hiddenCard = Card(Suit.SPADES, Rank.KING, isFaceUp = false, id = "hidden_king")
+            val foundations = Suit.entries.map { suit ->
+                if (suit == Suit.HEARTS) {
+                    Rank.entries.filter { it != Rank.ACE }.map { Card(suit, it, isFaceUp = true) }
+                } else {
+                    Rank.entries.map { Card(suit, it, isFaceUp = true) }
+                }
+            }
+            val board = BoardState(
+                stock = emptyList(),
+                waste = emptyList(),
+                tableau = List(7) { col ->
+                    when (col) {
+                        0 -> listOf(aceHearts)
+                        1 -> listOf(hiddenCard)
+                        else -> emptyList()
+                    }
+                },
+                foundations = foundations
+            )
+
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            assertFalse(viewModel.uiState.value.isAutoCompleteAvailable)
+
+            // Move ace to foundation - this will not flip the hidden card yet
+            viewModel.onIntent(GameIntent.OnCardTapped(aceHearts, CardLocation.Tableau(0, 0)))
+            assertFalse(viewModel.uiState.value.isAutoCompleteAvailable)
+        }
+
+        @Test
+        @DisplayName("AutoComplete intent executes cascade loop to victory")
+        fun `AutoComplete intent executes cascade loop to victory`() = runTest(testDispatcher) {
+            val readyBoard = createAutoCompleteReadyBoard()
+            val viewModel = GameViewModel(
+                initialBoardState = readyBoard,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                timerDelayMs = 1000L,
+                autoStartTimer = true,
+                autoCompleteDelayMs = 100L
+            )
+
+            var celebrationEmitted = false
+            val hapticSnaps = mutableListOf<GameEvent>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.events.collect { event ->
+                    if (event is GameEvent.TriggerWinCelebration) {
+                        celebrationEmitted = true
+                    } else if (event is GameEvent.PlayHapticSnap) {
+                        hapticSnaps.add(event)
+                    }
+                }
+            }
+
+            assertTrue(viewModel.uiState.value.isAutoCompleteAvailable)
+            viewModel.onIntent(GameIntent.AutoComplete)
+
+            // Advance through the 4 steps (4 * 100ms)
+            testScheduler.advanceTimeBy(500)
+            testScheduler.runCurrent()
+
+            val finalState = viewModel.uiState.value
+            assertTrue(finalState.isGameWon)
+            assertFalse(finalState.isAutoCompleteAvailable)
+            assertFalse(viewModel.isTimerRunning)
+            assertTrue(celebrationEmitted)
+            assertEquals(4, hapticSnaps.size)
+            assertEquals(4, finalState.boardState.movesCount)
+            assertEquals(4 * KlondikeRules.SCORE_TABLEAU_TO_FOUNDATION, finalState.boardState.score)
+            assertTrue(finalState.boardState.tableau.all { it.isEmpty() })
+            assertTrue(finalState.boardState.foundations.all { it.size == 13 })
+        }
+
+        @Test
+        @DisplayName("AutoComplete does not run when isAutoCompleteAvailable is false")
+        fun `AutoComplete does not run when isAutoCompleteAvailable is false`() = runTest(testDispatcher) {
+            val unreadyBoard = createCustomBoard()
+            val viewModel = GameViewModel(
+                initialBoardState = unreadyBoard,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                autoCompleteDelayMs = 100L
+            )
+
+            assertFalse(viewModel.uiState.value.isAutoCompleteAvailable)
+            viewModel.onIntent(GameIntent.AutoComplete)
+
+            testScheduler.advanceTimeBy(500)
+            testScheduler.runCurrent()
+
+            assertEquals(unreadyBoard, viewModel.uiState.value.boardState)
+            assertFalse(viewModel.uiState.value.isGameWon)
+        }
+
+        @Test
+        @DisplayName("RestartGame cancels running AutoComplete cascade")
+        fun `RestartGame cancels running AutoComplete cascade`() = runTest(testDispatcher) {
+            val readyBoard = createAutoCompleteReadyBoard()
+            val viewModel = GameViewModel(
+                initialBoardState = readyBoard,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                autoCompleteDelayMs = 200L
+            )
+
+            viewModel.onIntent(GameIntent.AutoComplete)
+            testScheduler.advanceTimeBy(50) // 1 move applied
+            testScheduler.runCurrent()
+
+            assertEquals(1, viewModel.uiState.value.boardState.movesCount)
+
+            viewModel.onIntent(GameIntent.RestartGame)
+            testScheduler.runCurrent()
+
+            assertEquals(readyBoard, viewModel.uiState.value.boardState)
+            assertEquals(0, viewModel.uiState.value.boardState.movesCount)
+
+            // Further time advance should not make any auto-complete moves
+            testScheduler.advanceTimeBy(1000)
+            testScheduler.runCurrent()
+
+            assertEquals(readyBoard, viewModel.uiState.value.boardState)
+        }
+    }
 }

@@ -7,6 +7,7 @@ import io.github.qdiaps.solitaire.domain.engine.UndoManager
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
+import io.github.qdiaps.solitaire.domain.rules.AutoCompleteResolver
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.HintResolver
 import io.github.qdiaps.solitaire.domain.rules.KlondikeRules
@@ -31,7 +32,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Presentation ViewModel managing the reactive MVI state, game session lifecycle,
- * coroutine stopwatch timer, and intent dispatching for Klondike Solitaire.
+ * coroutine stopwatch timer, auto-complete cascade execution, and intent dispatching for Klondike Solitaire.
  *
  * @param dealGenerator Optional background deal generator providing pre-verified solvable deals.
  * @param dealProvider Factory providing freshly shuffled deals when generator is absent or fallback is needed.
@@ -41,6 +42,7 @@ import kotlinx.coroutines.launch
  * @param autoStartTimer Whether the stopwatch timer starts ticking immediately upon creation (default: true).
  * @param drawMode Configures whether 1 card or 3 cards are drawn from the stock pile (default: [DrawMode.DRAW_ONE]).
  * @param coroutineScope Optional coroutine scope for managing background tasks and timer (defaults to [viewModelScope]).
+ * @param autoCompleteDelayMs Interval in milliseconds between cascade moves during auto-complete (default: 120ms).
  */
 class GameViewModel(
     private val dealGenerator: DealGenerator? = null,
@@ -50,17 +52,20 @@ class GameViewModel(
     initialBoardState: BoardState? = null,
     private val autoStartTimer: Boolean = true,
     private val drawMode: DrawMode = DrawMode.DRAW_ONE,
-    coroutineScope: CoroutineScope? = null
+    coroutineScope: CoroutineScope? = null,
+    private val autoCompleteDelayMs: Long = 120L
 ) : ViewModel() {
 
     private val scope: CoroutineScope = coroutineScope ?: viewModelScope
     private val undoManager = UndoManager()
     private var initialDealState: BoardState = initialBoardState ?: dealProvider()
 
+    private val initialIsWon = KlondikeRules.isGameWon(initialDealState)
     private val _uiState = MutableStateFlow(
         GameUiState(
             boardState = initialDealState,
-            isGameWon = KlondikeRules.isGameWon(initialDealState),
+            isGameWon = initialIsWon,
+            isAutoCompleteAvailable = if (initialIsWon) false else AutoCompleteResolver.isAutoCompleteReady(initialDealState),
             drawMode = drawMode
         )
     )
@@ -70,12 +75,19 @@ class GameViewModel(
     val events: SharedFlow<GameEvent> = _events.asSharedFlow()
 
     private var timerJob: Job? = null
+    private var autoCompleteJob: Job? = null
 
     /**
      * Indicates whether the stopwatch timer coroutine is currently active.
      */
     val isTimerRunning: Boolean
         get() = timerJob?.isActive == true
+
+    /**
+     * Indicates whether the auto-complete cascade loop is currently running.
+     */
+    val isAutoCompleting: Boolean
+        get() = autoCompleteJob?.isActive == true
 
     init {
         if (autoStartTimer && !_uiState.value.isGameWon) {
@@ -101,7 +113,7 @@ class GameViewModel(
             is GameIntent.OnCardTapped -> onCardTapped(intent.card, intent.location)
             is GameIntent.OnCardDropped -> onCardDropped(intent.cards, intent.source, intent.target)
             is GameIntent.UndoMove -> undoMove()
-            is GameIntent.AutoComplete -> { /* Handled in T-5.x */ }
+            is GameIntent.AutoComplete -> autoComplete()
             is GameIntent.SkipWinAnimation -> { /* Handled in T-6 */ }
         }
     }
@@ -131,6 +143,7 @@ class GameViewModel(
      * newly uncovered tableau cards, checks win and deadlock states, and records undo history.
      */
     fun onCardTapped(card: Card, location: CardLocation) {
+        if (autoCompleteJob?.isActive == true) return
         if (_uiState.value.activeHint != null) {
             dismissHint()
         }
@@ -155,6 +168,7 @@ class GameViewModel(
      * If the stock pile is empty and waste contains cards, automatically recycles the waste pile.
      */
     fun drawStockCard() {
+        if (autoCompleteJob?.isActive == true) return
         if (_uiState.value.activeHint != null) {
             dismissHint()
         }
@@ -173,6 +187,7 @@ class GameViewModel(
      * Recycles the entire waste pile back into the stock pile face-down.
      */
     fun recycleStock() {
+        if (autoCompleteJob?.isActive == true) return
         if (_uiState.value.activeHint != null) {
             dismissHint()
         }
@@ -188,17 +203,23 @@ class GameViewModel(
      * Reverts the most recent game action using [undoManager].
      */
     fun undoMove() {
+        autoCompleteJob?.cancel()
+        autoCompleteJob = null
+
         val currentBoard = _uiState.value.boardState
         val previousBoard = undoManager.undo(currentBoard) ?: return
         val wasWon = _uiState.value.isGameWon
         val isWonNow = KlondikeRules.isGameWon(previousBoard)
         val isDeadlocked = if (isWonNow) false else DeadlockDetector.detect(previousBoard, drawMode).isDeadlocked
+        val isAutoComplete = if (isWonNow) false else AutoCompleteResolver.isAutoCompleteReady(previousBoard)
+
         _uiState.update { current ->
             current.copy(
                 boardState = previousBoard,
                 canUndo = undoManager.canUndo,
                 isGameWon = isWonNow,
                 isDeadlocked = isDeadlocked,
+                isAutoCompleteAvailable = isAutoComplete,
                 activeHint = null
             )
         }
@@ -215,6 +236,8 @@ class GameViewModel(
      * Otherwise, immediately deals a new shuffled board via [dealProvider].
      */
     fun startNewGame() {
+        autoCompleteJob?.cancel()
+        autoCompleteJob = null
         stopTimer()
         if (dealGenerator != null) {
             _uiState.update { it.copy(isLoading = true) }
@@ -235,9 +258,12 @@ class GameViewModel(
      * Restarts the current game layout from its initial dealt state, resetting moves, score, and timer.
      */
     fun restartGame() {
+        autoCompleteJob?.cancel()
+        autoCompleteJob = null
         stopTimer()
         undoManager.clear()
         val isWon = KlondikeRules.isGameWon(initialDealState)
+        val isAutoComplete = if (isWon) false else AutoCompleteResolver.isAutoCompleteReady(initialDealState)
         _uiState.update { current ->
             current.copy(
                 boardState = initialDealState,
@@ -247,7 +273,7 @@ class GameViewModel(
                 elapsedTimeSeconds = 0L,
                 activeHint = null,
                 isLoading = false,
-                isAutoCompleteAvailable = false,
+                isAutoCompleteAvailable = isAutoComplete,
                 gameSessionId = current.gameSessionId + 1L
             )
         }
@@ -269,6 +295,48 @@ class GameViewModel(
      */
     fun selectFeltTheme(theme: FeltTheme) {
         _uiState.update { it.copy(feltTheme = theme) }
+    }
+
+    /**
+     * Triggers the auto-complete cascade loop, sequentially moving remaining cards
+     * to foundation piles with haptic snap feedback and timed intervals until victory.
+     */
+    fun autoComplete() {
+        if (autoCompleteJob?.isActive == true || _uiState.value.isGameWon) return
+        if (!_uiState.value.isAutoCompleteAvailable) return
+
+        dismissHint()
+        autoCompleteJob = scope.launch {
+            while (isActive) {
+                val currentBoard = _uiState.value.boardState
+                val nextMove = AutoCompleteResolver.nextMove(currentBoard) ?: break
+                undoManager.record(currentBoard)
+                val nextBoard = nextMove.resultingState
+                val isWon = KlondikeRules.isGameWon(nextBoard)
+                val isAutoComplete = if (isWon) false else AutoCompleteResolver.isAutoCompleteReady(nextBoard)
+
+                _uiState.update { current ->
+                    current.copy(
+                        boardState = nextBoard,
+                        canUndo = undoManager.canUndo,
+                        isGameWon = isWon,
+                        isDeadlocked = false,
+                        isAutoCompleteAvailable = isAutoComplete,
+                        activeHint = null
+                    )
+                }
+
+                _events.tryEmit(GameEvent.PlayHapticSnap)
+
+                if (isWon) {
+                    stopTimer()
+                    _events.tryEmit(GameEvent.TriggerWinCelebration)
+                    break
+                }
+
+                delay(autoCompleteDelayMs)
+            }
+        }
     }
 
     /**
@@ -316,6 +384,8 @@ class GameViewModel(
     override fun onCleared() {
         super.onCleared()
         stopTimer()
+        autoCompleteJob?.cancel()
+        autoCompleteJob = null
     }
 
     /**
@@ -326,6 +396,7 @@ class GameViewModel(
      * and triggers [GameEvent.PlayHapticSnap].
      */
     fun onCardDropped(cards: List<Card>, source: CardLocation, target: CardLocation) {
+        if (autoCompleteJob?.isActive == true) return
         if (_uiState.value.activeHint != null) {
             dismissHint()
         }
@@ -341,12 +412,14 @@ class GameViewModel(
     private fun updateBoardStateAfterMove(nextBoard: BoardState, isDrop: Boolean = false) {
         val isWon = KlondikeRules.isGameWon(nextBoard)
         val isDeadlocked = if (isWon) false else DeadlockDetector.detect(nextBoard, drawMode).isDeadlocked
+        val isAutoComplete = if (isWon) false else AutoCompleteResolver.isAutoCompleteReady(nextBoard)
         _uiState.update { current ->
             current.copy(
                 boardState = nextBoard,
                 canUndo = undoManager.canUndo,
                 isGameWon = isWon,
                 isDeadlocked = isDeadlocked,
+                isAutoCompleteAvailable = isAutoComplete,
                 activeHint = null
             )
         }
@@ -360,9 +433,12 @@ class GameViewModel(
     }
 
     private fun applyNewDeal(board: BoardState) {
+        autoCompleteJob?.cancel()
+        autoCompleteJob = null
         initialDealState = board
         undoManager.clear()
         val isWon = KlondikeRules.isGameWon(board)
+        val isAutoComplete = if (isWon) false else AutoCompleteResolver.isAutoCompleteReady(board)
         _uiState.update { current ->
             current.copy(
                 boardState = board,
@@ -372,7 +448,7 @@ class GameViewModel(
                 elapsedTimeSeconds = 0L,
                 activeHint = null,
                 isLoading = false,
-                isAutoCompleteAvailable = false,
+                isAutoCompleteAvailable = isAutoComplete,
                 gameSessionId = current.gameSessionId + 1L
             )
         }

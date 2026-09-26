@@ -53,7 +53,7 @@
   - Calculate the next immediate safe foundation promotion move until board reaches victory state (`KlondikeRules.isGameWon`).
   - *TDD/Unit Tests:* `AutoCompleteResolverTest` verifying readiness conditions and sequential promotion step generation.
 
-- [ ] **T-5.6: Auto-Complete Cascade Execution in ViewModel & UI**
+- [x] **T-5.6: Auto-Complete Cascade Execution in ViewModel & UI**
   - Update `GameUiState.isAutoCompleteAvailable` to reactively flag when auto-complete conditions are met.
   - Implement `GameIntent.AutoComplete` coroutine loop in `GameViewModel`: sequentially applies foundation promotions with 120–150ms delay, triggering tactile ticks/snaps and sound effects until victory.
   - Add auto-complete trigger banner / button in `SolitaireGameScreen` when available.

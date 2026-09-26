@@ -19,6 +19,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
@@ -34,6 +35,7 @@ import io.github.qdiaps.solitaire.ui.game.animation.LocalCardFlightState
 import io.github.qdiaps.solitaire.ui.game.animation.rememberCardFlightState
 import io.github.qdiaps.solitaire.ui.game.audio.LocalSolitaireAudio
 import io.github.qdiaps.solitaire.ui.game.audio.rememberSolitaireAudio
+import io.github.qdiaps.solitaire.ui.game.components.AutoCompleteBannerView
 import io.github.qdiaps.solitaire.ui.game.components.BottomActionBarView
 import io.github.qdiaps.solitaire.ui.game.components.LocalGameSessionId
 import io.github.qdiaps.solitaire.ui.game.components.DragOverlay
@@ -106,6 +108,9 @@ fun SolitaireGameScreen(
     hintTargetLocation: CardLocation? = null,
     gameSessionId: Long = 1L,
     drawMode: DrawMode = DrawMode.DRAW_ONE,
+    isAutoCompleteAvailable: Boolean = false,
+    isGameWon: Boolean = false,
+    onAutoCompleteClick: () -> Unit = {},
     onStockClick: () -> Unit = {},
     onWasteClick: () -> Unit = {},
     onFoundationClick: (foundationIndex: Int) -> Unit = {},
@@ -337,15 +342,26 @@ fun SolitaireGameScreen(
                             )
                         }
 
-                        BottomActionBarView(
-                            canUndo = canUndo,
-                            onUndoClick = onUndoClick,
-                            onHintClick = onHintClick,
-                            onNewGameClick = onNewGameClick,
-                            onSettingsClick = onSettingsClick,
-                            isHintActive = isHintActive,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            AutoCompleteBannerView(
+                                isVisible = isAutoCompleteAvailable && !isGameWon,
+                                onClick = onAutoCompleteClick,
+                                modifier = Modifier.padding(bottom = 6.dp)
+                            )
+
+                            BottomActionBarView(
+                                canUndo = canUndo,
+                                onUndoClick = onUndoClick,
+                                onHintClick = onHintClick,
+                                onNewGameClick = onNewGameClick,
+                                onSettingsClick = onSettingsClick,
+                                isHintActive = isHintActive,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
                     }
 
                     // Floating animated card flight overlay (Smart Tap & Stock Flip)
@@ -454,6 +470,9 @@ fun SolitaireGameScreen(
         hintTargetLocation = uiState.hintTargetLocation,
         gameSessionId = uiState.gameSessionId,
         drawMode = uiState.drawMode,
+        isAutoCompleteAvailable = uiState.isAutoCompleteAvailable,
+        isGameWon = uiState.isGameWon,
+        onAutoCompleteClick = { viewModel.onIntent(GameIntent.AutoComplete) },
         onStockClick = { viewModel.onIntent(GameIntent.DrawStockCard) },
         onWasteClick = {
             uiState.boardState.waste.lastOrNull()?.let { card ->
@@ -506,6 +525,9 @@ fun GameScreen(
     hintTargetLocation: CardLocation? = null,
     gameSessionId: Long = 1L,
     drawMode: DrawMode = DrawMode.DRAW_ONE,
+    isAutoCompleteAvailable: Boolean = false,
+    isGameWon: Boolean = false,
+    onAutoCompleteClick: () -> Unit = {},
     onStockClick: () -> Unit = {},
     onWasteClick: () -> Unit = {},
     onFoundationClick: (foundationIndex: Int) -> Unit = {},
@@ -531,6 +553,9 @@ fun GameScreen(
         hintTargetLocation = hintTargetLocation,
         gameSessionId = gameSessionId,
         drawMode = drawMode,
+        isAutoCompleteAvailable = isAutoCompleteAvailable,
+        isGameWon = isGameWon,
+        onAutoCompleteClick = onAutoCompleteClick,
         onStockClick = onStockClick,
         onWasteClick = onWasteClick,
         onFoundationClick = onFoundationClick,
