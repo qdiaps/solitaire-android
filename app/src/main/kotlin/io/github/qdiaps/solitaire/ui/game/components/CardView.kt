@@ -98,7 +98,7 @@ fun CardView(
         }
     }
 
-    val isFlipping = flipAnimatable.value < 1f && card.isFaceUp
+    val isFlipping = animateFlip && flipAnimatable.value < 1f && card.isFaceUp
     val rotationY = if (isFlipping) {
         if (flipAnimatable.value <= 0.5f) {
             flipAnimatable.value * 180f

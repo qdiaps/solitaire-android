@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
+import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.SmartTapResolver
 import io.github.qdiaps.solitaire.ui.game.animation.AnimatedMoveOverlay
 import io.github.qdiaps.solitaire.ui.game.animation.LocalCardFlightState
@@ -104,6 +105,7 @@ fun SolitaireGameScreen(
     hintSourceLocation: CardLocation? = null,
     hintTargetLocation: CardLocation? = null,
     gameSessionId: Long = 1L,
+    drawMode: DrawMode = DrawMode.DRAW_ONE,
     onStockClick: () -> Unit = {},
     onWasteClick: () -> Unit = {},
     onFoundationClick: (foundationIndex: Int) -> Unit = {},
@@ -154,7 +156,8 @@ fun SolitaireGameScreen(
                     val wasteBounds = dropTargetRegistry.getBounds(CardLocation.Waste)
 
                     if (stockBounds != null && wasteBounds != null) {
-                        val movingCard = boardState.stock.last()
+                        val drawCount = minOf(if (drawMode == DrawMode.DRAW_ONE) 1 else 3, boardState.stock.size)
+                        val movingCard = boardState.stock.take(drawCount).last()
                         coroutineScope.launch {
                             cardFlightState.startFlight(
                                 cards = listOf(movingCard),
@@ -450,6 +453,7 @@ fun SolitaireGameScreen(
         hintSourceLocation = uiState.hintSourceLocation,
         hintTargetLocation = uiState.hintTargetLocation,
         gameSessionId = uiState.gameSessionId,
+        drawMode = uiState.drawMode,
         onStockClick = { viewModel.onIntent(GameIntent.DrawStockCard) },
         onWasteClick = {
             uiState.boardState.waste.lastOrNull()?.let { card ->
@@ -501,6 +505,7 @@ fun GameScreen(
     hintSourceLocation: CardLocation? = null,
     hintTargetLocation: CardLocation? = null,
     gameSessionId: Long = 1L,
+    drawMode: DrawMode = DrawMode.DRAW_ONE,
     onStockClick: () -> Unit = {},
     onWasteClick: () -> Unit = {},
     onFoundationClick: (foundationIndex: Int) -> Unit = {},
@@ -525,6 +530,7 @@ fun GameScreen(
         hintSourceLocation = hintSourceLocation,
         hintTargetLocation = hintTargetLocation,
         gameSessionId = gameSessionId,
+        drawMode = drawMode,
         onStockClick = onStockClick,
         onWasteClick = onWasteClick,
         onFoundationClick = onFoundationClick,

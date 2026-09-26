@@ -40,6 +40,14 @@
   - Disambiguated `StockPileView` top card ID to `STOCK_PILE_TOP` to eliminate ID collisions with the King of Spades.
   - *TDD/Unit Tests:* `GameViewModelTest` and `GameContractTest` verifying session ID incrementation and default state.
 
+- [x] **T-5.4c: Fix Stock Draw Flying Card Morphing / Desync Bug**
+  - Resolved bug where clicking the stock pile animated a different card than the one that actually landed on the waste pile.
+  - Root cause: `KlondikeRules.draw` takes cards from the head of the stock pile (`state.stock.take(count)`), whereas `SolitaireGameScreen.kt` mistakenly used `boardState.stock.last()` as `movingCard`.
+  - Added `drawMode: DrawMode = DrawMode.DRAW_ONE` to `GameUiState` and `SolitaireGameScreen`.
+  - Calculated `movingCard = boardState.stock.take(drawCount).last()` matching domain draw logic for both Draw 1 and Draw 3 modes.
+  - Guarded `isFlipping` inside `CardView` with `animateFlip` to prevent 1-frame glitches, and wrapped flying card in `key(card.id)` in `AnimatedMoveOverlay`.
+  - *TDD/Unit Tests:* `GameContractTest` and suite tests (457 tests, 100% pass).
+
 - [ ] **T-5.5: Pure Domain Auto-Complete Resolver (`AutoCompleteResolver`)**
   - Implement pure Kotlin `AutoCompleteResolver` detecting when all tableau columns contain zero face-down cards and stock/waste can be safely cleared.
   - Calculate the next immediate safe foundation promotion move until board reaches victory state (`KlondikeRules.isGameWon`).

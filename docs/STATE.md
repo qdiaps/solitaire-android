@@ -16,12 +16,20 @@
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-5.4b` (Fix Ghost Card Flip Turnover Animation on New Game / Deal Reset). Ready to proceed to `T-5.5` (Pure Domain Auto-Complete Resolver).
+- **Current Focus:** Completed `T-5.4c` (Fix Stock Draw Flying Card Morphing / Desync Bug). Ready to proceed to `T-5.5` (Pure Domain Auto-Complete Resolver).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-26 (T-5.4c: Fix Stock Draw Flying Card Morphing / Desync Bug):**
+  - Identified and fixed bug where clicking on the stock pile displayed one card during the 3D flight animation, but upon landing in the waste pile, the card became a different card.
+  - Root cause: `KlondikeRules.draw()` extracts cards from the beginning of the stock list (`state.stock.take(count)`), whereas `SolitaireGameScreen.kt` took `boardState.stock.last()` (the 24th/bottom card of the stock pile) as the animated `movingCard`.
+  - Added `drawMode: DrawMode = DrawMode.DRAW_ONE` to `GameUiState` and `SolitaireGameScreen`.
+  - Updated `SolitaireGameScreen.kt` to compute `movingCard = boardState.stock.take(drawCount).last()`, perfectly matching the domain rules for both Draw 1 and Draw 3 modes.
+  - Guarded `isFlipping = animateFlip && flipAnimatable.value < 1f && card.isFaceUp` in `CardView.kt` to eliminate 1-frame face-down flashes when `animateFlip = false`.
+  - Added `key(card.id)` to `AnimatedMoveOverlay.kt` to prevent composable slot reuse glitches across flights.
+  - Verified suite: 457 unit tests pass (100%), 0 Android lint errors.
 - **2026-09-26 (T-5.4b: Fix Ghost Card Flip Turnover Animation on New Game / Deal Reset):**
   - Identified and fixed intermittent 3D card flip turnover animation and audio playing on face-up tableau cards when dealing a new game or restarting.
   - Root cause: Compose node slot reuse across deals preserved stale `previousFaceUp = false` state for static card IDs (`card.id`), causing `LaunchedEffect(card.isFaceUp)` to erroneously interpret freshly dealt face-up cards as having just been uncovered.

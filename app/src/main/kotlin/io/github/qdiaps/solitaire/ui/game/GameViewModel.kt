@@ -60,7 +60,8 @@ class GameViewModel(
     private val _uiState = MutableStateFlow(
         GameUiState(
             boardState = initialDealState,
-            isGameWon = KlondikeRules.isGameWon(initialDealState)
+            isGameWon = KlondikeRules.isGameWon(initialDealState),
+            drawMode = drawMode
         )
     )
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()

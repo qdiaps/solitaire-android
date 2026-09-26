@@ -38,6 +38,7 @@ class GameContractTest {
             assertFalse(state.isLoading)
             assertFalse(state.isAutoCompleteAvailable)
             assertEquals(1L, state.gameSessionId)
+            assertEquals(io.github.qdiaps.solitaire.domain.rules.DrawMode.DRAW_ONE, state.drawMode)
             assertNull(state.highlightedCard)
             assertFalse(state.isHintActive)
         }

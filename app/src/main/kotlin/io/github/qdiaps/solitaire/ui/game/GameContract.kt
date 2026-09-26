@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
+import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.Hint
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
 
@@ -33,7 +34,8 @@ data class GameUiState(
     val activeHint: Hint? = null,
     val isLoading: Boolean = false,
     val isAutoCompleteAvailable: Boolean = false,
-    val gameSessionId: Long = 1L
+    val gameSessionId: Long = 1L,
+    val drawMode: DrawMode = DrawMode.DRAW_ONE
 ) {
     /**
      * Cards that should be highlighted on the board (e.g., all cards in the moving stack from [activeHint]).
