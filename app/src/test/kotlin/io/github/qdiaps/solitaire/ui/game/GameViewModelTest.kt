@@ -941,6 +941,34 @@ class GameViewModelTest {
         }
 
         @Test
+        @DisplayName("RequestHint highlights empty stock placeholder instead of waste card when recycling")
+        fun `RequestHint highlights empty stock placeholder when recycling`() = runTest(testDispatcher) {
+            val col0 = listOf(Card(Suit.SPADES, Rank.TEN, isFaceUp = true))
+            val buriedWaste = listOf(
+                Card(Suit.HEARTS, Rank.NINE, isFaceUp = true),
+                Card(Suit.CLUBS, Rank.FOUR, isFaceUp = true)
+            )
+            val board = BoardState(
+                stock = emptyList(),
+                waste = buriedWaste,
+                tableau = List(7) { if (it == 0) col0 else emptyList() }
+            )
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.RequestHint)
+
+            val state = viewModel.uiState.value
+            assertTrue(state.isHintActive)
+            assertNull(state.highlightedCard)
+            assertTrue(state.highlightedCards.isEmpty())
+            assertEquals(CardLocation.Stock, state.hintSourceLocation)
+        }
+
+        @Test
         @DisplayName("DismissHint clears activeHint in UI state")
         fun `DismissHint clears activeHint in UI state`() = runTest(testDispatcher) {
             val ace = Card(Suit.HEARTS, Rank.ACE, isFaceUp = true, id = "ace_hearts")

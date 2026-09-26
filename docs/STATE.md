@@ -16,12 +16,20 @@
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-5.6` with auto-complete refinements (relaxed condition, card flight animations, haptic muting, and touch blocking). Ready to proceed to `T-5.7` (Victory Celebration Overlay & Cascading Card Physics / Confetti).
+- **Current Focus:** Completed `T-5.6` with auto-complete refinements and hint stock recycle placeholder highlighting. Ready to proceed to `T-5.7` (Victory Celebration Overlay & Cascading Card Physics / Confetti).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-26 (Fix: Highlight Stock Recycle Placeholder instead of Waste Card on Stock Recycle Hint):**
+  - Identified and fixed bug where requesting a hint when stock is empty and recycling is recommended erroneously highlighted the top face-up waste card instead of the empty stock recycle placeholder (`CardSlotPlaceholder`).
+  - Root cause: `HintResolver` emitted recycle move with `source = CardLocation.Waste`, causing `SolitaireGameScreen` to treat the top waste card as `highlightedCard`. The user saw a glowing card in waste with nowhere legal to move it, while the recycle slot remained unhighlighted.
+  - In `HintResolver.kt`: set recycle move `source = CardLocation.Stock` (matching user tap interaction on the stock slot to trigger recycle).
+  - In `GameContract.kt`: ensured `highlightedCard = null` and `highlightedCards = emptyList()` whenever `hintSourceLocation is CardLocation.Stock`.
+  - In `SolitaireGameScreen.kt`: updated `isWasteHighlighted = isHintActive && (hintSourceLocation is CardLocation.Waste)` and guarded `TableauAreaView` source card highlights so only tableau hints highlight tableau cards.
+  - Result: when recycling is recommended, only the empty stock placeholder with the circular recycle icon pulses in radiant amber-gold, clearly prompting the user to tap the placeholder to recycle the deck.
+  - Verified suite: 479 unit tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
 - **2026-09-26 (Fix: Refine Auto-Complete Conditions, Flight Animations, and Touch Interception):**
   - **Condition (Point 1):** Updated `AutoCompleteResolver.isAutoCompleteReady(state)` to require only that all tableau cards are face-up (`state.tableau.all { col -> col.all { it.isFaceUp } } && !KlondikeRules.isGameWon(state)`). Auto-complete activates regardless of remaining stock or waste cards. Updated `nextMove` and `resolveAllMoves` to sequentially promote cards from stock and waste in addition to tableau without deadlock.
   - **Haptics/Audio Muting (Point 2):** Removed per-card `GameEvent.PlayHapticSnap` emissions during the auto-complete cascade loop in `GameViewModel`. The cascade runs smoothly and quietly without vibrations on every step, emitting only the final `TriggerWinCelebration` upon victory.
@@ -63,7 +71,7 @@
   - Cancelled any active card flights or drag gestures on deal reset.
   - Suite verification: 457 unit tests passing (100%), 0 Android lint errors.
 - **2026-09-26 (T-5.4: Hint Pulsing UI Highlighting & ViewModel Integration):**
-  - Integrated `HintResolver` with `GameViewModel`: implemented `requestHint()` and `dismissHint()`, connected `GameIntent.RequestHint` and `GameIntent.DismissHint`.
+  - Integrated `HintResolver` with `GameViewModel`: implemented `requestHint()` and `dismissHint()`, connected `GameIntent.RequestHint` and `GameIntent.DismissHint``.
   - Updated `GameContract`: `GameUiState.activeHint` is now `Hint?`, exposing `highlightedCard`, `hintSourceLocation`, `hintTargetLocation`, and `isHintActive`.
   - Implemented high-contrast, radiant amber-gold hint highlighting (`HintHighlight = Color(0xFFFFB300)`):
     - Replaced low-contrast emerald green with vibrant amber-gold, delivering crisp visibility across all felt themes (especially Classic Green).

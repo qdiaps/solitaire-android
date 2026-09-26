@@ -232,7 +232,7 @@ object HintResolver {
                 hints.add(
                     Hint(
                         move = Move(
-                            source = CardLocation.Waste,
+                            source = CardLocation.Stock,
                             destination = CardLocation.Stock,
                             cards = recycledCards,
                             scoreDelta = 0

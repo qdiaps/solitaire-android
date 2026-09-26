@@ -43,13 +43,13 @@ data class GameUiState(
      * Cards that should be highlighted on the board (e.g., all cards in the moving stack from [activeHint]).
      */
     val highlightedCards: List<Card>
-        get() = activeHint?.cards.orEmpty()
+        get() = if (hintSourceLocation is CardLocation.Stock) emptyList() else activeHint?.cards.orEmpty()
 
     /**
      * Card that should be highlighted on the board (e.g., source card from [activeHint]).
      */
     val highlightedCard: Card?
-        get() = activeHint?.cards?.firstOrNull()
+        get() = if (hintSourceLocation is CardLocation.Stock) null else activeHint?.cards?.firstOrNull()
 
     /**
      * Source card location of the active hint, or null if none.

@@ -343,10 +343,7 @@ fun SolitaireGameScreen(
                             Spacer(modifier = Modifier.height(4.dp))
 
                             val isStockHighlighted = isHintActive && (hintSourceLocation is CardLocation.Stock)
-                            val isWasteHighlighted = isHintActive && (
-                                (hintSourceLocation is CardLocation.Waste) ||
-                                (highlightedCard != null && boardState.waste.lastOrNull() == highlightedCard)
-                            )
+                            val isWasteHighlighted = isHintActive && (hintSourceLocation is CardLocation.Waste)
                             val highlightedFoundationIndex = if (isHintActive) {
                                 when {
                                     hintTargetLocation is CardLocation.Foundation -> hintTargetLocation.index
@@ -382,8 +379,8 @@ fun SolitaireGameScreen(
 
                             TableauAreaView(
                                 boardState = boardState,
-                                highlightedCard = highlightedCard,
-                                highlightedCards = highlightedCards,
+                                highlightedCard = if (hintSourceLocation is CardLocation.Tableau) highlightedCard else null,
+                                highlightedCards = if (hintSourceLocation is CardLocation.Tableau) highlightedCards else emptyList(),
                                 destinationCard = destinationTableauCard,
                                 highlightedEmptyColumnIndex = highlightedEmptyTableauColumnIndex,
                                 gameSessionId = gameSessionId,

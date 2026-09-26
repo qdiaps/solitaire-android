@@ -280,8 +280,9 @@ class HintResolverTest {
             val recycleHint = HintResolver.findHint(buriedState)
             assertNotNull(recycleHint)
             assertEquals(HintPriority.STOCK_DRAW, recycleHint!!.priority)
-            assertEquals(CardLocation.Waste, recycleHint.from)
+            assertEquals(CardLocation.Stock, recycleHint.from)
             assertEquals(CardLocation.Stock, recycleHint.to)
+            assertEquals(2, recycleHint.cards.size)
         }
     }
 
