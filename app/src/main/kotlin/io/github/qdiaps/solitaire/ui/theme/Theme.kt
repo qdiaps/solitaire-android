@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 val LocalSolitaireColors = staticCompositionLocalOf { SolitaireColors() }
 val LocalSolitaireCardTypography = staticCompositionLocalOf { SolitaireCardTypography() }
 val LocalCardDimensions = staticCompositionLocalOf<CardDimensions?> { null }
+val LocalCardBackStyle = staticCompositionLocalOf { CardBackStyle.DEFAULT }
 
 /**
  * Accessor for Solitaire theme attributes.
@@ -28,6 +29,11 @@ object SolitaireTheme {
         @ReadOnlyComposable
         get() = LocalSolitaireCardTypography.current
 
+    val cardBackStyle: CardBackStyle
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalCardBackStyle.current
+
     val cardDimensions: CardDimensions
         @Composable
         @ReadOnlyComposable
@@ -38,7 +44,7 @@ object SolitaireTheme {
 /**
  * Main application theme wrapper for Solitaire.
  *
- * Configures [FeltTheme] palette, card typography, and Material 3 dark color scheme
+ * Configures [FeltTheme] palette, [CardBackStyle], card typography, and Material 3 dark color scheme
  * tailored for green/navy/charcoal/wine felt tables.
  *
  * If [cardDimensions] is not explicitly specified, falls back to the ambient [LocalCardDimensions]
@@ -47,6 +53,7 @@ object SolitaireTheme {
 @Composable
 fun SolitaireTheme(
     feltTheme: FeltTheme = FeltTheme.CLASSIC_GREEN,
+    cardBackStyle: CardBackStyle = CardBackStyle.DEFAULT,
     cardDimensions: CardDimensions? = null,
     content: @Composable () -> Unit
 ) {
@@ -73,7 +80,8 @@ fun SolitaireTheme(
     CompositionLocalProvider(
         LocalSolitaireColors provides solitaireColors,
         LocalSolitaireCardTypography provides cardTypography,
-        LocalCardDimensions provides resolvedDimensions
+        LocalCardDimensions provides resolvedDimensions,
+        LocalCardBackStyle provides cardBackStyle
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

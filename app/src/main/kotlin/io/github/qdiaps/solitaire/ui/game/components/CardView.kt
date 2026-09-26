@@ -3,7 +3,6 @@ package io.github.qdiaps.solitaire.ui.game.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,17 +24,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.ui.game.audio.LocalSolitaireAudio
+import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 
 /**
@@ -46,6 +41,7 @@ import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
  *
  * @param card Domain [Card] model.
  * @param modifier Compose [Modifier] applied to this card.
+ * @param cardBackStyle Visual pattern style applied to face-down card back.
  * @param elevation Shadow elevation (defaults to 2.dp, or 12.dp when lifted in drag overlay).
  * @param isHighlighted Whether an active hint border is drawn around the card.
  * @param onClick Optional tap callback.
@@ -54,6 +50,7 @@ import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 fun CardView(
     card: Card,
     modifier: Modifier = Modifier,
+    cardBackStyle: CardBackStyle = SolitaireTheme.cardBackStyle,
     elevation: Dp = 2.dp,
     isHighlighted: Boolean = false,
     onClick: (() -> Unit)? = null
@@ -133,7 +130,7 @@ fun CardView(
         if (renderFaceUp) {
             FaceUpCardContent(card = card)
         } else {
-            FaceDownCardContent()
+            CardBackView(style = cardBackStyle)
         }
     }
 }
@@ -204,69 +201,6 @@ private fun FaceUpCardContent(card: Card) {
                 color = suitColor,
                 modifier = Modifier.size(cornerEmblemSize)
             )
-        }
-    }
-}
-
-/**
- * Face-down card back with deep navy surface, inner margin border, and geometric diamond lattice.
- */
-@Composable
-private fun FaceDownCardContent() {
-    val colors = SolitaireTheme.colors
-    val dimensions = SolitaireTheme.cardDimensions
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(colors.cardBackNavy)
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val inset = dimensions.cardWidth.toPx() * 0.08f
-            val corner = dimensions.cornerRadius.toPx() * 0.6f
-
-            // Inner ornamental border
-            drawRoundRect(
-                color = Color.White.copy(alpha = 0.35f),
-                topLeft = Offset(inset, inset),
-                size = Size(size.width - inset * 2f, size.height - inset * 2f),
-                cornerRadius = CornerRadius(corner, corner),
-                style = Stroke(width = 1.dp.toPx())
-            )
-
-            // Inner geometric diamond lattice
-            val innerLeft = inset * 1.6f
-            val innerTop = inset * 1.6f
-            val innerWidth = size.width - innerLeft * 2f
-            val innerHeight = size.height - innerTop * 2f
-            val step = innerWidth / 4f
-
-            val latticeColor = Color.White.copy(alpha = 0.18f)
-            val stroke = Stroke(width = 0.8.dp.toPx())
-
-            // Diagonal lines (\ direction)
-            var x = -innerHeight
-            while (x < innerWidth + innerHeight) {
-                drawLine(
-                    color = latticeColor,
-                    start = Offset(innerLeft + x, innerTop),
-                    end = Offset(innerLeft + x + innerHeight, innerTop + innerHeight),
-                    strokeWidth = stroke.width
-                )
-                x += step
-            }
-
-            // Diagonal lines (/ direction)
-            x = -innerHeight
-            while (x < innerWidth + innerHeight) {
-                drawLine(
-                    color = latticeColor,
-                    start = Offset(innerLeft + x + innerHeight, innerTop),
-                    end = Offset(innerLeft + x, innerTop + innerHeight),
-                    strokeWidth = stroke.width
-                )
-                x += step
-            }
         }
     }
 }

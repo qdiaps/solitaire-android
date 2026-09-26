@@ -3,7 +3,7 @@
 > **Current Phase:** Phase 5 (Game Loop, Scoring, Auto-Complete & Persistence)
 > **Branch:** `feature/phase-5-game-loop-and-customization`
 
-- [ ] **T-5.1: Card Visual Styles & Custom Back Designs (`CardBackStyle`)**
+- [x] **T-5.1: Card Visual Styles & Custom Back Designs (`CardBackStyle`)**
   - Implement `CardBackStyle` enum: `ClassicLattice`, `CrimsonVintage`, `EmeraldArtDeco`, `ObsidianMinimal`.
   - Implement vector/canvas pattern renderers for all 4 card backs in `CardBackView` / `CardView`.
   - Support theme switching in `SolitaireTheme`.
