@@ -147,6 +147,14 @@ class GameViewModel(
             }
         }
 
+        if (statsRepository != null) {
+            scope.launch {
+                statsRepository.statsFlow.collect { stats ->
+                    _uiState.update { it.copy(stats = stats) }
+                }
+            }
+        }
+
         if (statsRepository != null && !initialIsWon) {
             scope.launch { statsRepository.recordGameStarted() }
         }
@@ -186,6 +194,9 @@ class GameViewModel(
             is GameIntent.SetHapticsEnabled -> setHapticsEnabled(intent.enabled)
             is GameIntent.SetAutoHintEnabled -> setAutoHintEnabled(intent.enabled)
             is GameIntent.ResetSettingsToDefaults -> resetSettingsToDefaults()
+            is GameIntent.OpenStats -> openStats()
+            is GameIntent.CloseStats -> closeStats()
+            is GameIntent.ResetStats -> resetStats()
         }
     }
 
@@ -200,6 +211,7 @@ class GameViewModel(
             _uiState.value.isGameWon ||
             _uiState.value.isAutoCompleting ||
             _uiState.value.isSettingsOpen ||
+            _uiState.value.isStatsDialogOpen ||
             _uiState.value.isHintActive
         ) {
             return
@@ -210,7 +222,8 @@ class GameViewModel(
                 _uiState.value.autoHintEnabled &&
                 !_uiState.value.isGameWon &&
                 !_uiState.value.isAutoCompleting &&
-                !_uiState.value.isSettingsOpen
+                !_uiState.value.isSettingsOpen &&
+                !_uiState.value.isStatsDialogOpen
             ) {
                 requestHint()
             }
@@ -231,11 +244,44 @@ class GameViewModel(
      */
     fun closeSettings() {
         _uiState.update { it.copy(isSettingsOpen = false) }
-        if (autoStartTimer && !_uiState.value.isGameWon) {
+        if (autoStartTimer && !_uiState.value.isGameWon && !_uiState.value.isStatsDialogOpen) {
             startTimer()
         }
-        if (_uiState.value.autoHintEnabled && !_uiState.value.isGameWon) {
+        if (_uiState.value.autoHintEnabled && !_uiState.value.isGameWon && !_uiState.value.isStatsDialogOpen) {
             resetIdleHintTimer()
+        }
+    }
+
+    /**
+     * Opens player statistics dialog and pauses elapsed timer.
+     */
+    fun openStats() {
+        _uiState.update { it.copy(isStatsDialogOpen = true) }
+        pauseTimer()
+        cancelIdleHintTimer()
+    }
+
+    /**
+     * Closes player statistics dialog and resumes elapsed timer if active.
+     */
+    fun closeStats() {
+        _uiState.update { it.copy(isStatsDialogOpen = false) }
+        if (autoStartTimer && !_uiState.value.isGameWon && !_uiState.value.isSettingsOpen) {
+            startTimer()
+        }
+        if (_uiState.value.autoHintEnabled && !_uiState.value.isGameWon && !_uiState.value.isSettingsOpen) {
+            resetIdleHintTimer()
+        }
+    }
+
+    /**
+     * Resets all lifetime gameplay statistics and records.
+     */
+    fun resetStats() {
+        statsRepository?.let { repo ->
+            scope.launch {
+                repo.resetStats()
+            }
         }
     }
 

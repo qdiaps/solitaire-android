@@ -72,6 +72,11 @@ class GameViewModelTest {
         var lastWonTime = 0
         var lastWonMoves = 0
         var lastWonScore = 0
+        var resetStatsCount = 0
+
+        fun emitStats(stats: GameStats) {
+            _flow.value = stats
+        }
 
         override suspend fun getStats(): GameStats = _flow.value
 
@@ -99,6 +104,7 @@ class GameViewModelTest {
         }
 
         override suspend fun resetStats() {
+            resetStatsCount++
             _flow.value = GameStats()
         }
     }
@@ -1868,6 +1874,129 @@ class GameViewModelTest {
             viewModel.onIntent(GameIntent.RestartGame)
             testScheduler.runCurrent()
             assertEquals(2, fakeStats.gameStartedCount)
+        }
+
+        @Test
+        @DisplayName("OpenStats pauses timer and sets isStatsDialogOpen to true")
+        fun `OpenStats pauses timer and sets isStatsDialogOpen to true`() = runTest(testDispatcher) {
+            val fakeStats = FakeStatsRepository()
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                timerDelayMs = 1000L,
+                autoStartTimer = true,
+                statsRepository = fakeStats
+            )
+
+            assertTrue(viewModel.isTimerRunning)
+            testScheduler.advanceTimeBy(2000)
+            testScheduler.runCurrent()
+            assertEquals(2L, viewModel.uiState.value.elapsedTimeSeconds)
+
+            viewModel.onIntent(GameIntent.OpenStats)
+            testScheduler.runCurrent()
+            assertTrue(viewModel.uiState.value.isStatsDialogOpen)
+            assertFalse(viewModel.isTimerRunning)
+
+            testScheduler.advanceTimeBy(3000)
+            testScheduler.runCurrent()
+            assertEquals(2L, viewModel.uiState.value.elapsedTimeSeconds)
+
+            viewModel.onIntent(GameIntent.CloseStats)
+            testScheduler.runCurrent()
+            assertFalse(viewModel.uiState.value.isStatsDialogOpen)
+            assertTrue(viewModel.isTimerRunning)
+
+            testScheduler.advanceTimeBy(2000)
+            testScheduler.runCurrent()
+            assertEquals(4L, viewModel.uiState.value.elapsedTimeSeconds)
+        }
+
+        @Test
+        @DisplayName("ResetStats invokes resetStats on repository")
+        fun `ResetStats invokes resetStats on repository`() = runTest(testDispatcher) {
+            val fakeStats = FakeStatsRepository()
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                statsRepository = fakeStats
+            )
+            testScheduler.runCurrent()
+
+            viewModel.onIntent(GameIntent.ResetStats)
+            testScheduler.runCurrent()
+
+            assertEquals(1, fakeStats.resetStatsCount)
+        }
+
+        @Test
+        @DisplayName("Repository statsFlow updates GameUiState stats reactively")
+        fun `Repository statsFlow updates GameUiState stats reactively`() = runTest(testDispatcher) {
+            val fakeStats = FakeStatsRepository()
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                statsRepository = fakeStats
+            )
+            testScheduler.runCurrent()
+
+            val customStats = GameStats(gamesPlayed = 50, gamesWon = 35, highScore = 1200)
+            fakeStats.emitStats(customStats)
+            testScheduler.runCurrent()
+
+            assertEquals(50, viewModel.uiState.value.stats.gamesPlayed)
+            assertEquals(35, viewModel.uiState.value.stats.gamesWon)
+            assertEquals(1200, viewModel.uiState.value.stats.highScore)
+        }
+
+        @Test
+        @DisplayName("Closing settings while stats dialog is open does not resume timer")
+        fun `Closing settings while stats dialog is open does not resume timer`() = runTest(testDispatcher) {
+            val fakeStats = FakeStatsRepository()
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                timerDelayMs = 1000L,
+                autoStartTimer = true,
+                statsRepository = fakeStats
+            )
+
+            assertTrue(viewModel.isTimerRunning)
+            testScheduler.advanceTimeBy(2000)
+            testScheduler.runCurrent()
+            assertEquals(2L, viewModel.uiState.value.elapsedTimeSeconds)
+
+            viewModel.onIntent(GameIntent.OpenStats)
+            viewModel.onIntent(GameIntent.OpenSettings)
+            testScheduler.runCurrent()
+            assertTrue(viewModel.uiState.value.isStatsDialogOpen)
+            assertTrue(viewModel.uiState.value.isSettingsOpen)
+            assertFalse(viewModel.isTimerRunning)
+
+            viewModel.onIntent(GameIntent.CloseSettings)
+            testScheduler.runCurrent()
+            assertFalse(viewModel.uiState.value.isSettingsOpen)
+            assertTrue(viewModel.uiState.value.isStatsDialogOpen)
+            assertFalse(viewModel.isTimerRunning)
+
+            testScheduler.advanceTimeBy(3000)
+            testScheduler.runCurrent()
+            assertEquals(2L, viewModel.uiState.value.elapsedTimeSeconds)
+
+            viewModel.onIntent(GameIntent.CloseStats)
+            testScheduler.runCurrent()
+            assertFalse(viewModel.uiState.value.isStatsDialogOpen)
+            assertTrue(viewModel.isTimerRunning)
+
+            testScheduler.advanceTimeBy(2000)
+            testScheduler.runCurrent()
+            assertEquals(4L, viewModel.uiState.value.elapsedTimeSeconds)
         }
     }
 }

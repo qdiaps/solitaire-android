@@ -5,7 +5,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,14 +34,25 @@ fun TopStatusBarView(
     score: Int,
     moves: Int,
     timeSeconds: Long,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onStatsClick: (() -> Unit)? = null
 ) {
     val dimensions = SolitaireTheme.cardDimensions
+    val rowModifier = if (onStatsClick != null) {
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = dimensions.horizontalPadding, vertical = 4.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(role = Role.Button, onClickLabel = "View statistics", onClick = onStatsClick)
+            .padding(horizontal = 4.dp, vertical = 4.dp)
+    } else {
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = dimensions.horizontalPadding, vertical = 8.dp)
+    }
 
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = dimensions.horizontalPadding, vertical = 8.dp),
+        modifier = rowModifier,
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -64,13 +79,15 @@ fun TopStatusBarView(
 fun TopStatusBarView(
     boardState: BoardState,
     timeSeconds: Long,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onStatsClick: (() -> Unit)? = null
 ) {
     TopStatusBarView(
         score = boardState.score,
         moves = boardState.movesCount,
         timeSeconds = timeSeconds,
-        modifier = modifier
+        modifier = modifier,
+        onStatsClick = onStatsClick
     )
 }
 

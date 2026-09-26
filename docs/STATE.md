@@ -16,12 +16,24 @@
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-5.9` (`StatsRepository`). Ready to proceed to `T-5.10` (`StatsDialog`).
+- **Current Focus:** Completed `T-5.10` (`StatsDialog`). Ready to proceed to `T-5.11` (`GamePersistenceRepository`).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-26 (T-5.10: Statistics Dialog UI):**
+  - Implemented modal `StatsDialog.kt` in `io.github.qdiaps.solitaire.ui.game.components` displaying formatted gameplay metrics:
+    - Overview: Played, Won, Win Rate Percentage.
+    - Streaks: Current Streak, Best Streak.
+    - Records: Best Time (formatted mm:ss), Fewest Moves, High Score (gold accent).
+    - Confirmation alert dialog for resetting statistics (`onResetStats()`).
+  - Added `ActionIconType.STATS` vector Canvas icon in `BottomActionBarView.kt` and wired the "Stats" button.
+  - Made `TopStatusBarView.kt` clickable to allow inspecting statistics directly from the score/time bar.
+  - Wired `GameIntent.OpenStats`, `CloseStats`, and `ResetStats` in `GameViewModel.kt`, `GameContract.kt`, and `SolitaireGameScreen.kt`.
+  - Added `StatsDialogPreview.kt` with empty, populated (Classic Green & Deep Navy), and compact screen previews.
+  - Added unit tests in `GameContractTest` and `GameViewModelTest` verifying dialog opening, timer pause/resume, and reset interactions.
+  - Total test suite: 541 tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
 - **2026-09-26 (T-5.9: Statistics Repository):**
   - Implemented immutable `GameStats` data model in `io.github.qdiaps.solitaire.data.model` tracking lifetime player records: `gamesPlayed`, `gamesWon`, `currentStreak`, `bestStreak`, `bestTimeSeconds`, `fewestMoves`, `highScore`, `hasGameInProgress`, with computed `winPercentage` and `winRatePercent`.
   - Implemented `StatsRepository` interface and `DataStoreStatsRepository` in `io.github.qdiaps.solitaire.data.repository`:

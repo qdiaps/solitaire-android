@@ -42,7 +42,9 @@ import io.github.qdiaps.solitaire.ui.game.audio.LocalSolitaireAudio
 import io.github.qdiaps.solitaire.ui.game.audio.rememberSolitaireAudio
 import io.github.qdiaps.solitaire.ui.game.components.AutoCompleteBannerView
 import io.github.qdiaps.solitaire.ui.game.components.BottomActionBarView
+import io.github.qdiaps.solitaire.data.model.GameStats
 import io.github.qdiaps.solitaire.ui.game.components.SettingsBottomSheet
+import io.github.qdiaps.solitaire.ui.game.components.StatsDialog
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
 import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
 import io.github.qdiaps.solitaire.ui.game.components.LocalGameSessionId
@@ -140,6 +142,11 @@ fun SolitaireGameScreen(
     onNewGameClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onDismissSettings: () -> Unit = {},
+    isStatsDialogOpen: Boolean = false,
+    stats: GameStats = GameStats(),
+    onStatsClick: () -> Unit = {},
+    onDismissStats: () -> Unit = {},
+    onResetStats: () -> Unit = {},
     onDrawModeChange: (DrawMode) -> Unit = {},
     onLeftHandedChange: (Boolean) -> Unit = {},
     onAutoHintChange: (Boolean) -> Unit = {},
@@ -380,7 +387,8 @@ fun SolitaireGameScreen(
                         ) {
                             TopStatusBarView(
                                 boardState = boardState,
-                                timeSeconds = timeSeconds
+                                timeSeconds = timeSeconds,
+                                onStatsClick = onStatsClick
                             )
 
                             Spacer(modifier = Modifier.height(4.dp))
@@ -451,6 +459,7 @@ fun SolitaireGameScreen(
                                 onNewGameClick = onNewGameClick,
                                 onSettingsClick = onSettingsClick,
                                 isHintActive = isHintActive,
+                                onStatsClick = onStatsClick,
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
                         }
@@ -476,6 +485,15 @@ fun SolitaireGameScreen(
                                         }
                                     }
                                 }
+                        )
+                    }
+
+                    // Modal Statistics Dialog
+                    if (isStatsDialogOpen) {
+                        StatsDialog(
+                            stats = stats,
+                            onResetStats = onResetStats,
+                            onDismiss = onDismissStats
                         )
                     }
 
@@ -686,6 +704,8 @@ fun SolitaireGameScreen(
         hapticsEnabled = uiState.hapticsEnabled,
         autoHintEnabled = uiState.autoHintEnabled,
         isSettingsOpen = uiState.isSettingsOpen,
+        isStatsDialogOpen = uiState.isStatsDialogOpen,
+        stats = uiState.stats,
         onNewGameClick = { viewModel.onIntent(GameIntent.StartNewGame) },
         onSettingsClick = { viewModel.onIntent(GameIntent.OpenSettings) },
         onDismissSettings = { viewModel.onIntent(GameIntent.CloseSettings) },
@@ -697,7 +717,10 @@ fun SolitaireGameScreen(
         onCardFaceStyleChange = { viewModel.onIntent(GameIntent.SetCardFaceStyle(it)) },
         onSoundChange = { viewModel.onIntent(GameIntent.SetSoundEnabled(it)) },
         onHapticsChange = { viewModel.onIntent(GameIntent.SetHapticsEnabled(it)) },
-        onResetSettingsToDefaults = { viewModel.onIntent(GameIntent.ResetSettingsToDefaults) }
+        onResetSettingsToDefaults = { viewModel.onIntent(GameIntent.ResetSettingsToDefaults) },
+        onStatsClick = { viewModel.onIntent(GameIntent.OpenStats) },
+        onDismissStats = { viewModel.onIntent(GameIntent.CloseStats) },
+        onResetStats = { viewModel.onIntent(GameIntent.ResetStats) }
     )
 }
 
@@ -750,7 +773,12 @@ fun GameScreen(
     onCardFaceStyleChange: (CardFaceStyle) -> Unit = {},
     onSoundChange: (Boolean) -> Unit = {},
     onHapticsChange: (Boolean) -> Unit = {},
-    onResetSettingsToDefaults: () -> Unit = {}
+    onResetSettingsToDefaults: () -> Unit = {},
+    isStatsDialogOpen: Boolean = false,
+    stats: GameStats = GameStats(),
+    onStatsClick: () -> Unit = {},
+    onDismissStats: () -> Unit = {},
+    onResetStats: () -> Unit = {}
 ) {
     SolitaireGameScreen(
         boardState = boardState,
@@ -797,7 +825,12 @@ fun GameScreen(
         onCardFaceStyleChange = onCardFaceStyleChange,
         onSoundChange = onSoundChange,
         onHapticsChange = onHapticsChange,
-        onResetSettingsToDefaults = onResetSettingsToDefaults
+        onResetSettingsToDefaults = onResetSettingsToDefaults,
+        isStatsDialogOpen = isStatsDialogOpen,
+        stats = stats,
+        onStatsClick = onStatsClick,
+        onDismissStats = onDismissStats,
+        onResetStats = onResetStats
     )
 }
 

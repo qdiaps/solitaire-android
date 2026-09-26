@@ -41,7 +41,8 @@ enum class ActionIconType {
     UNDO,
     HINT,
     NEW_GAME,
-    SETTINGS
+    SETTINGS,
+    STATS
 }
 
 /**
@@ -156,6 +157,42 @@ fun ActionIcon(
                     drawLine(tint, Offset(x1, y1), Offset(x2, y2), strokeWidth * 1.5f, cap = StrokeCap.Round)
                 }
             }
+
+            ActionIconType.STATS -> {
+                // 3 vertical bar chart columns with rounded corners
+                val cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.5.dp.toPx(), 1.5.dp.toPx())
+                val barWidth = w * 0.22f
+                val gap = w * 0.08f
+                val bottomY = h * 0.88f
+                val startX = (w - (3 * barWidth + 2 * gap)) / 2f
+
+                // Bar 1 (left, ~40% height)
+                val h1 = h * 0.40f
+                drawRoundRect(
+                    color = tint,
+                    topLeft = Offset(startX, bottomY - h1),
+                    size = Size(barWidth, h1),
+                    cornerRadius = cornerRadius
+                )
+
+                // Bar 2 (middle, ~75% height)
+                val h2 = h * 0.75f
+                drawRoundRect(
+                    color = tint,
+                    topLeft = Offset(startX + barWidth + gap, bottomY - h2),
+                    size = Size(barWidth, h2),
+                    cornerRadius = cornerRadius
+                )
+
+                // Bar 3 (right, ~55% height)
+                val h3 = h * 0.55f
+                drawRoundRect(
+                    color = tint,
+                    topLeft = Offset(startX + (barWidth + gap) * 2, bottomY - h3),
+                    size = Size(barWidth, h3),
+                    cornerRadius = cornerRadius
+                )
+            }
         }
     }
 }
@@ -198,7 +235,7 @@ fun ActionButton(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 4.dp),
+                .padding(horizontal = 2.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -207,7 +244,7 @@ fun ActionButton(
                 tint = contentColor,
                 modifier = Modifier.size(16.dp)
             )
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = label,
                 color = contentColor,
@@ -239,7 +276,8 @@ fun BottomActionBarView(
     onNewGameClick: () -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
-    isHintActive: Boolean = false
+    isHintActive: Boolean = false,
+    onStatsClick: (() -> Unit)? = null
 ) {
     val dimensions = SolitaireTheme.cardDimensions
 
@@ -247,7 +285,7 @@ fun BottomActionBarView(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = dimensions.horizontalPadding, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         ActionButton(
@@ -270,6 +308,14 @@ fun BottomActionBarView(
             onClick = onNewGameClick,
             modifier = Modifier.weight(1f)
         )
+        if (onStatsClick != null) {
+            ActionButton(
+                icon = ActionIconType.STATS,
+                label = "Stats",
+                onClick = onStatsClick,
+                modifier = Modifier.weight(1f)
+            )
+        }
         ActionButton(
             icon = ActionIconType.SETTINGS,
             label = "Settings",

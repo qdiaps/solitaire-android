@@ -146,10 +146,13 @@ class GameContractTest {
                 GameIntent.SetSoundEnabled(false),
                 GameIntent.SetHapticsEnabled(false),
                 GameIntent.SetAutoHintEnabled(true),
-                GameIntent.ResetSettingsToDefaults
+                GameIntent.ResetSettingsToDefaults,
+                GameIntent.OpenStats,
+                GameIntent.CloseStats,
+                GameIntent.ResetStats
             )
 
-            assertEquals(27, intents.size)
+            assertEquals(30, intents.size)
 
             for (intent in intents) {
                 val label = when (intent) {
@@ -180,6 +183,9 @@ class GameContractTest {
                     is GameIntent.SetHapticsEnabled -> "SetHapticsEnabled:${intent.enabled}"
                     is GameIntent.SetAutoHintEnabled -> "SetAutoHintEnabled:${intent.enabled}"
                     is GameIntent.ResetSettingsToDefaults -> "ResetSettingsToDefaults"
+                    is GameIntent.OpenStats -> "OpenStats"
+                    is GameIntent.CloseStats -> "CloseStats"
+                    is GameIntent.ResetStats -> "ResetStats"
                 }
                 assertTrue(label.isNotEmpty())
             }

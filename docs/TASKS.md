@@ -81,7 +81,7 @@
   - Implement record updating methods on game start and game victory, plus `resetStats()`.
   - *TDD/Unit Tests:* `StatsRepositoryTest` verifying win streak calculation, best time updates, and reset logic.
 
-- [ ] **T-5.10: Statistics Dialog UI (`StatsDialog`)**
+- [x] **T-5.10: Statistics Dialog UI (`StatsDialog`)**
   - Implement modal `StatsDialog` displaying formatted statistics grid (Games, Wins, Win %, Streaks, Best Time in `mm:ss`, Fewest Moves, High Score) with a confirmation dialog for reset.
   - Wire stats dialog action in top status bar and bottom action bar.
   - *Compose Previews:* `StatsDialogPreview` with empty and populated statistics.

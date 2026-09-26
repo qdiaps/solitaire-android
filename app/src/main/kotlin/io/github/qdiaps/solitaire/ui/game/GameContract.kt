@@ -6,6 +6,7 @@ import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteMove
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
+import io.github.qdiaps.solitaire.data.model.GameStats
 import io.github.qdiaps.solitaire.domain.rules.Hint
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
 import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
@@ -51,7 +52,9 @@ data class GameUiState(
     val soundEnabled: Boolean = true,
     val hapticsEnabled: Boolean = true,
     val autoHintEnabled: Boolean = false,
-    val isSettingsOpen: Boolean = false
+    val isSettingsOpen: Boolean = false,
+    val isStatsDialogOpen: Boolean = false,
+    val stats: GameStats = GameStats()
 ) {
     /**
      * Cards that should be highlighted on the board (e.g., all cards in the moving stack from [activeHint]).
@@ -226,6 +229,21 @@ sealed interface GameIntent {
      * Reset all gameplay, appearance, and feedback settings to factory defaults.
      */
     data object ResetSettingsToDefaults : GameIntent
+
+    /**
+     * Open player lifetime statistics dialog.
+     */
+    data object OpenStats : GameIntent
+
+    /**
+     * Close player lifetime statistics dialog.
+     */
+    data object CloseStats : GameIntent
+
+    /**
+     * Reset all lifetime gameplay statistics and records.
+     */
+    data object ResetStats : GameIntent
 }
 
 /**
