@@ -16,12 +16,20 @@
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-5.4c` (Fix Stock Draw Flying Card Morphing / Desync Bug). Ready to proceed to `T-5.5` (Pure Domain Auto-Complete Resolver).
+- **Current Focus:** Completed `T-5.5` (Pure Domain Auto-Complete Resolver). Ready to proceed to `T-5.6` (Auto-Complete Cascade Execution in ViewModel & UI).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-26 (T-5.5: Pure Domain Auto-Complete Resolver):**
+  - Implemented pure Kotlin `AutoCompleteResolver` (`io.github.qdiaps.solitaire.domain.rules`) detecting when all tableau columns contain zero face-down cards, stock is exhausted, and all remaining cards across tableau and waste can be safely cascaded to foundations without deadlock.
+  - Implemented `AutoCompleteMove` model (`card`, `from`, `to`, `resultingState`, with aliases `source` and `destination`).
+  - Implemented `nextMove(state: BoardState)` generating the next immediate foundation promotion, prioritized strictly by rank (lowest rank first: Aces before 2s, 2s before 3s) and deterministic location/suit ordering for a balanced victory cascade.
+  - Implemented `resolveAllMoves(state: BoardState)` performing end-to-end non-destructive simulation of foundation promotions from tableau and waste until all cards are cleared, returning the complete sequential move list.
+  - Implemented `isAutoCompleteReady(state: BoardState)` / `canAutoComplete(state: BoardState)` validating readiness conditions and verifying that full clearance is mathematically achievable.
+  - Added comprehensive unit test suite `AutoCompleteResolverTest` (17 tests) covering readiness conditions, waste/tableau step generation, rank-first ordering, partial deals, 52-card victory cascade, and property aliases.
+  - Full suite verified: 472 unit tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
 - **2026-09-26 (T-5.4c: Fix Stock Draw Flying Card Morphing / Desync Bug):**
   - Identified and fixed bug where clicking on the stock pile displayed one card during the 3D flight animation, but upon landing in the waste pile, the card became a different card.
   - Root cause: `KlondikeRules.draw()` extracts cards from the beginning of the stock list (`state.stock.take(count)`), whereas `SolitaireGameScreen.kt` took `boardState.stock.last()` (the 24th/bottom card of the stock pile) as the animated `movingCard`.
@@ -77,4 +85,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-5.5: Pure Domain Auto-Complete Resolver (AutoCompleteResolver)`
+- **Target Task:** `T-5.6: Auto-Complete Cascade Execution in ViewModel & UI`

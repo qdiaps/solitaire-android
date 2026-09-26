@@ -48,7 +48,7 @@
   - Guarded `isFlipping` inside `CardView` with `animateFlip` to prevent 1-frame glitches, and wrapped flying card in `key(card.id)` in `AnimatedMoveOverlay`.
   - *TDD/Unit Tests:* `GameContractTest` and suite tests (457 tests, 100% pass).
 
-- [ ] **T-5.5: Pure Domain Auto-Complete Resolver (`AutoCompleteResolver`)**
+- [x] **T-5.5: Pure Domain Auto-Complete Resolver (`AutoCompleteResolver`)**
   - Implement pure Kotlin `AutoCompleteResolver` detecting when all tableau columns contain zero face-down cards and stock/waste can be safely cleared.
   - Calculate the next immediate safe foundation promotion move until board reaches victory state (`KlondikeRules.isGameWon`).
   - *TDD/Unit Tests:* `AutoCompleteResolverTest` verifying readiness conditions and sequential promotion step generation.
