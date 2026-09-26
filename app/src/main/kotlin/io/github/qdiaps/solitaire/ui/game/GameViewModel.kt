@@ -162,17 +162,21 @@ class GameViewModel(
     }
 
     /**
-     * Opens the modal settings bottom sheet.
+     * Opens the modal settings bottom sheet and pauses elapsed timer.
      */
     fun openSettings() {
         _uiState.update { it.copy(isSettingsOpen = true) }
+        pauseTimer()
     }
 
     /**
-     * Closes the modal settings bottom sheet.
+     * Closes the modal settings bottom sheet and resumes elapsed timer if active.
      */
     fun closeSettings() {
         _uiState.update { it.copy(isSettingsOpen = false) }
+        if (autoStartTimer && !_uiState.value.isGameWon) {
+            startTimer()
+        }
     }
 
     /**

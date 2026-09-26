@@ -1363,6 +1363,43 @@ class GameViewModelTest {
         }
 
         @Test
+        @DisplayName("OpenSettings pauses timer and CloseSettings resumes timer")
+        fun `OpenSettings pauses timer and CloseSettings resumes timer`() = runTest(testDispatcher) {
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                timerDelayMs = 1000L,
+                autoStartTimer = true
+            )
+
+            assertTrue(viewModel.isTimerRunning)
+            testScheduler.advanceTimeBy(2000)
+            testScheduler.runCurrent()
+            assertEquals(2L, viewModel.uiState.value.elapsedTimeSeconds)
+
+            viewModel.onIntent(GameIntent.OpenSettings)
+            testScheduler.runCurrent()
+            assertTrue(viewModel.uiState.value.isSettingsOpen)
+            assertFalse(viewModel.isTimerRunning)
+
+            testScheduler.advanceTimeBy(3000)
+            testScheduler.runCurrent()
+            assertEquals(2L, viewModel.uiState.value.elapsedTimeSeconds)
+
+            viewModel.onIntent(GameIntent.CloseSettings)
+            testScheduler.runCurrent()
+            assertFalse(viewModel.uiState.value.isSettingsOpen)
+            assertTrue(viewModel.isTimerRunning)
+
+            testScheduler.advanceTimeBy(2000)
+            testScheduler.runCurrent()
+            assertEquals(4L, viewModel.uiState.value.elapsedTimeSeconds)
+
+            viewModel.stopTimer()
+        }
+
+        @Test
         @DisplayName("SetDrawMode updates drawMode in uiState and calls repository")
         fun `SetDrawMode updates drawMode in uiState and calls repository`() = runTest(testDispatcher) {
             val fakeRepo = FakeSettingsRepository()
