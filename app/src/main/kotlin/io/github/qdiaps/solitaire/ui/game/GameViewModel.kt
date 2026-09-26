@@ -6,7 +6,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.github.qdiaps.solitaire.data.local.DataStoreManager
 import io.github.qdiaps.solitaire.data.repository.DataStoreSettingsRepository
+import io.github.qdiaps.solitaire.data.repository.DataStoreStatsRepository
 import io.github.qdiaps.solitaire.data.repository.SettingsRepository
+import io.github.qdiaps.solitaire.data.repository.StatsRepository
 import io.github.qdiaps.solitaire.domain.deck.KlondikeDealer
 import io.github.qdiaps.solitaire.domain.engine.UndoManager
 import io.github.qdiaps.solitaire.domain.model.BoardState
@@ -64,6 +66,7 @@ class GameViewModel(
     coroutineScope: CoroutineScope? = null,
     private val autoCompleteDelayMs: Long = 120L,
     private val settingsRepository: SettingsRepository? = null,
+    private val statsRepository: StatsRepository? = null,
     private val idleHintDelayMs: Long = DEFAULT_IDLE_HINT_DELAY_MS,
     initialAutoHintEnabled: Boolean = false
 ) : ViewModel() {
@@ -142,6 +145,10 @@ class GameViewModel(
                     }
                 }
             }
+        }
+
+        if (statsRepository != null && !initialIsWon) {
+            scope.launch { statsRepository.recordGameStarted() }
         }
     }
 
@@ -499,6 +506,9 @@ class GameViewModel(
         if (_uiState.value.autoHintEnabled && !isWon) {
             resetIdleHintTimer()
         }
+        if (statsRepository != null && !isWon) {
+            scope.launch { statsRepository.recordGameStarted() }
+        }
         _events.tryEmit(GameEvent.PlayDealSound)
     }
 
@@ -559,6 +569,7 @@ class GameViewModel(
                     if (isWon) {
                         stopTimer()
                         _events.tryEmit(GameEvent.TriggerWinCelebration)
+                        recordVictoryInStats()
                         break
                     }
 
@@ -721,6 +732,7 @@ class GameViewModel(
             stopTimer()
             cancelIdleHintTimer()
             _events.tryEmit(GameEvent.TriggerWinCelebration)
+            recordVictoryInStats()
         } else {
             val event = if (isDrop) GameEvent.PlayHapticSnap else GameEvent.PlayHapticTick
             _events.tryEmit(event)
@@ -753,6 +765,9 @@ class GameViewModel(
         if (_uiState.value.autoHintEnabled && !isWon) {
             resetIdleHintTimer()
         }
+        if (statsRepository != null && !isWon) {
+            scope.launch { statsRepository.recordGameStarted() }
+        }
         _events.tryEmit(GameEvent.PlayDealSound)
     }
 
@@ -767,10 +782,24 @@ class GameViewModel(
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 val dataStoreManager = DataStoreManager.fromContext(context)
                 val settingsRepo = DataStoreSettingsRepository(dataStoreManager)
+                val statsRepo = DataStoreStatsRepository(dataStoreManager)
                 return GameViewModel(
                     dealGenerator = dealGenerator,
-                    settingsRepository = settingsRepo
+                    settingsRepository = settingsRepo,
+                    statsRepository = statsRepo
                 ) as T
+            }
+        }
+    }
+    private fun recordVictoryInStats() {
+        statsRepository?.let { repo ->
+            val currentState = _uiState.value
+            scope.launch {
+                repo.recordGameWon(
+                    timeSeconds = currentState.elapsedTimeSeconds.toInt(),
+                    moves = currentState.boardState.movesCount,
+                    score = currentState.boardState.score
+                )
             }
         }
     }

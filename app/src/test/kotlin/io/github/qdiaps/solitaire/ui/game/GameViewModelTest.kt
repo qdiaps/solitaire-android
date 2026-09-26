@@ -11,7 +11,9 @@ import io.github.qdiaps.solitaire.domain.rules.KlondikeRules
 import io.github.qdiaps.solitaire.domain.solver.DealGenerator
 import io.github.qdiaps.solitaire.domain.solver.SolvabilityResult
 import io.github.qdiaps.solitaire.data.model.GameSettings
+import io.github.qdiaps.solitaire.data.model.GameStats
 import io.github.qdiaps.solitaire.data.repository.SettingsRepository
+import io.github.qdiaps.solitaire.data.repository.StatsRepository
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
 import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,6 +61,46 @@ class GameViewModelTest {
     private fun createCustomBoard(id: String = "test"): BoardState {
         val card = Card(Suit.SPADES, Rank.ACE, isFaceUp = true, id = id)
         return BoardState(stock = listOf(card))
+    }
+
+    private class FakeStatsRepository : StatsRepository {
+        private val _flow = MutableStateFlow(GameStats())
+        override val statsFlow: StateFlow<GameStats> = _flow.asStateFlow()
+
+        var gameStartedCount = 0
+        var gameWonCount = 0
+        var lastWonTime = 0
+        var lastWonMoves = 0
+        var lastWonScore = 0
+
+        override suspend fun getStats(): GameStats = _flow.value
+
+        override suspend fun recordGameStarted() {
+            gameStartedCount++
+            _flow.update { it.copy(gamesPlayed = it.gamesPlayed + 1, hasGameInProgress = true) }
+        }
+
+        override suspend fun recordGameWon(timeSeconds: Int, moves: Int, score: Int) {
+            gameWonCount++
+            lastWonTime = timeSeconds
+            lastWonMoves = moves
+            lastWonScore = score
+            _flow.update {
+                it.copy(
+                    gamesWon = it.gamesWon + 1,
+                    highScore = maxOf(it.highScore, score),
+                    hasGameInProgress = false
+                )
+            }
+        }
+
+        override suspend fun recordGameAbandoned() {
+            _flow.update { it.copy(hasGameInProgress = false) }
+        }
+
+        override suspend fun resetStats() {
+            _flow.value = GameStats()
+        }
     }
 
     private class FakeSettingsRepository(
@@ -1730,6 +1772,102 @@ class GameViewModelTest {
             testScheduler.runCurrent()
 
             assertEquals(FeltTheme.DEEP_NAVY, viewModel.uiState.value.feltTheme)
+        }
+    }
+    @Nested
+    @DisplayName("Stats Repository Integration Tests")
+    inner class StatsIntegrationTests {
+
+        @Test
+        @DisplayName("recordGameStarted is invoked on ViewModel init when not won")
+        fun `recordGameStarted is invoked on ViewModel init when not won`() = runTest(testDispatcher) {
+            val fakeStats = FakeStatsRepository()
+            GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                statsRepository = fakeStats
+            )
+            testScheduler.runCurrent()
+
+            assertEquals(1, fakeStats.gameStartedCount)
+        }
+
+        @Test
+        @DisplayName("recordGameStarted is NOT invoked on ViewModel init when initial state is already won")
+        fun `recordGameStarted is NOT invoked on ViewModel init when initial state is already won`() = runTest(testDispatcher) {
+            val fakeStats = FakeStatsRepository()
+            GameViewModel(
+                initialBoardState = createWonBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                statsRepository = fakeStats
+            )
+            testScheduler.runCurrent()
+
+            assertEquals(0, fakeStats.gameStartedCount)
+        }
+
+        @Test
+        @DisplayName("recordGameWon is invoked with elapsed time, moves, and score when game is won")
+        fun `recordGameWon is invoked with elapsed time, moves, and score when game is won`() = runTest(testDispatcher) {
+            val fakeStats = FakeStatsRepository()
+            val presqueWonFoundations = Suit.entries.map { suit ->
+                if (suit == Suit.HEARTS) {
+                    Rank.entries.filter { it != Rank.KING }.map { Card(suit, it, isFaceUp = true) }
+                } else {
+                    Rank.entries.map { Card(suit, it, isFaceUp = true) }
+                }
+            }
+            val kingOfHearts = Card(Suit.HEARTS, Rank.KING, isFaceUp = true)
+            val tableau = List(7) { col ->
+                if (col == 0) listOf(kingOfHearts) else emptyList()
+            }
+            val almostWonBoard = BoardState(
+                foundations = presqueWonFoundations,
+                tableau = tableau,
+                score = 680,
+                movesCount = 92
+            )
+
+            val viewModel = GameViewModel(
+                initialBoardState = almostWonBoard,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                statsRepository = fakeStats
+            )
+            testScheduler.runCurrent()
+            assertEquals(1, fakeStats.gameStartedCount)
+
+            viewModel.onIntent(GameIntent.OnCardTapped(kingOfHearts, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+
+            assertTrue(viewModel.uiState.value.isGameWon)
+            assertEquals(1, fakeStats.gameWonCount)
+            assertEquals(680 + 10, fakeStats.lastWonScore)
+            assertEquals(93, fakeStats.lastWonMoves)
+        }
+
+        @Test
+        @DisplayName("restartGame triggers recordGameStarted")
+        fun `restartGame triggers recordGameStarted`() = runTest(testDispatcher) {
+            val fakeStats = FakeStatsRepository()
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                statsRepository = fakeStats
+            )
+            testScheduler.runCurrent()
+            assertEquals(1, fakeStats.gameStartedCount)
+
+            viewModel.onIntent(GameIntent.RestartGame)
+            testScheduler.runCurrent()
+            assertEquals(2, fakeStats.gameStartedCount)
         }
     }
 }

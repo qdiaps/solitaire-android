@@ -16,12 +16,23 @@
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-5.8` (`SettingsBottomSheet`). Ready to proceed to `T-5.9` (`StatsRepository`).
+- **Current Focus:** Completed `T-5.9` (`StatsRepository`). Ready to proceed to `T-5.10` (`StatsDialog`).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-26 (T-5.9: Statistics Repository):**
+  - Implemented immutable `GameStats` data model in `io.github.qdiaps.solitaire.data.model` tracking lifetime player records: `gamesPlayed`, `gamesWon`, `currentStreak`, `bestStreak`, `bestTimeSeconds`, `fewestMoves`, `highScore`, `hasGameInProgress`, with computed `winPercentage` and `winRatePercent`.
+  - Implemented `StatsRepository` interface and `DataStoreStatsRepository` in `io.github.qdiaps.solitaire.data.repository`:
+    - Reactive `statsFlow: Flow<GameStats>` with `distinctUntilChanged()`.
+    - `recordGameStarted()` tracking game start and resetting streak if previous game was abandoned.
+    - `recordGameWon(timeSeconds, moves, score)` atomically updating wins, streaks, minimum time, minimum moves, and high score.
+    - `recordGameAbandoned()` marking game as forfeited without win.
+    - `resetStats()` clearing all preferences.
+  - Wired `StatsRepository` into `GameViewModel` (constructor injection, `provideFactory(context)` wiring, game start recording in `init`, `applyNewDeal`, and `restartGame`, and win recording in `updateBoardStateAfterMove` and `autoComplete`).
+  - Added unit test suites: `StatsRepositoryTest` (11 tests) and `GameViewModelTest` (4 integration tests).
+  - Total test suite: 537 tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
 - **2026-09-26 (Bug Fixes & Polish):**
   - **Fix 1 (Audio & Haptics Muting):** Added `isEnabled: Boolean` to `SolitaireHaptics` and `AndroidSolitaireHaptics`, passed `enabled` through `rememberSolitaireHaptics` and `rememberSolitaireAudio` in `SolitaireGameScreen` to strictly mute all sound and haptic feedback when disabled. (`356c98c`)
   - **Fix 2 (Settings Timer Pause):** Paused elapsed timer upon `openSettings()` and resumed on `closeSettings()` if `autoStartTimer` is enabled and game is not won. Added unit test in `GameViewModelTest`. (`fc2d789`)

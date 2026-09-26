@@ -76,7 +76,7 @@
   - Implement horizontal 3-card fanning for waste pile in `WastePileView` and `TopRowView` with left-handed mode support and flight animation alignment.
   - *Verify:* 522 unit tests passing, 0 lint errors in `./gradlew check`.
 
-- [ ] **T-5.9: Statistics Repository (`StatsRepository`)**
+- [x] **T-5.9: Statistics Repository (`StatsRepository`)**
   - Implement `StatsRepository` storing player records: `gamesPlayed`, `gamesWon`, `winPercentage`, `currentStreak`, `bestStreak`, `bestTimeSeconds`, `fewestMoves`, and `highScore`.
   - Implement record updating methods on game start and game victory, plus `resetStats()`.
   - *TDD/Unit Tests:* `StatsRepositoryTest` verifying win streak calculation, best time updates, and reset logic.
