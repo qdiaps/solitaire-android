@@ -16,12 +16,23 @@
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-5.6` with auto-complete stock/waste promotion bugfix and deadlock prevention. Ready to proceed to `T-5.7` (Victory Celebration Overlay & Cascading Card Physics / Confetti).
+- **Current Focus:** Completed `T-5.7` (`DataStoreManager` & `SettingsRepository`). Ready to proceed to `T-5.8` (`SettingsBottomSheet`).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-26 (T-5.7: DataStore Manager & Settings Repository):**
+  - Implemented `DataStoreManager` in `io.github.qdiaps.solitaire.data.local`: thread-safe and resilient wrapper around Jetpack `DataStore<Preferences>` with `IOException` error boundary, type-safe getters/setters, preference removal, and clear helpers.
+  - Implemented `@Immutable` `GameSettings` in `io.github.qdiaps.solitaire.data.model` covering all game customization options and toggles: `drawMode`, `isLeftHanded`, `feltTheme`, `cardBackStyle`, `cardFaceStyle`, `soundEnabled`, `hapticsEnabled`, and `autoHintEnabled`.
+  - Implemented `SettingsRepository` interface and `DataStoreSettingsRepository` in `io.github.qdiaps.solitaire.data.repository`:
+    - Reactive `settingsFlow: Flow<GameSettings>` with `distinctUntilChanged()`.
+    - Granular type-safe mutators (`setDrawMode`, `setLeftHanded`, `setFeltTheme`, `setCardBackStyle`, `setCardFaceStyle`, `setSoundEnabled`, `setHapticsEnabled`, `setAutoHintEnabled`).
+    - Atomic batch updating (`updateSettings`).
+    - Resilient fallback handling for corrupted/unknown enum values.
+    - Non-destructive `resetToDefaults()` preserving stats and game persistence.
+  - Added comprehensive test suites: `DataStoreManagerTest` (4 unit tests) and `SettingsRepositoryTest` (13 unit tests).
+  - Verified test suite: 498 unit tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
 - **2026-09-26 (Fix: Auto-Complete Stock/Waste Promotion & UI Hang Resolution):**
   - Identified and resolved the bug where auto-completing with remaining stock cards caused the cascade to stall after tableau moves, locking the UI with an active timer and unresponsive touch barrier.
   - **Root Cause 1 (Stock evaluation ignored):** In `AutoCompleteResolver.kt`, `KlondikeRules.findTargetFoundationIndex(state, stockCard)` checked `if (!card.isFaceUp) return null`. Because all stock cards have `isFaceUp = false`, it returned `null` for every stock card, causing `nextMove` to report no available moves while cards remained in stock.
@@ -68,7 +79,7 @@
   - Root cause: `KlondikeRules.draw()` extracts cards from the beginning of the stock list (`state.stock.take(count)`), whereas `SolitaireGameScreen.kt` took `boardState.stock.last()` (the 24th/bottom card of the stock pile) as the animated `movingCard`.
   - Added `drawMode: DrawMode = DrawMode.DRAW_ONE` to `GameUiState` and `SolitaireGameScreen`.
   - Updated `SolitaireGameScreen.kt` to compute `movingCard = boardState.stock.take(drawCount).last()`, perfectly matching the domain rules for both Draw 1 and Draw 3 modes.
-  - Guarded `isFlipping = animateFlip && flipAnimatable.value < 1f && card.isFaceUp` in `CardView.kt` to eliminate 1-frame face-down flashes when `animateFlip = false``.
+  - Guarded `isFlipping = animateFlip && flipAnimatable.value < 1f && card.isFaceUp` in `CardView.kt` to eliminate 1-frame face-down flashes when `animateFlip = false`.
   - Added `key(card.id)` to `AnimatedMoveOverlay.kt` to prevent composable slot reuse glitches across flights.
   - Verified suite: 457 unit tests pass (100%), 0 Android lint errors.
 - **2026-09-26 (T-5.4b: Fix Ghost Card Flip Turnover Animation on New Game / Deal Reset):**
@@ -76,12 +87,12 @@
   - Root cause: Compose node slot reuse across deals preserved stale `previousFaceUp = false` state for static card IDs (`card.id`), causing `LaunchedEffect(card.isFaceUp)` to erroneously interpret freshly dealt face-up cards as having just been uncovered.
   - Added `gameSessionId: Long` to `GameUiState`, automatically incremented by `GameViewModel` on each `StartNewGame` and `RestartGame`.
   - Exposed `LocalGameSessionId` composition local and keyed tableau column cards with `"${gameSessionId}_${card.id}"`, resetting all remembered flip states on every deal.
-  - Added `animateFlip: Boolean = true` parameter to `CardView`, explicitly disabling turnover animations in `AnimatedMoveOverlay`, `StockPileView`, `WastePileView`, `FoundationRowView`, and `DragOverlay``.
+  - Added `animateFlip: Boolean = true` parameter to `CardView`, explicitly disabling turnover animations in `AnimatedMoveOverlay`, `StockPileView`, `WastePileView`, `FoundationRowView`, and `DragOverlay`.
   - Fixed `StockPileView` static card ID from colliding with the real King of Spades by assigning dedicated ID `"STOCK_PILE_TOP"`.
   - Cancelled any active card flights or drag gestures on deal reset.
   - Suite verification: 457 unit tests passing (100%), 0 Android lint errors.
 - **2026-09-26 (T-5.4: Hint Pulsing UI Highlighting & ViewModel Integration):**
-  - Integrated `HintResolver` with `GameViewModel`: implemented `requestHint()` and `dismissHint()`, connected `GameIntent.RequestHint` and `GameIntent.DismissHint``.
+  - Integrated `HintResolver` with `GameViewModel`: implemented `requestHint()` and `dismissHint()`, connected `GameIntent.RequestHint` and `GameIntent.DismissHint`.
   - Updated `GameContract`: `GameUiState.activeHint` is now `Hint?`, exposing `highlightedCard`, `hintSourceLocation`, `hintTargetLocation`, and `isHintActive`.
   - Implemented high-contrast, radiant amber-gold hint highlighting (`HintHighlight = Color(0xFFFFB300)`):
     - Replaced low-contrast emerald green with vibrant amber-gold, delivering crisp visibility across all felt themes (especially Classic Green).
@@ -110,7 +121,7 @@
   - Added unit test suite `CardFaceStyleTest` (6 tests) and Compose preview suite `CardThemesGalleryPreview.kt`.
   - Verified test suite: all 434 unit tests pass (100% pass), 0 Android lint errors (`./gradlew check`).
 - **2026-09-26 (T-5.1: Card Visual Styles & Custom Back Designs):**
-  - Implemented `CardBackStyle` enum with 4 distinct visual styles: `CLASSIC_LATTICE`, `CRIMSON_VINTAGE`, `EMERALD_ART_DECO`, and `OBSIDIAN_MINIMAL``.
+  - Implemented `CardBackStyle` enum with 4 distinct visual styles: `CLASSIC_LATTICE`, `CRIMSON_VINTAGE`, `EMERALD_ART_DECO`, and `OBSIDIAN_MINIMAL`.
   - Implemented vector Canvas renderer `CardBackView.kt` in `ui/game/components/`.
   - Added unit test suite `CardBackStyleTest` (5 tests) and Compose preview suite `CardBackPreview.kt` (3 previews).
   - Verified test suite: all 428 unit tests pass (100% pass), 0 Android lint errors (`./gradlew check`).
@@ -118,4 +129,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-5.7: Victory Celebration Overlay & Cascading Card Physics / Confetti`
+- **Target Task:** `T-5.8: Settings Bottom Sheet UI (SettingsBottomSheet)`

@@ -59,7 +59,7 @@
   - Add auto-complete trigger banner / button in `SolitaireGameScreen` when available.
   - *TDD/Unit Tests:* `GameViewModelTest` verifying cascade loop execution, state updates, and win event trigger.
 
-- [ ] **T-5.7: DataStore Manager & Settings Repository (`SettingsRepository`)**
+- [x] **T-5.7: DataStore Manager & Settings Repository (`SettingsRepository`)**
   - Implement `DataStoreManager` wrapping Jetpack `DataStore<Preferences>` with type-safe preference keys.
   - Implement `SettingsRepository` exposing `Flow<GameSettings>`: `drawMode`, `isLeftHanded`, `feltTheme`, `cardBackStyle`, `cardFaceStyle`, `soundEnabled`, `hapticsEnabled`, and `autoHintEnabled`.
   - *TDD/Unit Tests:* `SettingsRepositoryTest` verifying default settings, persistence mutations, and flow emissions.
