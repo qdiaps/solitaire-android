@@ -58,7 +58,9 @@ fun calculateTableauOffsets(
  *
  * @param cards List of cards in this column from bottom (index 0) to top (last index).
  * @param modifier Compose [Modifier] applied to this column container.
- * @param highlightedCard Optional card within this column that has an active hint highlight.
+ * @param highlightedCard Optional source card within this column that has an active hint highlight.
+ * @param destinationCard Optional destination card within this column that has an active hint highlight.
+ * @param isSlotHighlighted Whether to render an active hint border around the empty base slot.
  * @param columnIndex 0-based index of this tableau column (0..6).
  * @param boardState Optional board state provider for drag drop validation.
  * @param onCardClick Optional callback invoked when a card in this column is tapped.
@@ -70,6 +72,9 @@ fun TableauColumnView(
     cards: List<Card>,
     modifier: Modifier = Modifier,
     highlightedCard: Card? = null,
+    highlightedCards: List<Card> = emptyList(),
+    destinationCard: Card? = null,
+    isSlotHighlighted: Boolean = false,
     columnIndex: Int = 0,
     boardState: (() -> BoardState)? = null,
     onCardClick: ((card: Card) -> Unit)? = null,
@@ -98,6 +103,7 @@ fun TableauColumnView(
         CardSlotPlaceholder(
             modifier = Modifier.size(dimensions.cardWidth, dimensions.cardHeight),
             watermark = SlotWatermark.TableauKing,
+            isHighlighted = cards.isEmpty() && isSlotHighlighted,
             onClick = if (cards.isEmpty()) onEmptySlotClick else null
         )
 
@@ -135,7 +141,7 @@ fun TableauColumnView(
                                 alpha = 0f
                             }
                         },
-                    isHighlighted = card == highlightedCard,
+                    isHighlighted = (card == highlightedCard || card in highlightedCards || card == destinationCard),
                     onClick = onCardClick?.let { { it(card) } }
                 )
             }

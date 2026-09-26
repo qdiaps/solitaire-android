@@ -8,6 +8,7 @@ import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
+import io.github.qdiaps.solitaire.domain.rules.HintResolver
 import io.github.qdiaps.solitaire.domain.rules.KlondikeRules
 import io.github.qdiaps.solitaire.domain.rules.SmartTapResolver
 import io.github.qdiaps.solitaire.domain.solver.DeadlockDetector
@@ -92,16 +93,32 @@ class GameViewModel(
             is GameIntent.RestartGame -> restartGame()
             is GameIntent.ToggleLeftHanded -> toggleLeftHanded()
             is GameIntent.SelectFeltTheme -> selectFeltTheme(intent.theme)
+            is GameIntent.RequestHint -> requestHint()
             is GameIntent.DismissHint -> dismissHint()
             is GameIntent.DrawStockCard -> drawStockCard()
             is GameIntent.RecycleStock -> recycleStock()
             is GameIntent.OnCardTapped -> onCardTapped(intent.card, intent.location)
             is GameIntent.OnCardDropped -> onCardDropped(intent.cards, intent.source, intent.target)
             is GameIntent.UndoMove -> undoMove()
-            is GameIntent.RequestHint -> { /* Handled in T-5.x */ }
             is GameIntent.AutoComplete -> { /* Handled in T-5.x */ }
             is GameIntent.SkipWinAnimation -> { /* Handled in T-6 */ }
         }
+    }
+
+    /**
+     * Finds and sets a productive move hint for the current board state using [HintResolver].
+     */
+    fun requestHint() {
+        val currentBoard = _uiState.value.boardState
+        val hint = HintResolver.findHint(currentBoard, drawMode)
+        _uiState.update { it.copy(activeHint = hint) }
+    }
+
+    /**
+     * Dismisses any active hint highlight on the board.
+     */
+    fun dismissHint() {
+        _uiState.update { it.copy(activeHint = null) }
     }
 
     /**
@@ -113,6 +130,10 @@ class GameViewModel(
      * newly uncovered tableau cards, checks win and deadlock states, and records undo history.
      */
     fun onCardTapped(card: Card, location: CardLocation) {
+        if (_uiState.value.activeHint != null) {
+            dismissHint()
+        }
+
         if (location is CardLocation.Stock) {
             drawStockCard()
             return
@@ -133,6 +154,10 @@ class GameViewModel(
      * If the stock pile is empty and waste contains cards, automatically recycles the waste pile.
      */
     fun drawStockCard() {
+        if (_uiState.value.activeHint != null) {
+            dismissHint()
+        }
+
         val currentBoard = _uiState.value.boardState
         if (KlondikeRules.canDraw(currentBoard)) {
             undoManager.record(currentBoard)
@@ -147,6 +172,10 @@ class GameViewModel(
      * Recycles the entire waste pile back into the stock pile face-down.
      */
     fun recycleStock() {
+        if (_uiState.value.activeHint != null) {
+            dismissHint()
+        }
+
         val currentBoard = _uiState.value.boardState
         if (!KlondikeRules.canRecycle(currentBoard)) return
         undoManager.record(currentBoard)
@@ -241,13 +270,6 @@ class GameViewModel(
     }
 
     /**
-     * Dismisses any active hint highlight on the board.
-     */
-    fun dismissHint() {
-        _uiState.update { it.copy(activeHint = null) }
-    }
-
-    /**
      * Starts or resumes the elapsed play time stopwatch coroutine loop.
      */
     fun startTimer() {
@@ -302,6 +324,10 @@ class GameViewModel(
      * and triggers [GameEvent.PlayHapticSnap].
      */
     fun onCardDropped(cards: List<Card>, source: CardLocation, target: CardLocation) {
+        if (_uiState.value.activeHint != null) {
+            dismissHint()
+        }
+
         val currentBoard = _uiState.value.boardState
         if (!KlondikeRules.canMoveCards(currentBoard, cards, source, target)) return
 

@@ -4,7 +4,7 @@ import androidx.compose.runtime.Immutable
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
-import io.github.qdiaps.solitaire.domain.model.Move
+import io.github.qdiaps.solitaire.domain.rules.Hint
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
 
 /**
@@ -30,15 +30,33 @@ data class GameUiState(
     val elapsedTimeSeconds: Long = 0L,
     val feltTheme: FeltTheme = FeltTheme.CLASSIC_GREEN,
     val isLeftHanded: Boolean = false,
-    val activeHint: Move? = null,
+    val activeHint: Hint? = null,
     val isLoading: Boolean = false,
     val isAutoCompleteAvailable: Boolean = false
 ) {
+    /**
+     * Cards that should be highlighted on the board (e.g., all cards in the moving stack from [activeHint]).
+     */
+    val highlightedCards: List<Card>
+        get() = activeHint?.cards.orEmpty()
+
     /**
      * Card that should be highlighted on the board (e.g., source card from [activeHint]).
      */
     val highlightedCard: Card?
         get() = activeHint?.cards?.firstOrNull()
+
+    /**
+     * Source card location of the active hint, or null if none.
+     */
+    val hintSourceLocation: CardLocation?
+        get() = activeHint?.from
+
+    /**
+     * Destination slot location of the active hint, or null if none.
+     */
+    val hintTargetLocation: CardLocation?
+        get() = activeHint?.to
 
     /**
      * Indicates whether a hint is currently active and highlighted.
@@ -81,7 +99,7 @@ sealed interface GameIntent {
     data object UndoMove : GameIntent
 
     /**
-     * Request an optimal or productive move suggestion from the solvability engine.
+     * Request an optimal or productive move suggestion from the hint resolver engine.
      */
     data object RequestHint : GameIntent
 

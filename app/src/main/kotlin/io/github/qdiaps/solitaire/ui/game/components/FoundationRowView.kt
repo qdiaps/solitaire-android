@@ -66,6 +66,7 @@ fun FoundationPileView(
         CardSlotPlaceholder(
             modifier = Modifier.size(dimensions.cardWidth, dimensions.cardHeight),
             watermark = SlotWatermark.FoundationSuit(defaultSuit),
+            isHighlighted = if (topCard == null) isHighlighted else false,
             onClick = if (topCard == null) onClick else null
         )
 

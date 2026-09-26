@@ -38,4 +38,4 @@ val FeltWineSurface = Color(0xFF5C1D24)
 
 // Accents
 val ScoreGold = Color(0xFFFFD54F)
-val HintHighlight = Color(0xFF00E676)
+val HintHighlight = Color(0xFFFFB300) // Vibrant radiant amber-gold; high contrast against green felt and all backgrounds

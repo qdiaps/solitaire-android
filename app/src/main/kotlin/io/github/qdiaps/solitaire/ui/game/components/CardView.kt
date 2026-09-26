@@ -2,6 +2,10 @@ package io.github.qdiaps.solitaire.ui.game.components
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,7 +51,7 @@ import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
  * @param cardBackStyle Visual pattern style applied to face-down card back.
  * @param cardFaceStyle Typography and index scaling style applied to face-up card face.
  * @param elevation Shadow elevation (defaults to 2.dp, or 12.dp when lifted in drag overlay).
- * @param isHighlighted Whether an active hint border is drawn around the card.
+ * @param isHighlighted Whether an active hint border is drawn around the card with pulsing glow.
  * @param onClick Optional tap callback.
  */
 @Composable
@@ -101,8 +106,35 @@ fun CardView(
         card.isFaceUp
     }
 
+    val infiniteTransition = rememberInfiniteTransition(label = "cardHintPulse")
+    val pulseProgress by if (isHighlighted) {
+        infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1.0f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 650, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "cardPulseProgress"
+        )
+    } else {
+        remember { mutableFloatStateOf(0f) }
+    }
+
+    val pulseAlpha = if (isHighlighted) 0.55f + pulseProgress * 0.45f else 1f
+    val highlightScale = if (isHighlighted) 1.0f + pulseProgress * 0.035f else 1.0f
+    val dynamicElevation = if (isHighlighted) {
+        elevation.coerceAtLeast(6.dp) + (4.dp * pulseProgress)
+    } else {
+        elevation
+    }
+
     val borderModifier = if (isHighlighted) {
-        Modifier.border(width = 2.dp, color = colors.hintHighlight, shape = shape)
+        Modifier.border(
+            width = 3.dp,
+            color = colors.hintHighlight.copy(alpha = pulseAlpha),
+            shape = shape
+        )
     } else {
         Modifier.border(width = 1.dp, color = colors.cardBorder, shape = shape)
     }
@@ -120,11 +152,15 @@ fun CardView(
     Box(
         modifier = modifier
             .size(dimensions.cardWidth, dimensions.cardHeight)
-            .shadow(elevation = elevation, shape = shape)
+            .shadow(elevation = dynamicElevation, shape = shape)
             .graphicsLayer {
                 if (isFlipping) {
                     this.rotationY = rotationY
                     cameraDistance = 12f * density.density
+                }
+                if (isHighlighted) {
+                    scaleX = highlightScale
+                    scaleY = highlightScale
                 }
             }
             .clip(shape)
@@ -135,6 +171,15 @@ fun CardView(
             FaceUpCardContent(card = card, cardFaceStyle = cardFaceStyle)
         } else {
             CardBackView(style = cardBackStyle)
+        }
+
+        // Luminous warm amber-gold tint overlay across the entire card when highlighted
+        if (isHighlighted) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(colors.hintHighlight.copy(alpha = 0.14f + pulseProgress * 0.16f))
+            )
         }
     }
 }

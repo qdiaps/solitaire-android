@@ -14,6 +14,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalHapticFeedback
 
 /**
@@ -163,9 +164,18 @@ val LocalSolitaireHaptics: ProvidableCompositionLocal<SolitaireHaptics> =
  */
 @Composable
 fun rememberSolitaireHaptics(): SolitaireHaptics {
+    if (LocalInspectionMode.current) {
+        return remember {
+            object : SolitaireHaptics {
+                override fun playPickup() {}
+                override fun playSnap() {}
+                override fun playTick() {}
+            }
+        }
+    }
     val context = LocalContext.current
     val composeHaptics = LocalHapticFeedback.current
     return remember(context, composeHaptics) {
-        AndroidSolitaireHaptics(context.applicationContext, composeHaptics)
+        AndroidSolitaireHaptics(context.applicationContext ?: context, composeHaptics)
     }
 }

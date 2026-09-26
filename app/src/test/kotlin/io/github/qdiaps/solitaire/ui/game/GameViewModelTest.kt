@@ -3,19 +3,19 @@ package io.github.qdiaps.solitaire.ui.game
 import io.github.qdiaps.solitaire.domain.deck.Deck
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
+import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.domain.model.Rank
 import io.github.qdiaps.solitaire.domain.model.Suit
-import io.github.qdiaps.solitaire.domain.model.CardLocation
-import io.github.qdiaps.solitaire.domain.rules.KlondikeRules
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
+import io.github.qdiaps.solitaire.domain.rules.KlondikeRules
 import io.github.qdiaps.solitaire.domain.solver.DealGenerator
 import io.github.qdiaps.solitaire.domain.solver.SolvabilityResult
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -696,6 +696,7 @@ class GameViewModelTest {
             assertFalse(viewModel.isTimerRunning)
             assertTrue(celebrationEmitted)
         }
+
         @Test
         @DisplayName("Smart tap move can be undone via UndoMove restoring previous state")
         fun `Smart tap move can be undone via UndoMove restoring previous state`() = runTest(testDispatcher) {
@@ -905,6 +906,179 @@ class GameViewModelTest {
             assertEquals(initialBoard, state.boardState)
             assertEquals(0, state.boardState.movesCount)
             assertFalse(state.canUndo)
+        }
+    }
+
+    @Nested
+    @DisplayName("Hint Intents")
+    inner class HintIntents {
+
+        @Test
+        @DisplayName("RequestHint finds and sets activeHint in UI state")
+        fun `RequestHint finds and sets activeHint in UI state`() = runTest(testDispatcher) {
+            val ace = Card(Suit.HEARTS, Rank.ACE, isFaceUp = true, id = "ace_hearts")
+            val board = BoardState(tableau = List(7) { col -> if (col == 0) listOf(ace) else emptyList() })
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            assertNull(viewModel.uiState.value.activeHint)
+            assertFalse(viewModel.uiState.value.isHintActive)
+
+            viewModel.onIntent(GameIntent.RequestHint)
+
+            val state = viewModel.uiState.value
+            assertTrue(state.isHintActive)
+            assertEquals(ace, state.highlightedCard)
+            assertEquals(CardLocation.Tableau(0, 0), state.hintSourceLocation)
+            assertEquals(CardLocation.Foundation(0), state.hintTargetLocation)
+        }
+
+        @Test
+        @DisplayName("DismissHint clears activeHint in UI state")
+        fun `DismissHint clears activeHint in UI state`() = runTest(testDispatcher) {
+            val ace = Card(Suit.HEARTS, Rank.ACE, isFaceUp = true, id = "ace_hearts")
+            val board = BoardState(tableau = List(7) { col -> if (col == 0) listOf(ace) else emptyList() })
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.RequestHint)
+            assertTrue(viewModel.uiState.value.isHintActive)
+
+            viewModel.onIntent(GameIntent.DismissHint)
+            assertFalse(viewModel.uiState.value.isHintActive)
+            assertNull(viewModel.uiState.value.activeHint)
+            assertNull(viewModel.uiState.value.highlightedCard)
+        }
+
+        @Test
+        @DisplayName("activeHint is automatically cleared when card is tapped")
+        fun `activeHint is automatically cleared when card is tapped`() = runTest(testDispatcher) {
+            val ace = Card(Suit.HEARTS, Rank.ACE, isFaceUp = true, id = "ace_hearts")
+            val king = Card(Suit.SPADES, Rank.KING, isFaceUp = true, id = "king_spades")
+            val board = BoardState(
+                tableau = List(7) { col ->
+                    when (col) {
+                        0 -> listOf(ace)
+                        1 -> listOf(king)
+                        else -> emptyList()
+                    }
+                }
+            )
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.RequestHint)
+            assertTrue(viewModel.uiState.value.isHintActive)
+
+            // Tap king (unmovable) - should still dismiss the hint
+            viewModel.onIntent(GameIntent.OnCardTapped(king, CardLocation.Tableau(1, 0)))
+            assertFalse(viewModel.uiState.value.isHintActive)
+            assertNull(viewModel.uiState.value.activeHint)
+        }
+
+        @Test
+        @DisplayName("activeHint is automatically cleared when stock is drawn")
+        fun `activeHint is automatically cleared when stock is drawn`() = runTest(testDispatcher) {
+            val card = Card(Suit.CLUBS, Rank.FIVE, isFaceUp = false, id = "c5")
+            val ace = Card(Suit.HEARTS, Rank.ACE, isFaceUp = true, id = "ace_hearts")
+            val board = BoardState(
+                stock = listOf(card),
+                tableau = List(7) { col -> if (col == 0) listOf(ace) else emptyList() }
+            )
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.RequestHint)
+            assertTrue(viewModel.uiState.value.isHintActive)
+
+            viewModel.onIntent(GameIntent.DrawStockCard)
+            assertFalse(viewModel.uiState.value.isHintActive)
+            assertNull(viewModel.uiState.value.activeHint)
+        }
+
+        @Test
+        @DisplayName("activeHint is automatically cleared when stock is recycled")
+        fun `activeHint is automatically cleared when stock is recycled`() = runTest(testDispatcher) {
+            val card = Card(Suit.CLUBS, Rank.FIVE, isFaceUp = true, id = "c5")
+            val ace = Card(Suit.HEARTS, Rank.ACE, isFaceUp = true, id = "ace_hearts")
+            val board = BoardState(
+                stock = emptyList(),
+                waste = listOf(card),
+                tableau = List(7) { col -> if (col == 0) listOf(ace) else emptyList() }
+            )
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.RequestHint)
+            assertTrue(viewModel.uiState.value.isHintActive)
+
+            viewModel.onIntent(GameIntent.RecycleStock)
+            assertFalse(viewModel.uiState.value.isHintActive)
+            assertNull(viewModel.uiState.value.activeHint)
+        }
+
+        @Test
+        @DisplayName("activeHint is automatically cleared when card is dropped")
+        fun `activeHint is automatically cleared when card is dropped`() = runTest(testDispatcher) {
+            val redSix = Card(Suit.HEARTS, Rank.SIX, isFaceUp = true, id = "red6")
+            val blackSeven = Card(Suit.CLUBS, Rank.SEVEN, isFaceUp = true, id = "black7")
+            val board = BoardState(
+                tableau = List(7) { col ->
+                    when (col) {
+                        0 -> listOf(redSix)
+                        1 -> listOf(blackSeven)
+                        else -> emptyList()
+                    }
+                }
+            )
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.RequestHint)
+            assertTrue(viewModel.uiState.value.isHintActive)
+
+            viewModel.onIntent(
+                GameIntent.OnCardDropped(
+                    cards = listOf(redSix),
+                    source = CardLocation.Tableau(0, 0),
+                    target = CardLocation.Tableau(1, 0)
+                )
+            )
+            assertFalse(viewModel.uiState.value.isHintActive)
+            assertNull(viewModel.uiState.value.activeHint)
+        }
+
+        @Test
+        @DisplayName("RequestHint on deadlocked or unplayable board produces null activeHint")
+        fun `RequestHint on unplayable board produces null activeHint`() = runTest(testDispatcher) {
+            val board = BoardState(stock = emptyList(), waste = emptyList(), tableau = List(7) { emptyList() })
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.RequestHint)
+            assertNull(viewModel.uiState.value.activeHint)
+            assertFalse(viewModel.uiState.value.isHintActive)
         }
     }
 }

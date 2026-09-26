@@ -74,8 +74,10 @@ import kotlinx.coroutines.launch
  * @param canUndo Whether undo action is currently available.
  * @param isLeftHanded When true, mirrors top row placing Foundations on the left and Stock on the right.
  * @param feltTheme Surface cloth theme for the table felt.
- * @param highlightedCard Optional card with active hint highlight.
+ * @param highlightedCard Optional source card with active hint highlight.
  * @param isHintActive Whether a hint is currently being displayed.
+ * @param hintSourceLocation Optional source location of active hint.
+ * @param hintTargetLocation Optional destination location of active hint.
  * @param onStockClick Callback when Stock draw pile is tapped.
  * @param onWasteClick Callback when Waste card is tapped.
  * @param onFoundationClick Callback when a Foundation pile is tapped with its 0-based index.
@@ -96,7 +98,10 @@ fun SolitaireGameScreen(
     isLeftHanded: Boolean = false,
     feltTheme: FeltTheme = FeltTheme.CLASSIC_GREEN,
     highlightedCard: Card? = null,
+    highlightedCards: List<Card> = emptyList(),
     isHintActive: Boolean = false,
+    hintSourceLocation: CardLocation? = null,
+    hintTargetLocation: CardLocation? = null,
     onStockClick: () -> Unit = {},
     onWasteClick: () -> Unit = {},
     onFoundationClick: (foundationIndex: Int) -> Unit = {},
@@ -129,7 +134,9 @@ fun SolitaireGameScreen(
                 .background(SolitaireColors(feltTheme = feltTheme).tableBackground)
         ) {
             val dimensions = remember(maxWidth) {
-                CardDimensions.calculate(availableWidth = maxWidth)
+                val minSpacing = CardDimensions.DEFAULT_COLUMN_SPACING * (CardDimensions.NUM_COLUMNS + 1)
+                val safeWidth = if (maxWidth <= minSpacing) 393.dp else maxWidth
+                CardDimensions.calculate(availableWidth = safeWidth)
             }
 
             // Animated Smart Tap and Stock Draw handlers
@@ -268,14 +275,34 @@ fun SolitaireGameScreen(
 
                             Spacer(modifier = Modifier.height(4.dp))
 
-                            val isWasteHighlighted = highlightedCard != null && boardState.waste.lastOrNull() == highlightedCard
-                            val highlightedFoundationIndex = highlightedCard?.let { card ->
-                                boardState.foundations.indexOfFirst { it.lastOrNull() == card }.takeIf { it >= 0 }
-                            }
+                            val isStockHighlighted = isHintActive && (hintSourceLocation is CardLocation.Stock)
+                            val isWasteHighlighted = isHintActive && (
+                                (hintSourceLocation is CardLocation.Waste) ||
+                                (highlightedCard != null && boardState.waste.lastOrNull() == highlightedCard)
+                            )
+                            val highlightedFoundationIndex = if (isHintActive) {
+                                when {
+                                    hintTargetLocation is CardLocation.Foundation -> hintTargetLocation.index
+                                    hintSourceLocation is CardLocation.Foundation -> hintSourceLocation.index
+                                    highlightedCard != null -> boardState.foundations.indexOfFirst { it.lastOrNull() == highlightedCard }.takeIf { it >= 0 }
+                                    else -> null
+                                }
+                            } else null
+
+                            val destinationTableauCard = if (isHintActive && hintTargetLocation is CardLocation.Tableau) {
+                                boardState.tableau.getOrNull(hintTargetLocation.columnIndex)?.lastOrNull()
+                            } else null
+
+                            val highlightedEmptyTableauColumnIndex = if (isHintActive && hintTargetLocation is CardLocation.Tableau) {
+                                if (boardState.tableau.getOrNull(hintTargetLocation.columnIndex).isNullOrEmpty()) {
+                                    hintTargetLocation.columnIndex
+                                } else null
+                            } else null
 
                             TopRowView(
                                 boardState = boardState,
                                 isLeftHanded = isLeftHanded,
+                                isStockHighlighted = isStockHighlighted,
                                 isWasteHighlighted = isWasteHighlighted,
                                 highlightedFoundationIndex = highlightedFoundationIndex,
                                 onStockClick = animatedStockClick,
@@ -289,6 +316,9 @@ fun SolitaireGameScreen(
                             TableauAreaView(
                                 boardState = boardState,
                                 highlightedCard = highlightedCard,
+                                highlightedCards = highlightedCards,
+                                destinationCard = destinationTableauCard,
+                                highlightedEmptyColumnIndex = highlightedEmptyTableauColumnIndex,
                                 onCardClick = animatedTableauCardClick,
                                 onEmptyColumnClick = onTableauEmptyClick,
                                 onCardDropped = onCardDropped
@@ -406,7 +436,10 @@ fun SolitaireGameScreen(
         isLeftHanded = uiState.isLeftHanded,
         feltTheme = uiState.feltTheme,
         highlightedCard = uiState.highlightedCard,
+        highlightedCards = uiState.highlightedCards,
         isHintActive = uiState.isHintActive,
+        hintSourceLocation = uiState.hintSourceLocation,
+        hintTargetLocation = uiState.hintTargetLocation,
         onStockClick = { viewModel.onIntent(GameIntent.DrawStockCard) },
         onWasteClick = {
             uiState.boardState.waste.lastOrNull()?.let { card ->
@@ -429,7 +462,13 @@ fun SolitaireGameScreen(
             viewModel.onIntent(GameIntent.OnCardDropped(cards, source, target))
         },
         onUndoClick = { viewModel.onIntent(GameIntent.UndoMove) },
-        onHintClick = { viewModel.onIntent(GameIntent.RequestHint) },
+        onHintClick = {
+            if (uiState.isHintActive) {
+                viewModel.onIntent(GameIntent.DismissHint)
+            } else {
+                viewModel.onIntent(GameIntent.RequestHint)
+            }
+        },
         onNewGameClick = { viewModel.onIntent(GameIntent.StartNewGame) },
         onSettingsClick = { /* Settings sheet */ }
     )
@@ -447,7 +486,10 @@ fun GameScreen(
     isLeftHanded: Boolean = false,
     feltTheme: FeltTheme = FeltTheme.CLASSIC_GREEN,
     highlightedCard: Card? = null,
+    highlightedCards: List<Card> = emptyList(),
     isHintActive: Boolean = false,
+    hintSourceLocation: CardLocation? = null,
+    hintTargetLocation: CardLocation? = null,
     onStockClick: () -> Unit = {},
     onWasteClick: () -> Unit = {},
     onFoundationClick: (foundationIndex: Int) -> Unit = {},
@@ -467,7 +509,10 @@ fun GameScreen(
         isLeftHanded = isLeftHanded,
         feltTheme = feltTheme,
         highlightedCard = highlightedCard,
+        highlightedCards = highlightedCards,
         isHintActive = isHintActive,
+        hintSourceLocation = hintSourceLocation,
+        hintTargetLocation = hintTargetLocation,
         onStockClick = onStockClick,
         onWasteClick = onWasteClick,
         onFoundationClick = onFoundationClick,

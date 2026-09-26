@@ -16,12 +16,25 @@
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-5.3` (Pure Domain Hint Resolver Engine). Ready to proceed to `T-5.4` (Hint UI Highlighting & ViewModel Integration).
+- **Current Focus:** Completed `T-5.4` (Hint Pulsing UI Highlighting & ViewModel Integration). Ready to proceed to `T-5.5` (Pure Domain Auto-Complete Resolver).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-26 (T-5.4: Hint Pulsing UI Highlighting & ViewModel Integration):**
+  - Integrated `HintResolver` with `GameViewModel`: implemented `requestHint()` and `dismissHint()`, connected `GameIntent.RequestHint` and `GameIntent.DismissHint`.
+  - Updated `GameContract`: `GameUiState.activeHint` is now `Hint?`, exposing `highlightedCard`, `hintSourceLocation`, `hintTargetLocation`, and `isHintActive`.
+  - Implemented high-contrast, radiant amber-gold hint highlighting (`HintHighlight = Color(0xFFFFB300)`):
+    - Replaced low-contrast emerald green with vibrant amber-gold, delivering crisp visibility across all felt themes (especially Classic Green).
+    - `CardView`: 3.dp gold pulsing border, 3D elevation shadow lift (6..10dp), gentle breathing scale (1.00x..1.035x), and luminous warm gold surface wash (14%..30% alpha) illuminating the entire card.
+    - `CardSlotPlaceholder`: 3.dp gold pulsing border, glowing amber background fill (16%..32% alpha), and luminous golden watermark symbols.
+    - Multi-card stack highlighting: all cards in a moving cascade sequence (e.g. 6-5-4 moving onto 7) now simultaneously highlight and pulse in unison with the warm golden aura, clearly indicating the whole sub-stack move.
+    - Fixed Compose Preview rendering in `SolitaireGameScreenPreview` by guarding `rememberSolitaireAudio` and `rememberSolitaireHaptics` with `LocalInspectionMode.current` and adding safe width calculation fallback in `SolitaireGameScreen`.
+  - Wired hint source and destination coordinates to `SolitaireGameScreen`, `TopRowView`, `StockPileView`, `FoundationRowView`, `TableauAreaView`, and `TableauColumnView`.
+  - Added auto-dismiss of active hint upon any player touch: tapping card, drawing/recycling stock, dropping card, or undoing move.
+  - Added unit test coverage in `GameViewModelTest.kt` (7 tests) and `GameContractTest.kt` (all 455 suite tests passing 100%).
+  - Updated Compose preview in `CardViewPreview.kt` showcasing empty slot hint destination highlighting.
 - **2026-09-26 (T-5.3: Pure Domain Hint Resolver Engine):**
   - Implemented pure Kotlin `HintResolver` (`io.github.qdiaps.solitaire.domain.rules`) evaluating valid productive moves in strict accordance with SPEC priorities:
     1. `UNCOVER_FACE_DOWN` (level 1): Tableau moves or foundation promotions uncovering hidden cards underneath.
@@ -47,4 +60,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-5.4: Hint Pulsing UI Highlighting & ViewModel Integration`
+- **Target Task:** `T-5.5: Pure Domain Auto-Complete Resolver (AutoCompleteResolver)`

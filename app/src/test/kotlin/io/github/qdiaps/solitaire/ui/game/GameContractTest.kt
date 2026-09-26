@@ -6,6 +6,8 @@ import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.domain.model.Move
 import io.github.qdiaps.solitaire.domain.model.Rank
 import io.github.qdiaps.solitaire.domain.model.Suit
+import io.github.qdiaps.solitaire.domain.rules.Hint
+import io.github.qdiaps.solitaire.domain.rules.HintPriority
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -47,11 +49,19 @@ class GameContractTest {
                 destination = CardLocation.Foundation(0),
                 cards = listOf(hintCard)
             )
+            val hint = Hint(
+                move = move,
+                priority = HintPriority.FOUNDATION_PROMOTION,
+                description = "Move Ace to Foundation"
+            )
 
-            val stateWithHint = GameUiState(activeHint = move)
+            val stateWithHint = GameUiState(activeHint = hint)
 
             assertTrue(stateWithHint.isHintActive)
             assertEquals(hintCard, stateWithHint.highlightedCard)
+            assertEquals(listOf(hintCard), stateWithHint.highlightedCards)
+            assertEquals(CardLocation.Waste, stateWithHint.hintSourceLocation)
+            assertEquals(CardLocation.Foundation(0), stateWithHint.hintTargetLocation)
         }
 
         @Test

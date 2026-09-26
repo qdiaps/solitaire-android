@@ -25,7 +25,7 @@
   - Return structured `Hint` / `Move` candidate or null when no productive move is available.
   - *TDD/Unit Tests:* `HintResolverTest` verifying priority resolution across known board configurations.
 
-- [ ] **T-5.4: Hint Pulsing UI Highlighting & ViewModel Integration**
+- [x] **T-5.4: Hint Pulsing UI Highlighting & ViewModel Integration**
   - Connect `GameIntent.RequestHint` and `GameIntent.DismissHint` in `GameViewModel`.
   - Implement smooth pulsing border highlight animation (`Modifier.drawBehind` / `Animatable`) for source card and destination slot.
   - Dismiss hint highlight automatically when player touches any card, draws from stock, or makes a move.

@@ -27,7 +27,9 @@ const val NUM_TABLEAU_COLUMNS: Int = KlondikeDealer.TABLEAU_COLUMNS_COUNT
  *
  * @param tableau List of 7 card columns representing the tableau.
  * @param modifier Compose [Modifier] applied to this container.
- * @param highlightedCard Optional card with active hint highlight.
+ * @param highlightedCard Optional source card with active hint highlight.
+ * @param destinationCard Optional destination card with active hint highlight.
+ * @param highlightedEmptyColumnIndex Optional 0-based column index of an empty column highlighted as a hint destination.
  * @param boardState Optional board state provider for drag drop validation.
  * @param onCardClick Optional callback invoked when a card in a tableau column is tapped,
  * providing the 0-based column index and the tapped [Card].
@@ -40,6 +42,9 @@ fun TableauAreaView(
     tableau: List<List<Card>>,
     modifier: Modifier = Modifier,
     highlightedCard: Card? = null,
+    highlightedCards: List<Card> = emptyList(),
+    destinationCard: Card? = null,
+    highlightedEmptyColumnIndex: Int? = null,
     boardState: (() -> BoardState)? = null,
     onCardClick: ((columnIndex: Int, card: Card) -> Unit)? = null,
     onEmptyColumnClick: ((columnIndex: Int) -> Unit)? = null,
@@ -58,6 +63,9 @@ fun TableauAreaView(
                 cards = columnCards,
                 modifier = Modifier.dropTarget(CardLocation.Tableau(columnIndex)),
                 highlightedCard = highlightedCard,
+                highlightedCards = highlightedCards,
+                destinationCard = destinationCard,
+                isSlotHighlighted = columnIndex == highlightedEmptyColumnIndex,
                 columnIndex = columnIndex,
                 boardState = boardState,
                 onCardClick = onCardClick?.let { callback ->
@@ -80,6 +88,9 @@ fun TableauAreaView(
     boardState: BoardState,
     modifier: Modifier = Modifier,
     highlightedCard: Card? = null,
+    highlightedCards: List<Card> = emptyList(),
+    destinationCard: Card? = null,
+    highlightedEmptyColumnIndex: Int? = null,
     onCardClick: ((columnIndex: Int, card: Card) -> Unit)? = null,
     onEmptyColumnClick: ((columnIndex: Int) -> Unit)? = null,
     onCardDropped: ((cards: List<Card>, source: CardLocation, target: CardLocation) -> Unit)? = null
@@ -88,6 +99,9 @@ fun TableauAreaView(
         tableau = boardState.tableau,
         modifier = modifier,
         highlightedCard = highlightedCard,
+        highlightedCards = highlightedCards,
+        destinationCard = destinationCard,
+        highlightedEmptyColumnIndex = highlightedEmptyColumnIndex,
         boardState = { boardState },
         onCardClick = onCardClick,
         onEmptyColumnClick = onEmptyColumnClick,
