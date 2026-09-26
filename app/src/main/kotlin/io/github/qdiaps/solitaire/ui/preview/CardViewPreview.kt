@@ -84,10 +84,10 @@ fun EmptySlotsPreview() {
                 CardSlotPlaceholder(watermark = SlotWatermark.FoundationSuit(Suit.DIAMONDS))
                 CardSlotPlaceholder(watermark = SlotWatermark.FoundationSuit(Suit.CLUBS))
             }
-            // Stock recycle & Tableau King slots
+            // Stock recycle & Tableau King slots (including highlighted hint destination)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 CardSlotPlaceholder(watermark = SlotWatermark.StockRecycle)
-                CardSlotPlaceholder(watermark = SlotWatermark.TableauKing)
+                CardSlotPlaceholder(watermark = SlotWatermark.TableauKing, isHighlighted = true)
                 CardSlotPlaceholder(watermark = SlotWatermark.None)
             }
         }

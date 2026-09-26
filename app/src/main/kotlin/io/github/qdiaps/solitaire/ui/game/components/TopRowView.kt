@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
+import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 
 /**
@@ -32,6 +33,8 @@ import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
  * @param isWasteHighlighted Whether waste card has active hint highlight.
  * @param highlightedFoundationIndex Optional index (0..3) of foundation with active hint highlight.
  * @param boardState Optional board state provider for drag drop validation.
+ * @param wasteCards All cards currently in the waste pile.
+ * @param drawMode Current [DrawMode] (Draw 1 or Draw 3).
  * @param onStockClick Callback when stock pile is tapped.
  * @param onWasteClick Callback when waste pile is tapped.
  * @param onFoundationClick Callback when a foundation pile is tapped with its 0-based index.
@@ -50,6 +53,8 @@ fun TopRowView(
     isWasteHighlighted: Boolean = false,
     highlightedFoundationIndex: Int? = null,
     boardState: (() -> BoardState)? = null,
+    wasteCards: List<Card> = listOfNotNull(wasteUnderCard, wasteTopCard),
+    drawMode: DrawMode = DrawMode.DRAW_ONE,
     onStockClick: () -> Unit = {},
     onWasteClick: () -> Unit = {},
     onFoundationClick: (foundationIndex: Int) -> Unit = {},
@@ -70,8 +75,9 @@ fun TopRowView(
                 onClick = onStockClick
             )
             WastePileView(
-                topCard = wasteTopCard,
-                underCard = wasteUnderCard,
+                wasteCards = wasteCards,
+                drawMode = drawMode,
+                isLeftHanded = isLeftHanded,
                 isHighlighted = isWasteHighlighted,
                 boardState = boardState,
                 onClick = onWasteClick,
@@ -95,8 +101,9 @@ fun TopRowView(
             )
             Spacer(modifier = Modifier.size(dimensions.cardWidth, dimensions.cardHeight))
             WastePileView(
-                topCard = wasteTopCard,
-                underCard = wasteUnderCard,
+                wasteCards = wasteCards,
+                drawMode = drawMode,
+                isLeftHanded = isLeftHanded,
                 isHighlighted = isWasteHighlighted,
                 boardState = boardState,
                 onClick = onWasteClick,
@@ -119,6 +126,7 @@ fun TopRowView(
 fun TopRowView(
     boardState: BoardState,
     modifier: Modifier = Modifier,
+    drawMode: DrawMode = DrawMode.DRAW_ONE,
     isLeftHanded: Boolean = false,
     isStockHighlighted: Boolean = false,
     isWasteHighlighted: Boolean = false,
@@ -140,6 +148,8 @@ fun TopRowView(
         isWasteHighlighted = isWasteHighlighted,
         highlightedFoundationIndex = highlightedFoundationIndex,
         boardState = { boardState },
+        wasteCards = boardState.waste,
+        drawMode = drawMode,
         onStockClick = onStockClick,
         onWasteClick = onWasteClick,
         onFoundationClick = onFoundationClick,

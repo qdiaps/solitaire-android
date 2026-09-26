@@ -1,5 +1,11 @@
 package io.github.qdiaps.solitaire.ui.game.components
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,6 +16,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,16 +46,59 @@ sealed interface SlotWatermark {
 
 /**
  * Placeholder component for empty card slots (Tableau columns, Foundations, Stock, Waste).
+ *
+ * @param modifier Compose [Modifier] applied to this component.
+ * @param watermark Watermark emblem rendered inside the empty slot.
+ * @param isHighlighted Whether an active hint border is drawn around this slot with pulsing glow.
+ * @param onClick Optional tap callback.
  */
 @Composable
 fun CardSlotPlaceholder(
     modifier: Modifier = Modifier,
     watermark: SlotWatermark = SlotWatermark.None,
+    isHighlighted: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
     val colors = SolitaireTheme.colors
     val dimensions = SolitaireTheme.cardDimensions
     val shape = RoundedCornerShape(dimensions.cornerRadius)
+
+    val infiniteTransition = rememberInfiniteTransition(label = "slotHintPulse")
+    val pulseProgress by if (isHighlighted) {
+        infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1.0f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 650, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "slotPulseProgress"
+        )
+    } else {
+        remember { mutableFloatStateOf(0f) }
+    }
+
+    val pulseAlpha = if (isHighlighted) 0.55f + pulseProgress * 0.45f else 1f
+
+    val borderModifier = if (isHighlighted) {
+        Modifier.border(
+            width = 3.dp,
+            color = colors.hintHighlight.copy(alpha = pulseAlpha),
+            shape = shape
+        )
+    } else {
+        Modifier.border(
+            width = 1.dp,
+            color = colors.slotBorder,
+            shape = shape
+        )
+    }
+
+    val backgroundModifier = if (isHighlighted) {
+        Modifier.background(colors.hintHighlight.copy(alpha = 0.16f + pulseProgress * 0.16f))
+    } else {
+        Modifier.background(colors.slotBackground)
+    }
 
     val clickableModifier = if (onClick != null) {
         Modifier.clickable(
@@ -63,19 +114,19 @@ fun CardSlotPlaceholder(
         modifier = modifier
             .size(dimensions.cardWidth, dimensions.cardHeight)
             .clip(shape)
-            .background(colors.slotBackground)
-            .border(
-                width = 1.dp,
-                color = colors.slotBorder,
-                shape = shape
-            )
+            .then(backgroundModifier)
+            .then(borderModifier)
             .then(clickableModifier),
         contentAlignment = Alignment.Center
     ) {
+        val watermarkTintColor = if (isHighlighted) {
+            colors.hintHighlight.copy(alpha = 0.70f + pulseProgress * 0.30f)
+        } else null
+
         when (watermark) {
             is SlotWatermark.None -> Unit
             is SlotWatermark.FoundationSuit -> {
-                val watermarkColor = Color.White.copy(alpha = 0.22f)
+                val watermarkColor = watermarkTintColor ?: Color.White.copy(alpha = 0.22f)
                 val emblemSize = dimensions.cardWidth * 0.40f
                 SuitEmblem(
                     suit = watermark.suit,
@@ -84,7 +135,7 @@ fun CardSlotPlaceholder(
                 )
             }
             is SlotWatermark.StockRecycle -> {
-                val iconColor = Color.White.copy(alpha = 0.25f)
+                val iconColor = watermarkTintColor ?: Color.White.copy(alpha = 0.25f)
                 val iconSize = dimensions.cardWidth * 0.42f
                 StockRecycleIcon(
                     color = iconColor,
@@ -94,7 +145,7 @@ fun CardSlotPlaceholder(
             is SlotWatermark.TableauKing -> {
                 Text(
                     text = "K",
-                    color = Color.White.copy(alpha = 0.18f),
+                    color = watermarkTintColor ?: Color.White.copy(alpha = 0.18f),
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold
                 )

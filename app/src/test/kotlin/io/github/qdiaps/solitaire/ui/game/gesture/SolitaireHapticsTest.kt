@@ -18,19 +18,23 @@ class SolitaireHapticsTest {
     }
 
     private class RecordingSolitaireHaptics : SolitaireHaptics {
+        override var isEnabled: Boolean = true
         var pickupCount = 0
         var snapCount = 0
         var tickCount = 0
 
         override fun playPickup() {
+            if (!isEnabled) return
             pickupCount++
         }
 
         override fun playSnap() {
+            if (!isEnabled) return
             snapCount++
         }
 
         override fun playTick() {
+            if (!isEnabled) return
             tickCount++
         }
     }
@@ -53,8 +57,23 @@ class SolitaireHapticsTest {
     }
 
     @Test
+    fun `disabled recording haptics does not trigger vibration events`() {
+        val haptics = RecordingSolitaireHaptics()
+        haptics.isEnabled = false
+
+        haptics.playPickup()
+        haptics.playSnap()
+        haptics.playTick()
+
+        assertEquals(0, haptics.pickupCount)
+        assertEquals(0, haptics.snapCount)
+        assertEquals(0, haptics.tickCount)
+    }
+
+    @Test
     fun `default no-op implementation does not throw on any method`() {
         val noOp = object : SolitaireHaptics {
+            override var isEnabled: Boolean = true
             override fun playPickup() {}
             override fun playSnap() {}
             override fun playTick() {}

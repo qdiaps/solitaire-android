@@ -14,6 +14,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalHapticFeedback
 
 /**
@@ -27,6 +28,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
  * - Falls back to Compose [HapticFeedback] if hardware vibrator is unavailable.
  */
 interface SolitaireHaptics {
+    var isEnabled: Boolean
     fun playPickup()
     fun playSnap()
     fun playTick()
@@ -37,8 +39,9 @@ interface SolitaireHaptics {
  */
 class AndroidSolitaireHaptics(
     private val context: Context,
-    private val composeHaptics: HapticFeedback
+    private val composeHaptic: HapticFeedback
 ) : SolitaireHaptics {
+    override var isEnabled: Boolean = true
 
     private val vibrator: Vibrator? by lazy {
         @Suppress("DEPRECATION")
@@ -66,35 +69,38 @@ class AndroidSolitaireHaptics(
     }
 
     override fun playPickup() {
+        if (!isEnabled) return
         val played = tryVibrate(
             predefinedEffect = VibrationEffect.EFFECT_CLICK,
             durationMs = 65L,
             amplitude = 180
         )
         if (!played) {
-            composeHaptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            composeHaptic.performHapticFeedback(HapticFeedbackType.LongPress)
         }
     }
 
     override fun playSnap() {
+        if (!isEnabled) return
         val played = tryVibrate(
             predefinedEffect = VibrationEffect.EFFECT_HEAVY_CLICK,
             durationMs = 90L,
             amplitude = 255
         )
         if (!played) {
-            composeHaptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            composeHaptic.performHapticFeedback(HapticFeedbackType.LongPress)
         }
     }
 
     override fun playTick() {
+        if (!isEnabled) return
         val played = tryVibrate(
             predefinedEffect = VibrationEffect.EFFECT_TICK,
             durationMs = 45L,
             amplitude = 140
         )
         if (!played) {
-            composeHaptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            composeHaptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         }
     }
 
@@ -152,6 +158,7 @@ class AndroidSolitaireHaptics(
 val LocalSolitaireHaptics: ProvidableCompositionLocal<SolitaireHaptics> =
     staticCompositionLocalOf {
         object : SolitaireHaptics {
+            override var isEnabled: Boolean = true
             override fun playPickup() {}
             override fun playSnap() {}
             override fun playTick() {}
@@ -162,10 +169,22 @@ val LocalSolitaireHaptics: ProvidableCompositionLocal<SolitaireHaptics> =
  * Remembers a platform [SolitaireHaptics] instance.
  */
 @Composable
-fun rememberSolitaireHaptics(): SolitaireHaptics {
+fun rememberSolitaireHaptics(enabled: Boolean = true): SolitaireHaptics {
+    if (LocalInspectionMode.current) {
+        return remember {
+            object : SolitaireHaptics {
+                override var isEnabled: Boolean = false
+                override fun playPickup() {}
+                override fun playSnap() {}
+                override fun playTick() {}
+            }
+        }
+    }
     val context = LocalContext.current
     val composeHaptics = LocalHapticFeedback.current
-    return remember(context, composeHaptics) {
-        AndroidSolitaireHaptics(context.applicationContext, composeHaptics)
+    val haptics = remember(context, composeHaptics) {
+        AndroidSolitaireHaptics(context.applicationContext ?: context, composeHaptics)
     }
+    haptics.isEnabled = enabled
+    return haptics
 }

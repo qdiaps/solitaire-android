@@ -9,6 +9,7 @@ import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import io.github.qdiaps.solitaire.R
 
 /**
@@ -119,13 +120,26 @@ val LocalSolitaireAudio: ProvidableCompositionLocal<SolitaireAudio> =
  * Remembers and lifecycle-manages a platform [SolitaireAudio] instance.
  */
 @Composable
-fun rememberSolitaireAudio(): SolitaireAudio {
+fun rememberSolitaireAudio(enabled: Boolean = true): SolitaireAudio {
+    if (LocalInspectionMode.current) {
+        return remember {
+            object : SolitaireAudio {
+                override var isEnabled: Boolean = false
+                override fun playSlide() {}
+                override fun playSnap() {}
+                override fun playFlip() {}
+                override fun playDeal() {}
+                override fun release() {}
+            }
+        }
+    }
     val context = LocalContext.current
-    val audio = remember(context) { AndroidSolitaireAudio(context.applicationContext) }
+    val audio = remember(context) { AndroidSolitaireAudio(context.applicationContext ?: context) }
     DisposableEffect(audio) {
         onDispose {
             audio.release()
         }
     }
+    audio.isEnabled = enabled
     return audio
 }

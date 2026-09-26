@@ -13,6 +13,8 @@ import androidx.compose.ui.unit.dp
 val LocalSolitaireColors = staticCompositionLocalOf { SolitaireColors() }
 val LocalSolitaireCardTypography = staticCompositionLocalOf { SolitaireCardTypography() }
 val LocalCardDimensions = staticCompositionLocalOf<CardDimensions?> { null }
+val LocalCardBackStyle = staticCompositionLocalOf { CardBackStyle.DEFAULT }
+val LocalCardFaceStyle = staticCompositionLocalOf { CardFaceStyle.DEFAULT }
 
 /**
  * Accessor for Solitaire theme attributes.
@@ -28,6 +30,16 @@ object SolitaireTheme {
         @ReadOnlyComposable
         get() = LocalSolitaireCardTypography.current
 
+    val cardBackStyle: CardBackStyle
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalCardBackStyle.current
+
+    val cardFaceStyle: CardFaceStyle
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalCardFaceStyle.current
+
     val cardDimensions: CardDimensions
         @Composable
         @ReadOnlyComposable
@@ -38,8 +50,8 @@ object SolitaireTheme {
 /**
  * Main application theme wrapper for Solitaire.
  *
- * Configures [FeltTheme] palette, card typography, and Material 3 dark color scheme
- * tailored for green/navy/charcoal/wine felt tables.
+ * Configures [FeltTheme] palette, [CardBackStyle], [CardFaceStyle], card typography,
+ * and Material 3 dark color scheme tailored for green/navy/charcoal/wine felt tables.
  *
  * If [cardDimensions] is not explicitly specified, falls back to the ambient [LocalCardDimensions]
  * or standard phone proportions calculated for 393.dp screen width.
@@ -47,13 +59,17 @@ object SolitaireTheme {
 @Composable
 fun SolitaireTheme(
     feltTheme: FeltTheme = FeltTheme.CLASSIC_GREEN,
+    cardBackStyle: CardBackStyle = CardBackStyle.DEFAULT,
+    cardFaceStyle: CardFaceStyle = CardFaceStyle.DEFAULT,
     cardDimensions: CardDimensions? = null,
     content: @Composable () -> Unit
 ) {
     val solitaireColors = remember(feltTheme) {
         SolitaireColors(feltTheme = feltTheme)
     }
-    val cardTypography = remember { SolitaireCardTypography() }
+    val cardTypography = remember(cardFaceStyle) {
+        createCardTypography(cardFaceStyle)
+    }
 
     val resolvedDimensions = cardDimensions
         ?: LocalCardDimensions.current
@@ -73,7 +89,9 @@ fun SolitaireTheme(
     CompositionLocalProvider(
         LocalSolitaireColors provides solitaireColors,
         LocalSolitaireCardTypography provides cardTypography,
-        LocalCardDimensions provides resolvedDimensions
+        LocalCardDimensions provides resolvedDimensions,
+        LocalCardBackStyle provides cardBackStyle,
+        LocalCardFaceStyle provides cardFaceStyle
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

@@ -207,5 +207,56 @@ class SolitaireGameScreenTest {
             assertEquals(listOf(GameEvent.PlayDealSound), emittedEvents)
             eventJob.cancel()
         }
+    
+        @Test
+        fun `auto-complete intent cascades moves to foundations and triggers win celebration event`() = runTest(testDispatcher) {
+            val foundations = Suit.entries.map { suit ->
+                Rank.entries.filter { it != Rank.KING }.map { rank -> Card(suit, rank, isFaceUp = true) }
+            }
+            val tableau = List(7) { col ->
+                if (col < 4) {
+                    listOf(Card(Suit.entries[col], Rank.KING, isFaceUp = true))
+                } else {
+                    emptyList()
+                }
+            }
+            val readyBoard = BoardState(
+                stock = emptyList(),
+                waste = emptyList(),
+                foundations = foundations,
+                tableau = tableau
+            )
+            val viewModel = GameViewModel(
+                initialBoardState = readyBoard,
+                coroutineScope = this,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                autoCompleteDelayMs = 50L
+            )
+
+            val emittedEvents = mutableListOf<GameEvent>()
+            val eventJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.events.collect { emittedEvents.add(it) }
+            }
+
+            assertTrue(viewModel.uiState.value.isAutoCompleteAvailable)
+
+            viewModel.onIntent(GameIntent.AutoComplete)
+            testScheduler.advanceUntilIdle()
+
+            val uiState = viewModel.uiState.value
+            assertTrue(uiState.isGameWon)
+            assertFalse(uiState.isAutoCompleteAvailable)
+            assertEquals(4, uiState.boardState.movesCount)
+            assertTrue(uiState.boardState.tableau.all { it.isEmpty() })
+
+            // 4 PlayHapticSnap + 1 TriggerWinCelebration
+            val snapCount = emittedEvents.count { it is GameEvent.PlayHapticSnap }
+            val celebrationCount = emittedEvents.count { it is GameEvent.TriggerWinCelebration }
+            assertEquals(0, snapCount)
+            assertEquals(1, celebrationCount)
+
+            eventJob.cancel()
+        }
     }
 }

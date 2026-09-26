@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -51,21 +52,24 @@ fun AnimatedMoveOverlay(
             val isFaceUp = flight.showCardFace
 
             flight.cards.forEachIndexed { index, card ->
-                val cardToRender = if (flight.isStockFlip) {
-                    card.copy(isFaceUp = isFaceUp)
-                } else {
-                    card
+                key(card.id) {
+                    val cardToRender = if (flight.isStockFlip) {
+                        card.copy(isFaceUp = isFaceUp)
+                    } else {
+                        card
+                    }
+
+                    val yOffset = dimensions.faceUpPeek * index
+
+                    CardView(
+                        card = cardToRender,
+                        modifier = Modifier
+                            .offset(y = yOffset)
+                            .size(dimensions.cardWidth, dimensions.cardHeight),
+                        elevation = 10.dp,
+                        animateFlip = false
+                    )
                 }
-
-                val yOffset = dimensions.faceUpPeek * index
-
-                CardView(
-                    card = cardToRender,
-                    modifier = Modifier
-                        .offset(y = yOffset)
-                        .size(dimensions.cardWidth, dimensions.cardHeight),
-                    elevation = 10.dp
-                )
             }
         }
     }

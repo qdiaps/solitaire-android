@@ -2,8 +2,11 @@ package io.github.qdiaps.solitaire.ui.game.components
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,7 +20,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ProvidableCompositionLocal
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -25,17 +31,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.ui.game.audio.LocalSolitaireAudio
+import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
+import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 
 /**
@@ -46,15 +50,25 @@ import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
  *
  * @param card Domain [Card] model.
  * @param modifier Compose [Modifier] applied to this card.
+ * @param cardBackStyle Visual pattern style applied to face-down card back.
+ * @param cardFaceStyle Typography and index scaling style applied to face-up card face.
  * @param elevation Shadow elevation (defaults to 2.dp, or 12.dp when lifted in drag overlay).
- * @param isHighlighted Whether an active hint border is drawn around the card.
+ * @param isHighlighted Whether an active hint border is drawn around the card with pulsing glow.
  * @param onClick Optional tap callback.
  */
+/**
+ * CompositionLocal providing active game session ID to invalidate remembered card flip states on new deals.
+ */
+val LocalGameSessionId: ProvidableCompositionLocal<Long> = compositionLocalOf { 1L }
+
 @Composable
 fun CardView(
     card: Card,
     modifier: Modifier = Modifier,
+    cardBackStyle: CardBackStyle = SolitaireTheme.cardBackStyle,
+    cardFaceStyle: CardFaceStyle = SolitaireTheme.cardFaceStyle,
     elevation: Dp = 2.dp,
+    animateFlip: Boolean = true,
     isHighlighted: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
@@ -63,12 +77,13 @@ fun CardView(
     val density = LocalDensity.current
     val shape = RoundedCornerShape(dimensions.cornerRadius)
     val solitaireAudio = LocalSolitaireAudio.current
+    val gameSessionId = LocalGameSessionId.current
 
-    var previousFaceUp by remember(card.id) { mutableStateOf(card.isFaceUp) }
-    val flipAnimatable = remember(card.id) { Animatable(if (card.isFaceUp) 1f else 0f) }
+    var previousFaceUp by remember(card.id, gameSessionId) { mutableStateOf(card.isFaceUp) }
+    val flipAnimatable = remember(card.id, gameSessionId) { Animatable(if (card.isFaceUp) 1f else 0f) }
 
-    LaunchedEffect(card.isFaceUp) {
-        if (!previousFaceUp && card.isFaceUp) {
+    LaunchedEffect(card.isFaceUp, gameSessionId) {
+        if (animateFlip && !previousFaceUp && card.isFaceUp) {
             solitaireAudio.playFlip()
             // Animate 3D turnover when card is uncovered
             flipAnimatable.snapTo(0f)
@@ -83,7 +98,7 @@ fun CardView(
         }
     }
 
-    val isFlipping = flipAnimatable.value < 1f && card.isFaceUp
+    val isFlipping = animateFlip && flipAnimatable.value < 1f && card.isFaceUp
     val rotationY = if (isFlipping) {
         if (flipAnimatable.value <= 0.5f) {
             flipAnimatable.value * 180f
@@ -100,8 +115,35 @@ fun CardView(
         card.isFaceUp
     }
 
+    val infiniteTransition = rememberInfiniteTransition(label = "cardHintPulse")
+    val pulseProgress by if (isHighlighted) {
+        infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1.0f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 650, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "cardPulseProgress"
+        )
+    } else {
+        remember { mutableFloatStateOf(0f) }
+    }
+
+    val pulseAlpha = if (isHighlighted) 0.55f + pulseProgress * 0.45f else 1f
+    val highlightScale = if (isHighlighted) 1.0f + pulseProgress * 0.035f else 1.0f
+    val dynamicElevation = if (isHighlighted) {
+        elevation.coerceAtLeast(6.dp) + (4.dp * pulseProgress)
+    } else {
+        elevation
+    }
+
     val borderModifier = if (isHighlighted) {
-        Modifier.border(width = 2.dp, color = colors.hintHighlight, shape = shape)
+        Modifier.border(
+            width = 3.dp,
+            color = colors.hintHighlight.copy(alpha = pulseAlpha),
+            shape = shape
+        )
     } else {
         Modifier.border(width = 1.dp, color = colors.cardBorder, shape = shape)
     }
@@ -119,11 +161,15 @@ fun CardView(
     Box(
         modifier = modifier
             .size(dimensions.cardWidth, dimensions.cardHeight)
-            .shadow(elevation = elevation, shape = shape)
+            .shadow(elevation = dynamicElevation, shape = shape)
             .graphicsLayer {
                 if (isFlipping) {
                     this.rotationY = rotationY
                     cameraDistance = 12f * density.density
+                }
+                if (isHighlighted) {
+                    scaleX = highlightScale
+                    scaleY = highlightScale
                 }
             }
             .clip(shape)
@@ -131,9 +177,18 @@ fun CardView(
             .then(clickableModifier)
     ) {
         if (renderFaceUp) {
-            FaceUpCardContent(card = card)
+            FaceUpCardContent(card = card, cardFaceStyle = cardFaceStyle)
         } else {
-            FaceDownCardContent()
+            CardBackView(style = cardBackStyle)
+        }
+
+        // Luminous warm amber-gold tint overlay across the entire card when highlighted
+        if (isHighlighted) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(colors.hintHighlight.copy(alpha = 0.14f + pulseProgress * 0.16f))
+            )
         }
     }
 }
@@ -142,16 +197,29 @@ fun CardView(
  * Face-up card layout showing corner indices (rank + mini suit) and a center emblem.
  */
 @Composable
-private fun FaceUpCardContent(card: Card) {
+private fun FaceUpCardContent(
+    card: Card,
+    cardFaceStyle: CardFaceStyle
+) {
     val colors = SolitaireTheme.colors
     val typography = SolitaireTheme.typography
     val dimensions = SolitaireTheme.cardDimensions
 
+    val rankTextStyle = if (cardFaceStyle == SolitaireTheme.cardFaceStyle) {
+        typography.cardRank
+    } else {
+        typography.cardRank.copy(
+            fontFamily = cardFaceStyle.fontFamily,
+            fontWeight = cardFaceStyle.fontWeight,
+            fontSize = (14f * cardFaceStyle.rankTextScale).sp
+        )
+    }
+
     val suitColor = if (card.suit.isRed) colors.cardRed else colors.cardBlack
     val indexPaddingHorizontal = dimensions.cardWidth * 0.08f
     val indexPaddingVertical = dimensions.cardHeight * 0.05f
-    val cornerEmblemSize = dimensions.cardWidth * 0.22f
-    val centerEmblemSize = dimensions.cardWidth * 0.44f
+    val cornerEmblemSize = dimensions.cardWidth * 0.22f * cardFaceStyle.cornerEmblemScale
+    val centerEmblemSize = dimensions.cardWidth * 0.44f * cardFaceStyle.centerEmblemScale
 
     Box(
         modifier = Modifier
@@ -167,7 +235,7 @@ private fun FaceUpCardContent(card: Card) {
         ) {
             Text(
                 text = card.rank.displayLabel,
-                style = typography.cardRank,
+                style = rankTextStyle,
                 color = suitColor
             )
             SuitEmblem(
@@ -196,7 +264,7 @@ private fun FaceUpCardContent(card: Card) {
         ) {
             Text(
                 text = card.rank.displayLabel,
-                style = typography.cardRank,
+                style = rankTextStyle,
                 color = suitColor
             )
             SuitEmblem(
@@ -204,69 +272,6 @@ private fun FaceUpCardContent(card: Card) {
                 color = suitColor,
                 modifier = Modifier.size(cornerEmblemSize)
             )
-        }
-    }
-}
-
-/**
- * Face-down card back with deep navy surface, inner margin border, and geometric diamond lattice.
- */
-@Composable
-private fun FaceDownCardContent() {
-    val colors = SolitaireTheme.colors
-    val dimensions = SolitaireTheme.cardDimensions
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(colors.cardBackNavy)
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val inset = dimensions.cardWidth.toPx() * 0.08f
-            val corner = dimensions.cornerRadius.toPx() * 0.6f
-
-            // Inner ornamental border
-            drawRoundRect(
-                color = Color.White.copy(alpha = 0.35f),
-                topLeft = Offset(inset, inset),
-                size = Size(size.width - inset * 2f, size.height - inset * 2f),
-                cornerRadius = CornerRadius(corner, corner),
-                style = Stroke(width = 1.dp.toPx())
-            )
-
-            // Inner geometric diamond lattice
-            val innerLeft = inset * 1.6f
-            val innerTop = inset * 1.6f
-            val innerWidth = size.width - innerLeft * 2f
-            val innerHeight = size.height - innerTop * 2f
-            val step = innerWidth / 4f
-
-            val latticeColor = Color.White.copy(alpha = 0.18f)
-            val stroke = Stroke(width = 0.8.dp.toPx())
-
-            // Diagonal lines (\ direction)
-            var x = -innerHeight
-            while (x < innerWidth + innerHeight) {
-                drawLine(
-                    color = latticeColor,
-                    start = Offset(innerLeft + x, innerTop),
-                    end = Offset(innerLeft + x + innerHeight, innerTop + innerHeight),
-                    strokeWidth = stroke.width
-                )
-                x += step
-            }
-
-            // Diagonal lines (/ direction)
-            x = -innerHeight
-            while (x < innerWidth + innerHeight) {
-                drawLine(
-                    color = latticeColor,
-                    start = Offset(innerLeft + x + innerHeight, innerTop),
-                    end = Offset(innerLeft + x, innerTop + innerHeight),
-                    strokeWidth = stroke.width
-                )
-                x += step
-            }
         }
     }
 }

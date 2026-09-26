@@ -7,6 +7,7 @@ import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.Rank
 import io.github.qdiaps.solitaire.domain.model.Suit
+import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.ui.game.SolitaireGameScreen
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
 import kotlin.random.Random
@@ -107,17 +108,39 @@ fun LeftHandedModeBoardPreview() {
     )
 }
 
-@Preview(name = "5. Active Hint Highlight", device = "id:pixel_7", showBackground = true)
+@Preview(name = "5. Active Hint Stack Highlight (6-5-4 onto 7)", device = "id:pixel_7", showBackground = true)
 @Composable
 fun ActiveHintBoardPreview() {
-    val hintCard = SAMPLE_MID_GAME_STATE.tableau[4][4] // Six of Clubs
+    // Column 2 has [7 of Hearts] as destination target
+    // Column 4 has [Face down, 6 of Clubs, 5 of Diamonds, 4 of Spades] as moving sub-stack
+    val hintBoard = SAMPLE_MID_GAME_STATE.copy(
+        tableau = SAMPLE_MID_GAME_STATE.tableau.toMutableList().apply {
+            this[2] = listOf(
+                Card(Suit.HEARTS, Rank.SEVEN, isFaceUp = true)
+            )
+            this[4] = listOf(
+                Card(Suit.CLUBS, Rank.FIVE, isFaceUp = false),
+                Card(Suit.CLUBS, Rank.SIX, isFaceUp = true),
+                Card(Suit.DIAMONDS, Rank.FIVE, isFaceUp = true),
+                Card(Suit.SPADES, Rank.FOUR, isFaceUp = true)
+            )
+        }
+    )
+    val movingStack = listOf(
+        hintBoard.tableau[4][1], // Six of Clubs
+        hintBoard.tableau[4][2], // Five of Diamonds
+        hintBoard.tableau[4][3]  // Four of Spades
+    )
 
     SolitaireGameScreen(
-        boardState = SAMPLE_MID_GAME_STATE,
+        boardState = hintBoard,
         timeSeconds = 210L,
         canUndo = true,
-        highlightedCard = hintCard,
-        isHintActive = true
+        highlightedCard = movingStack.first(),
+        highlightedCards = movingStack,
+        isHintActive = true,
+        hintSourceLocation = CardLocation.Tableau(4, 1),
+        hintTargetLocation = CardLocation.Tableau(2, 0)
     )
 }
 

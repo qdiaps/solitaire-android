@@ -9,7 +9,7 @@ import io.github.qdiaps.solitaire.ui.game.GameViewModel
 import io.github.qdiaps.solitaire.ui.game.SolitaireGameScreen
 
 class MainActivity : ComponentActivity() {
-    private val gameViewModel: GameViewModel by viewModels()
+    private val gameViewModel: GameViewModel by viewModels { GameViewModel.provideFactory(applicationContext) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -17,5 +17,16 @@ class MainActivity : ComponentActivity() {
         setContent {
             SolitaireGameScreen(viewModel = gameViewModel)
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        gameViewModel.pauseTimer()
+        gameViewModel.saveCurrentSession()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        gameViewModel.resumeTimer()
     }
 }

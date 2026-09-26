@@ -56,3 +56,16 @@ data class SolitaireCardTypography(
         letterSpacing = 0.5.sp
     )
 )
+
+/**
+ * Generates [SolitaireCardTypography] scaled and formatted for the given [CardFaceStyle].
+ */
+fun createCardTypography(faceStyle: CardFaceStyle = CardFaceStyle.DEFAULT): SolitaireCardTypography {
+    return SolitaireCardTypography(
+        cardRank = TextStyle(
+            fontFamily = faceStyle.fontFamily,
+            fontWeight = faceStyle.fontWeight,
+            fontSize = (14f * faceStyle.rankTextScale).sp
+        )
+    )
+}
