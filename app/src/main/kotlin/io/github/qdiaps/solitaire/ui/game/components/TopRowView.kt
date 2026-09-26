@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
+import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 
 /**
@@ -22,6 +23,7 @@ import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
  *
  * @param stockCount Number of cards remaining in the stock pile.
  * @param wasteTopCard The topmost card in the waste pile, or `null` if empty.
+ * @param wasteUnderCard The card directly under the top waste card, or `null` if <= 1 card in waste.
  * @param foundations List of 4 foundation card piles.
  * @param modifier Compose [Modifier] applied to the top row.
  * @param isLeftHanded Whether left-handed mode layout mirroring is active.
@@ -29,14 +31,17 @@ import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
  * @param isStockHighlighted Whether stock slot has active hint highlight.
  * @param isWasteHighlighted Whether waste card has active hint highlight.
  * @param highlightedFoundationIndex Optional index (0..3) of foundation with active hint highlight.
+ * @param boardState Optional board state provider for drag drop validation.
  * @param onStockClick Callback when stock pile is tapped.
  * @param onWasteClick Callback when waste pile is tapped.
  * @param onFoundationClick Callback when a foundation pile is tapped with its 0-based index.
+ * @param onCardDropped Optional callback invoked when a card is dropped onto a valid target.
  */
 @Composable
 fun TopRowView(
     stockCount: Int,
     wasteTopCard: Card?,
+    wasteUnderCard: Card? = null,
     foundations: List<List<Card>>,
     modifier: Modifier = Modifier,
     isLeftHanded: Boolean = false,
@@ -44,9 +49,11 @@ fun TopRowView(
     isStockHighlighted: Boolean = false,
     isWasteHighlighted: Boolean = false,
     highlightedFoundationIndex: Int? = null,
-    onStockClick: (() -> Unit)? = null,
-    onWasteClick: (() -> Unit)? = null,
-    onFoundationClick: ((foundationIndex: Int) -> Unit)? = null
+    boardState: (() -> BoardState)? = null,
+    onStockClick: () -> Unit = {},
+    onWasteClick: () -> Unit = {},
+    onFoundationClick: (foundationIndex: Int) -> Unit = {},
+    onCardDropped: ((cards: List<Card>, source: CardLocation, target: CardLocation) -> Unit)? = null
 ) {
     val dimensions = SolitaireTheme.cardDimensions
 
@@ -64,26 +71,36 @@ fun TopRowView(
             )
             WastePileView(
                 topCard = wasteTopCard,
+                underCard = wasteUnderCard,
                 isHighlighted = isWasteHighlighted,
-                onClick = onWasteClick
+                boardState = boardState,
+                onClick = onWasteClick,
+                onCardDropped = onCardDropped
             )
             Spacer(modifier = Modifier.size(dimensions.cardWidth, dimensions.cardHeight))
             FoundationRowView(
                 foundations = foundations,
                 highlightedFoundationIndex = highlightedFoundationIndex,
-                onFoundationClick = onFoundationClick
+                boardState = boardState,
+                onFoundationClick = onFoundationClick,
+                onCardDropped = onCardDropped
             )
         } else {
             FoundationRowView(
                 foundations = foundations,
                 highlightedFoundationIndex = highlightedFoundationIndex,
-                onFoundationClick = onFoundationClick
+                boardState = boardState,
+                onFoundationClick = onFoundationClick,
+                onCardDropped = onCardDropped
             )
             Spacer(modifier = Modifier.size(dimensions.cardWidth, dimensions.cardHeight))
             WastePileView(
                 topCard = wasteTopCard,
+                underCard = wasteUnderCard,
                 isHighlighted = isWasteHighlighted,
-                onClick = onWasteClick
+                boardState = boardState,
+                onClick = onWasteClick,
+                onCardDropped = onCardDropped
             )
             StockPileView(
                 cardsCount = stockCount,
@@ -106,13 +123,15 @@ fun TopRowView(
     isStockHighlighted: Boolean = false,
     isWasteHighlighted: Boolean = false,
     highlightedFoundationIndex: Int? = null,
-    onStockClick: (() -> Unit)? = null,
-    onWasteClick: (() -> Unit)? = null,
-    onFoundationClick: ((foundationIndex: Int) -> Unit)? = null
+    onStockClick: () -> Unit = {},
+    onWasteClick: () -> Unit = {},
+    onFoundationClick: (foundationIndex: Int) -> Unit = {},
+    onCardDropped: ((cards: List<Card>, source: CardLocation, target: CardLocation) -> Unit)? = null
 ) {
     TopRowView(
         stockCount = boardState.stock.size,
         wasteTopCard = boardState.waste.lastOrNull(),
+        wasteUnderCard = if (boardState.waste.size >= 2) boardState.waste[boardState.waste.size - 2] else null,
         foundations = boardState.foundations,
         canRecycle = boardState.stock.isEmpty() && boardState.waste.isNotEmpty(),
         modifier = modifier,
@@ -120,8 +139,10 @@ fun TopRowView(
         isStockHighlighted = isStockHighlighted,
         isWasteHighlighted = isWasteHighlighted,
         highlightedFoundationIndex = highlightedFoundationIndex,
+        boardState = { boardState },
         onStockClick = onStockClick,
         onWasteClick = onWasteClick,
-        onFoundationClick = onFoundationClick
+        onFoundationClick = onFoundationClick,
+        onCardDropped = onCardDropped
     )
 }

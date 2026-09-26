@@ -21,8 +21,8 @@ Trigger automatically when the user says phrases such as:
 
 2. **Read Progress & Session Memory (State):**
    - Read `docs/ROADMAP.md`: Current milestone, phase scope, and Definition of Done (DoD).
-   - Read `docs/STATE.md`: Active branch, last completed task, and recent progress log.
-   - Read `docs/TASKS.md`: Current sprint backlog and active task checklist.
+   - Read `docs/STATE.md`: Active branch, current milestone, completed milestones summary, and recent progress log. (Historical logs for completed phases are archived in `docs/archive/STATE_HISTORY.md`).
+   - Read `docs/TASKS.md`: Current sprint backlog and active task checklist. (Completed tasks from past phases are archived in `docs/archive/TASKS_HISTORY.md`).
 
 3. **Status Confirmation (Report):**
    - Present a concise report to the user:

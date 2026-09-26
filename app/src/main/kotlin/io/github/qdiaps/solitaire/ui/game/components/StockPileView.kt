@@ -6,8 +6,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.model.Card
+import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.domain.model.Rank
 import io.github.qdiaps.solitaire.domain.model.Suit
+import io.github.qdiaps.solitaire.ui.game.gesture.dropTarget
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 
 private val STOCK_FACE_DOWN_CARD = Card(
@@ -38,10 +40,12 @@ fun StockPileView(
     isHighlighted: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
+    val boundsModifier = modifier.dropTarget(CardLocation.Stock)
+
     if (cardsCount > 0) {
         CardView(
             card = STOCK_FACE_DOWN_CARD,
-            modifier = modifier,
+            modifier = boundsModifier,
             isHighlighted = isHighlighted,
             onClick = onClick
         )
@@ -59,7 +63,7 @@ fun StockPileView(
         }
 
         CardSlotPlaceholder(
-            modifier = modifier.then(highlightModifier),
+            modifier = boundsModifier.then(highlightModifier),
             watermark = if (canRecycle) SlotWatermark.StockRecycle else SlotWatermark.None,
             onClick = if (canRecycle) onClick else null
         )

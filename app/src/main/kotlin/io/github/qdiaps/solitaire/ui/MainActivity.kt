@@ -4,21 +4,18 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.remember
-import io.github.qdiaps.solitaire.domain.deck.KlondikeDealer
+import androidx.activity.viewModels
+import io.github.qdiaps.solitaire.ui.game.GameViewModel
 import io.github.qdiaps.solitaire.ui.game.SolitaireGameScreen
 
 class MainActivity : ComponentActivity() {
+    private val gameViewModel: GameViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val sampleState = remember { KlondikeDealer.dealShuffled() }
-            SolitaireGameScreen(
-                boardState = sampleState,
-                timeSeconds = 0L,
-                canUndo = false
-            )
+            SolitaireGameScreen(viewModel = gameViewModel)
         }
     }
 }

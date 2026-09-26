@@ -2,6 +2,7 @@ package io.github.qdiaps.solitaire.domain.rules
 
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
+import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.domain.model.Rank
 import kotlin.math.min
 
@@ -637,6 +638,135 @@ object KlondikeRules {
             score = calculateScore(state.score, SCORE_FOUNDATION_TO_TABLEAU),
             movesCount = state.movesCount + 1
         )
+    }
+
+    /**
+     * Checks whether the specified [cards] can be legally moved from [source] to [target].
+     *
+     * Supports:
+     * - Waste -> Tableau / Foundation
+     * - Tableau -> Tableau / Foundation
+     * - Foundation -> Tableau
+     *
+     * @param state Current [BoardState].
+     * @param cards The list of cards being moved.
+     * @param source The origin [CardLocation].
+     * @param target The destination [CardLocation].
+     * @return `true` if the movement is permitted by Klondike rules, `false` otherwise.
+     */
+    fun canMoveCards(
+        state: BoardState,
+        cards: List<Card>,
+        source: CardLocation,
+        target: CardLocation
+    ): Boolean {
+        if (cards.isEmpty()) return false
+        if (source == target) return false
+
+        return when (source) {
+            is CardLocation.Waste -> {
+                if (cards.size != 1 || state.waste.lastOrNull() != cards.first()) return false
+                when (target) {
+                    is CardLocation.Tableau -> canMoveWasteToTableau(state, target.columnIndex)
+                    is CardLocation.Foundation -> canMoveWasteToFoundation(state, target.index)
+                    else -> false
+                }
+            }
+            is CardLocation.Tableau -> {
+                if (source.columnIndex !in state.tableau.indices) return false
+                val sourceColumn = state.tableau[source.columnIndex]
+                if (sourceColumn.size < cards.size) return false
+                val cardIndex = sourceColumn.size - cards.size
+                if (sourceColumn.subList(cardIndex, sourceColumn.size) != cards) return false
+
+                when (target) {
+                    is CardLocation.Tableau -> {
+                        if (source.columnIndex == target.columnIndex) return false
+                        canMoveTableauToTableau(state, source.columnIndex, cardIndex, target.columnIndex)
+                    }
+                    is CardLocation.Foundation -> {
+                        if (cards.size != 1) return false
+                        canMoveTableauToFoundation(state, source.columnIndex, target.index)
+                    }
+                    else -> false
+                }
+            }
+            is CardLocation.Foundation -> {
+                if (source.index !in state.foundations.indices) return false
+                if (cards.size != 1 || state.foundations[source.index].lastOrNull() != cards.first()) return false
+                when (target) {
+                    is CardLocation.Tableau -> canMoveFoundationToTableau(state, source.index, target.columnIndex)
+                    else -> false
+                }
+            }
+            is CardLocation.Stock -> false
+        }
+    }
+
+    /**
+     * Executes the movement of [cards] from [source] to [target], returning the updated [BoardState].
+     *
+     * Automatically applies standard Klondike scoring and exposes newly uncovered tableau cards if [autoExpose] is true.
+     *
+     * @param state Current [BoardState].
+     * @param cards The list of cards being moved.
+     * @param source The origin [CardLocation].
+     * @param target The destination [CardLocation].
+     * @param autoExpose Whether to flip newly uncovered face-down cards on the source tableau column.
+     * @return Resulting [BoardState].
+     * @throws IllegalArgumentException if the move is invalid.
+     */
+    fun moveCards(
+        state: BoardState,
+        cards: List<Card>,
+        source: CardLocation,
+        target: CardLocation,
+        autoExpose: Boolean = true
+    ): BoardState {
+        require(canMoveCards(state, cards, source, target)) {
+            "Illegal card move: cannot move $cards from $source to $target."
+        }
+
+        return when (source) {
+            is CardLocation.Waste -> {
+                when (target) {
+                    is CardLocation.Tableau -> moveWasteToTableau(state, target.columnIndex)
+                    is CardLocation.Foundation -> moveWasteToFoundation(state, target.index)
+                    else -> error("Unsupported target for Waste: $target")
+                }
+            }
+            is CardLocation.Tableau -> {
+                val sourceColumn = state.tableau[source.columnIndex]
+                val cardIndex = sourceColumn.size - cards.size
+                when (target) {
+                    is CardLocation.Tableau -> moveTableauToTableau(
+                        state = state,
+                        fromColumnIndex = source.columnIndex,
+                        cardIndex = cardIndex,
+                        toColumnIndex = target.columnIndex,
+                        autoExpose = autoExpose
+                    )
+                    is CardLocation.Foundation -> moveTableauToFoundation(
+                        state = state,
+                        tableauIndex = source.columnIndex,
+                        foundationIndex = target.index,
+                        autoExpose = autoExpose
+                    )
+                    else -> error("Unsupported target for Tableau: $target")
+                }
+            }
+            is CardLocation.Foundation -> {
+                when (target) {
+                    is CardLocation.Tableau -> moveFoundationToTableau(
+                        state = state,
+                        foundationIndex = source.index,
+                        tableauIndex = target.columnIndex
+                    )
+                    else -> error("Unsupported target for Foundation: $target")
+                }
+            }
+            is CardLocation.Stock -> error("Cards cannot be moved from Stock via moveCards.")
+        }
     }
 
     /**

@@ -1,4 +1,4 @@
-package io.github.qdiaps.solitaire.ui.game.components
+package io.github.qdiaps.solitaire.ui.preview
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import io.github.qdiaps.solitaire.ui.game.components.BottomActionBarView
+import io.github.qdiaps.solitaire.ui.game.components.TopStatusBarView
 import io.github.qdiaps.solitaire.ui.theme.CardDimensions
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme

@@ -8,6 +8,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 
 val LocalSolitaireColors = staticCompositionLocalOf { SolitaireColors() }
 val LocalSolitaireCardTypography = staticCompositionLocalOf { SolitaireCardTypography() }
@@ -39,6 +40,9 @@ object SolitaireTheme {
  *
  * Configures [FeltTheme] palette, card typography, and Material 3 dark color scheme
  * tailored for green/navy/charcoal/wine felt tables.
+ *
+ * If [cardDimensions] is not explicitly specified, falls back to the ambient [LocalCardDimensions]
+ * or standard phone proportions calculated for 393.dp screen width.
  */
 @Composable
 fun SolitaireTheme(
@@ -50,6 +54,10 @@ fun SolitaireTheme(
         SolitaireColors(feltTheme = feltTheme)
     }
     val cardTypography = remember { SolitaireCardTypography() }
+
+    val resolvedDimensions = cardDimensions
+        ?: LocalCardDimensions.current
+        ?: remember { CardDimensions.calculate(availableWidth = 393.dp) }
 
     val colorScheme = remember(feltTheme) {
         darkColorScheme(
@@ -65,7 +73,7 @@ fun SolitaireTheme(
     CompositionLocalProvider(
         LocalSolitaireColors provides solitaireColors,
         LocalSolitaireCardTypography provides cardTypography,
-        LocalCardDimensions provides cardDimensions
+        LocalCardDimensions provides resolvedDimensions
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

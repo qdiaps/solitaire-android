@@ -9,6 +9,8 @@ import androidx.compose.ui.Modifier
 import io.github.qdiaps.solitaire.domain.deck.KlondikeDealer
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
+import io.github.qdiaps.solitaire.domain.model.CardLocation
+import io.github.qdiaps.solitaire.ui.game.gesture.dropTarget
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 
 /**
@@ -26,18 +28,22 @@ const val NUM_TABLEAU_COLUMNS: Int = KlondikeDealer.TABLEAU_COLUMNS_COUNT
  * @param tableau List of 7 card columns representing the tableau.
  * @param modifier Compose [Modifier] applied to this container.
  * @param highlightedCard Optional card with active hint highlight.
+ * @param boardState Optional board state provider for drag drop validation.
  * @param onCardClick Optional callback invoked when a card in a tableau column is tapped,
  * providing the 0-based column index and the tapped [Card].
  * @param onEmptyColumnClick Optional callback invoked when an empty tableau column slot is tapped,
  * providing the 0-based column index.
+ * @param onCardDropped Optional callback invoked when a card stack is dropped onto a valid target.
  */
 @Composable
 fun TableauAreaView(
     tableau: List<List<Card>>,
     modifier: Modifier = Modifier,
     highlightedCard: Card? = null,
+    boardState: (() -> BoardState)? = null,
     onCardClick: ((columnIndex: Int, card: Card) -> Unit)? = null,
-    onEmptyColumnClick: ((columnIndex: Int) -> Unit)? = null
+    onEmptyColumnClick: ((columnIndex: Int) -> Unit)? = null,
+    onCardDropped: ((cards: List<Card>, source: CardLocation, target: CardLocation) -> Unit)? = null
 ) {
     val dimensions = SolitaireTheme.cardDimensions
 
@@ -50,20 +56,24 @@ fun TableauAreaView(
             val columnCards = tableau.getOrNull(columnIndex).orEmpty()
             TableauColumnView(
                 cards = columnCards,
+                modifier = Modifier.dropTarget(CardLocation.Tableau(columnIndex)),
                 highlightedCard = highlightedCard,
+                columnIndex = columnIndex,
+                boardState = boardState,
                 onCardClick = onCardClick?.let { callback ->
                     { card -> callback(columnIndex, card) }
                 },
                 onEmptySlotClick = onEmptyColumnClick?.let { callback ->
                     { callback(columnIndex) }
-                }
+                },
+                onCardDropped = onCardDropped
             )
         }
     }
 }
 
 /**
- * Convenience overload of [TableauAreaView] taking a [BoardState] snapshot directly.
+ * Convenience overload of [TableauAreaView] taking a domain [BoardState] snapshot directly.
  */
 @Composable
 fun TableauAreaView(
@@ -71,13 +81,16 @@ fun TableauAreaView(
     modifier: Modifier = Modifier,
     highlightedCard: Card? = null,
     onCardClick: ((columnIndex: Int, card: Card) -> Unit)? = null,
-    onEmptyColumnClick: ((columnIndex: Int) -> Unit)? = null
+    onEmptyColumnClick: ((columnIndex: Int) -> Unit)? = null,
+    onCardDropped: ((cards: List<Card>, source: CardLocation, target: CardLocation) -> Unit)? = null
 ) {
     TableauAreaView(
         tableau = boardState.tableau,
         modifier = modifier,
         highlightedCard = highlightedCard,
+        boardState = { boardState },
         onCardClick = onCardClick,
-        onEmptyColumnClick = onEmptyColumnClick
+        onEmptyColumnClick = onEmptyColumnClick,
+        onCardDropped = onCardDropped
     )
 }
