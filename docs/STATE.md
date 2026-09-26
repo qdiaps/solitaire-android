@@ -9,7 +9,7 @@
 ---
 
 ## Current Focus & Status
-- **Phase:** 5 / 6 (Game Loop, Scoring, Auto-Complete & Persistence)
+- **Phase:** 5 / 7 (Game Loop, Scoring, Auto-Complete & Persistence)
 - **Completed Milestones Summary:**
   - **Phase 1: Pure Domain Engine** — 159 unit tests (100% pass), models, rules, scoring, smart tap, undo. (Complete)
   - **Phase 2: Solvability Engine & Background Generator** — 80 unit tests (100% pass), A* solver, deadlock detector, buffered deal generator. (Complete)

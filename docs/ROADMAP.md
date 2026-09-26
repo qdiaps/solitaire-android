@@ -83,3 +83,19 @@
 - **Definition of Done (DoD):**
     - Smooth victory animation without frame drops.
     - Release APK build verified and playable on physical device.
+
+---
+
+## Phase 7: Production Release Readiness & CI/CD Pipeline
+**Goal:** Prepare a production-grade optimized release build with adaptive branding, automated matrix CI/CD, and store-ready packaging.
+- **Scope:**
+    - App Identity & Branding: Adaptive launcher icon (`ic_launcher`) with background, foreground, round, and monochrome (Material You themed icon) variants, localized application strings (`values/strings.xml`, `values-ru/strings.xml`), and Android 12+ Splash Screen API integration.
+    - ProGuard / R8 Optimization: Code shrinking, resource shrinking, and obfuscation rules (`proguard-rules.pro`) for Kotlin serialization, Compose runtime, and Coroutines.
+    - Release Signing & Packaging: Configured release signing with environment variable fallback to debug keys for local builds; APK (`assembleRelease`) and Android App Bundle (`bundleRelease`) artifact generation.
+    - CI/CD Matrix Pipeline (GitHub Actions): Split monolithic workflow into 3 parallel blocking jobs: Unit Tests, Android Lint / Static Analysis, and Release Build (`assembleRelease` + `bundleRelease`).
+    - Branch Protection: Enforce all CI status checks as required preconditions for pull request merges.
+- **Definition of Done (DoD):**
+    - Production APK and AAB build cleanly with R8 shrinking and 0 errors via `./gradlew assembleRelease bundleRelease`.
+    - GitHub Actions pipeline runs all 3 jobs in parallel and blocks failing PRs.
+    - Adaptive icon and splash screen render properly on Android 8.0+ through 14+.
+
