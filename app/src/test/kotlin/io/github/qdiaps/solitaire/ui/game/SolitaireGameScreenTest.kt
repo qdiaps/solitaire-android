@@ -253,7 +253,7 @@ class SolitaireGameScreenTest {
             // 4 PlayHapticSnap + 1 TriggerWinCelebration
             val snapCount = emittedEvents.count { it is GameEvent.PlayHapticSnap }
             val celebrationCount = emittedEvents.count { it is GameEvent.TriggerWinCelebration }
-            assertEquals(4, snapCount)
+            assertEquals(0, snapCount)
             assertEquals(1, celebrationCount)
 
             eventJob.cancel()

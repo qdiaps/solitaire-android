@@ -1198,7 +1198,7 @@ class GameViewModelTest {
             assertFalse(finalState.isAutoCompleteAvailable)
             assertFalse(viewModel.isTimerRunning)
             assertTrue(celebrationEmitted)
-            assertEquals(4, hapticSnaps.size)
+            assertEquals(0, hapticSnaps.size)
             assertEquals(4, finalState.boardState.movesCount)
             assertEquals(4 * KlondikeRules.SCORE_TABLEAU_TO_FOUNDATION, finalState.boardState.score)
             assertTrue(finalState.boardState.tableau.all { it.isEmpty() })
@@ -1208,7 +1208,12 @@ class GameViewModelTest {
         @Test
         @DisplayName("AutoComplete does not run when isAutoCompleteAvailable is false")
         fun `AutoComplete does not run when isAutoCompleteAvailable is false`() = runTest(testDispatcher) {
-            val unreadyBoard = createCustomBoard()
+            val unreadyBoard = BoardState(
+                stock = listOf(Card(Suit.SPADES, Rank.ACE, isFaceUp = true)),
+                tableau = List(7) { col ->
+                    if (col == 0) listOf(Card(Suit.HEARTS, Rank.KING, isFaceUp = false)) else emptyList()
+                }
+            )
             val viewModel = GameViewModel(
                 initialBoardState = unreadyBoard,
                 coroutineScope = backgroundScope,

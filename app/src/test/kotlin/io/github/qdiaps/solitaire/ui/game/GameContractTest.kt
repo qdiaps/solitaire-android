@@ -6,6 +6,7 @@ import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.domain.model.Move
 import io.github.qdiaps.solitaire.domain.model.Rank
 import io.github.qdiaps.solitaire.domain.model.Suit
+import io.github.qdiaps.solitaire.domain.rules.AutoCompleteMove
 import io.github.qdiaps.solitaire.domain.rules.Hint
 import io.github.qdiaps.solitaire.domain.rules.HintPriority
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
@@ -101,6 +102,14 @@ class GameContractTest {
                 GameIntent.RequestHint,
                 GameIntent.DismissHint,
                 GameIntent.AutoComplete,
+                GameIntent.ApplyAutoCompleteMove(
+                    AutoCompleteMove(
+                        card = Card(Suit.SPADES, Rank.ACE, isFaceUp = true),
+                        from = CardLocation.Tableau(0, 0),
+                        to = CardLocation.Foundation(0),
+                        resultingState = BoardState()
+                    )
+                ),
                 GameIntent.StartNewGame,
                 GameIntent.RestartGame,
                 GameIntent.ToggleLeftHanded,
@@ -108,7 +117,7 @@ class GameContractTest {
                 GameIntent.SkipWinAnimation
             )
 
-            assertEquals(13, intents.size)
+            assertEquals(14, intents.size)
 
             for (intent in intents) {
                 val label = when (intent) {
@@ -120,6 +129,7 @@ class GameContractTest {
                     is GameIntent.RequestHint -> "RequestHint"
                     is GameIntent.DismissHint -> "DismissHint"
                     is GameIntent.AutoComplete -> "AutoComplete"
+                    is GameIntent.ApplyAutoCompleteMove -> "ApplyAutoCompleteMove:${intent.move.card.id}"
                     is GameIntent.StartNewGame -> "StartNewGame"
                     is GameIntent.RestartGame -> "RestartGame"
                     is GameIntent.ToggleLeftHanded -> "ToggleLeftHanded"

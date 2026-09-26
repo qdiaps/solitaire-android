@@ -53,14 +53,14 @@ class AutoCompleteResolverTest {
         }
 
         @Test
-        @DisplayName("Returns false when stock is not empty")
-        fun `returns false when stock is not empty`() {
+        @DisplayName("Returns true when all tableau cards are face-up even if stock is not empty")
+        fun `returns true when all tableau cards are face-up even if stock is not empty`() {
             val state = BoardState(
                 stock = listOf(Card(Suit.SPADES, Rank.KING, isFaceUp = false)),
                 tableau = List(7) { col -> if (col == 0) listOf(aceSpades) else emptyList() }
             )
 
-            assertFalse(AutoCompleteResolver.isAutoCompleteReady(state))
+            assertTrue(AutoCompleteResolver.isAutoCompleteReady(state))
         }
 
         @Test
@@ -105,16 +105,15 @@ class AutoCompleteResolverTest {
         }
 
         @Test
-        @DisplayName("Returns false when waste contains blocked card that cannot reach foundation")
-        fun `returns false when waste contains blocked card`() {
-            // Waste has fourSpades on top, but threeSpades is trapped underneath it in waste
+        @DisplayName("Returns true and resolves cards from waste even if multiple cards in waste")
+        fun `returns true and resolves cards from waste even if multiple cards in waste`() {
             val fourSpades = Card(Suit.SPADES, Rank.FOUR, isFaceUp = true)
             val state = BoardState(
                 waste = listOf(threeSpades, fourSpades),
                 foundations = listOf(listOf(aceSpades, twoSpades), emptyList(), emptyList(), emptyList())
             )
 
-            assertFalse(AutoCompleteResolver.isAutoCompleteReady(state))
+            assertTrue(AutoCompleteResolver.isAutoCompleteReady(state))
         }
     }
 
@@ -299,14 +298,14 @@ class AutoCompleteResolverTest {
         }
 
         @Test
-        @DisplayName("Returns empty list when auto-complete conditions are not met")
+        @DisplayName("Returns empty list when auto-complete conditions are not met due to face-down card")
         fun `returns empty list when not ready`() {
-            val stateWithStock = BoardState(
+            val stateWithFaceDown = BoardState(
                 stock = listOf(aceSpades),
-                tableau = List(7) { col -> if (col == 0) listOf(twoSpades) else emptyList() }
+                tableau = List(7) { col -> if (col == 0) listOf(Card(Suit.SPADES, Rank.KING, isFaceUp = false), twoSpades) else emptyList() }
             )
 
-            assertTrue(AutoCompleteResolver.resolveAllMoves(stateWithStock).isEmpty())
+            assertTrue(AutoCompleteResolver.resolveAllMoves(stateWithFaceDown).isEmpty())
         }
     }
 

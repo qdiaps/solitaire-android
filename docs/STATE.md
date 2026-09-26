@@ -16,15 +16,21 @@
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-5.6` (Auto-Complete Cascade Execution in ViewModel & UI). Ready to proceed to `T-5.7` (Victory Celebration Overlay & Cascading Card Physics / Confetti).
+- **Current Focus:** Completed `T-5.6` with auto-complete refinements (relaxed condition, card flight animations, haptic muting, and touch blocking). Ready to proceed to `T-5.7` (Victory Celebration Overlay & Cascading Card Physics / Confetti).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-26 (Fix: Refine Auto-Complete Conditions, Flight Animations, and Touch Interception):**
+  - **Condition (Point 1):** Updated `AutoCompleteResolver.isAutoCompleteReady(state)` to require only that all tableau cards are face-up (`state.tableau.all { col -> col.all { it.isFaceUp } } && !KlondikeRules.isGameWon(state)`). Auto-complete activates regardless of remaining stock or waste cards. Updated `nextMove` and `resolveAllMoves` to sequentially promote cards from stock and waste in addition to tableau without deadlock.
+  - **Haptics/Audio Muting (Point 2):** Removed per-card `GameEvent.PlayHapticSnap` emissions during the auto-complete cascade loop in `GameViewModel`. The cascade runs smoothly and quietly without vibrations on every step, emitting only the final `TriggerWinCelebration` upon victory.
+  - **Animated Card Flight (Point 3):** Replaced instantaneous board teleportation with smooth flight animations (`cardFlightState.startFlight` with 130ms duration) in `SolitaireGameScreen`. Cards fly smoothly from Tableau, Waste, or Stock directly to their target foundation pile, with 3D flip for stock cards, matching the smart tap flight experience.
+  - **Touch & Drag Interception (Point 4):** Added `isAutoCompleting` flag to `GameUiState`. When auto-complete starts, `SolitaireGameScreen` immediately resets `dragDropState` (returning any held cards), displays a full-screen transparent touch barrier intercepting all pointer events (`PointerEventPass.Initial`), and guards all click handlers against interaction during the cascade.
+  - Full suite verified: 478 unit tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
 - **2026-09-26 (T-5.6: Auto-Complete Cascade Execution in ViewModel & UI):**
   - Updated `GameUiState.isAutoCompleteAvailable` to reactively flag when auto-complete conditions are met (`AutoCompleteResolver.isAutoCompleteReady(state)`).
-  - Implemented `GameIntent.AutoComplete` coroutine loop in `GameViewModel`: sequentially applies foundation promotions with 120ms delay (configurable via `autoCompleteDelayMs`), emitting `GameEvent.PlayHapticSnap` per step, updating moves/score, and emitting `GameEvent.TriggerWinCelebration` upon victory.
+  - Implemented `GameIntent.AutoComplete` coroutine loop in `GameViewModel`: sequentially applies foundation promotions with 120ms delay (configurable via `autoCompleteDelayMs`), updating moves/score, and emitting `GameEvent.TriggerWinCelebration` upon victory.
   - Guarded user interactions (`onCardTapped`, `drawStockCard`, `recycleStock`, `onCardDropped`) by ignoring user input while cascade job is active.
   - Automatically cancels auto-complete loop on user interrupt actions (`undoMove`, `startNewGame`, `restartGame`, `onCleared`).
   - Implemented `AutoCompleteBannerView.kt` in `io.github.qdiaps.solitaire.ui.game.components` with animated slide/fade entry, gold border styling, and vector fast-forward chevrons.
@@ -52,7 +58,7 @@
   - Root cause: Compose node slot reuse across deals preserved stale `previousFaceUp = false` state for static card IDs (`card.id`), causing `LaunchedEffect(card.isFaceUp)` to erroneously interpret freshly dealt face-up cards as having just been uncovered.
   - Added `gameSessionId: Long` to `GameUiState`, automatically incremented by `GameViewModel` on each `StartNewGame` and `RestartGame`.
   - Exposed `LocalGameSessionId` composition local and keyed tableau column cards with `"${gameSessionId}_${card.id}"`, resetting all remembered flip states on every deal.
-  - Added `animateFlip: Boolean = true` parameter to `CardView`, explicitly disabling turnover animations in `AnimatedMoveOverlay`, `StockPileView`, `WastePileView`, `FoundationRowView`, and `DragOverlay`.
+  - Added `animateFlip: Boolean = true` parameter to `CardView`, explicitly disabling turnover animations in `AnimatedMoveOverlay`, `StockPileView`, `WastePileView`, `FoundationRowView`, and `DragOverlay``.
   - Fixed `StockPileView` static card ID from colliding with the real King of Spades by assigning dedicated ID `"STOCK_PILE_TOP"`.
   - Cancelled any active card flights or drag gestures on deal reset.
   - Suite verification: 457 unit tests passing (100%), 0 Android lint errors.
@@ -86,7 +92,7 @@
   - Added unit test suite `CardFaceStyleTest` (6 tests) and Compose preview suite `CardThemesGalleryPreview.kt`.
   - Verified test suite: all 434 unit tests pass (100% pass), 0 Android lint errors (`./gradlew check`).
 - **2026-09-26 (T-5.1: Card Visual Styles & Custom Back Designs):**
-  - Implemented `CardBackStyle` enum with 4 distinct visual styles: `CLASSIC_LATTICE`, `CRIMSON_VINTAGE`, `EMERALD_ART_DECO`, and `OBSIDIAN_MINIMAL`.
+  - Implemented `CardBackStyle` enum with 4 distinct visual styles: `CLASSIC_LATTICE`, `CRIMSON_VINTAGE`, `EMERALD_ART_DECO`, and `OBSIDIAN_MINIMAL``.
   - Implemented vector Canvas renderer `CardBackView.kt` in `ui/game/components/`.
   - Added unit test suite `CardBackStyleTest` (5 tests) and Compose preview suite `CardBackPreview.kt` (3 previews).
   - Verified test suite: all 428 unit tests pass (100% pass), 0 Android lint errors (`./gradlew check`).
@@ -94,4 +100,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-5.6: Auto-Complete Cascade Execution in ViewModel & UI`
+- **Target Task:** `T-5.7: Victory Celebration Overlay & Cascading Card Physics / Confetti`

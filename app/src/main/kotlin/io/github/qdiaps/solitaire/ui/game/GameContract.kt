@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
+import io.github.qdiaps.solitaire.domain.rules.AutoCompleteMove
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.Hint
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
@@ -34,6 +35,7 @@ data class GameUiState(
     val activeHint: Hint? = null,
     val isLoading: Boolean = false,
     val isAutoCompleteAvailable: Boolean = false,
+    val isAutoCompleting: Boolean = false,
     val gameSessionId: Long = 1L,
     val drawMode: DrawMode = DrawMode.DRAW_ONE
 ) {
@@ -115,6 +117,11 @@ sealed interface GameIntent {
      * Automatically cascade remaining cards to foundation piles when all cards are face up.
      */
     data object AutoComplete : GameIntent
+
+    /**
+     * Applies a single animated auto-complete foundation promotion step.
+     */
+    data class ApplyAutoCompleteMove(val move: AutoCompleteMove) : GameIntent
 
     /**
      * Deal a fresh solvable game board.

@@ -28,6 +28,11 @@ import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import io.github.qdiaps.solitaire.domain.rules.AutoCompleteMove
+import io.github.qdiaps.solitaire.domain.rules.AutoCompleteResolver
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.SmartTapResolver
 import io.github.qdiaps.solitaire.ui.game.animation.AnimatedMoveOverlay
@@ -54,6 +59,7 @@ import io.github.qdiaps.solitaire.ui.theme.CardDimensions
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
 import io.github.qdiaps.solitaire.ui.theme.SolitaireColors
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -109,8 +115,10 @@ fun SolitaireGameScreen(
     gameSessionId: Long = 1L,
     drawMode: DrawMode = DrawMode.DRAW_ONE,
     isAutoCompleteAvailable: Boolean = false,
+    isAutoCompleting: Boolean = false,
     isGameWon: Boolean = false,
     onAutoCompleteClick: () -> Unit = {},
+    onAutoCompleteStep: (AutoCompleteMove) -> Unit = {},
     onStockClick: () -> Unit = {},
     onWasteClick: () -> Unit = {},
     onFoundationClick: (foundationIndex: Int) -> Unit = {},
@@ -155,7 +163,50 @@ fun SolitaireGameScreen(
             }
 
             // Animated Smart Tap and Stock Draw handlers
-            val animatedStockClick: () -> Unit = {
+            val currentBoardState by rememberUpdatedState(boardState)
+            val latestOnAutoCompleteStep by rememberUpdatedState(onAutoCompleteStep)
+
+            val animatedAutoCompleteClick: () -> Unit = {
+                if (!isAutoCompleting) {
+                    dragDropState.reset()
+                    onAutoCompleteClick()
+                    coroutineScope.launch {
+                        while (isActive) {
+                            val current = currentBoardState
+                            val move = AutoCompleteResolver.nextMove(current) ?: break
+                            val startOffset = calculateFlightSourceOffset(
+                                source = move.from,
+                                boardState = current,
+                                registry = dropTargetRegistry,
+                                dimensions = dimensions,
+                                density = density
+                            )
+                            val targetOffset = calculateFlightTargetOffset(
+                                target = move.to,
+                                boardState = current,
+                                registry = dropTargetRegistry,
+                                dimensions = dimensions,
+                                density = density
+                            )
+                            if (startOffset != null && targetOffset != null) {
+                                cardFlightState.startFlight(
+                                    cards = listOf(move.card),
+                                    startOffset = startOffset,
+                                    targetOffset = targetOffset,
+                                    isStockFlip = (move.from is CardLocation.Stock),
+                                    durationMillis = 130
+                                ) {
+                                    latestOnAutoCompleteStep(move)
+                                }
+                            } else {
+                                latestOnAutoCompleteStep(move)
+                            }
+                        }
+                    }
+                }
+            }
+
+            val animatedStockClick: () -> Unit = animatedStockClick@ { if (isAutoCompleting) return@animatedStockClick
                 if (cardFlightState.activeFlight == null && boardState.stock.isNotEmpty()) {
                     val stockBounds = dropTargetRegistry.getBounds(CardLocation.Stock)
                     val wasteBounds = dropTargetRegistry.getBounds(CardLocation.Waste)
@@ -182,7 +233,7 @@ fun SolitaireGameScreen(
                 }
             }
 
-            val animatedWasteClick: () -> Unit = {
+            val animatedWasteClick: () -> Unit = animatedWasteClick@ { if (isAutoCompleting) return@animatedWasteClick
                 if (cardFlightState.activeFlight == null && boardState.waste.isNotEmpty()) {
                     val wasteCard = boardState.waste.last()
                     val move = SmartTapResolver.resolveMove(boardState, CardLocation.Waste)
@@ -219,7 +270,7 @@ fun SolitaireGameScreen(
                 }
             }
 
-            val animatedTableauCardClick: (columnIndex: Int, card: Card) -> Unit = { columnIndex, card ->
+            val animatedTableauCardClick: (columnIndex: Int, card: Card) -> Unit = animatedTableauCardClick@ { columnIndex, card -> if (isAutoCompleting) return@animatedTableauCardClick
                 if (cardFlightState.activeFlight == null) {
                     val column = boardState.tableau.getOrNull(columnIndex).orEmpty()
                     val cardIndex = column.indexOf(card)
@@ -347,8 +398,8 @@ fun SolitaireGameScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             AutoCompleteBannerView(
-                                isVisible = isAutoCompleteAvailable && !isGameWon,
-                                onClick = onAutoCompleteClick,
+                                isVisible = isAutoCompleteAvailable && !isGameWon && !isAutoCompleting,
+                                onClick = animatedAutoCompleteClick,
                                 modifier = Modifier.padding(bottom = 6.dp)
                             )
 
@@ -369,6 +420,23 @@ fun SolitaireGameScreen(
 
                     // Floating drag-and-drop overlay layer in root window coordinates (ADR 003)
                     DragOverlay(dragDropState = dragDropState)
+
+                    // Touch interceptor barrier during auto-complete cascade:
+                    // Consumes all pointer events so cards cannot be tapped, held, or dragged
+                    if (isAutoCompleting) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(Unit) {
+                                    awaitPointerEventScope {
+                                        while (true) {
+                                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                                            event.changes.forEach { it.consume() }
+                                        }
+                                    }
+                                }
+                        )
+                    }
                 }
             }
         }
@@ -378,6 +446,47 @@ fun SolitaireGameScreen(
 /**
  * Calculates absolute root screen coordinates for destination slot [target].
  */
+/**
+ * Calculates absolute root screen coordinates for source slot [source].
+ */
+private fun calculateFlightSourceOffset(
+    source: CardLocation,
+    boardState: BoardState,
+    registry: DropTargetRegistry,
+    dimensions: CardDimensions,
+    density: Density
+): Offset? {
+    return when (source) {
+        is CardLocation.Tableau -> {
+            val colBounds = registry.getBounds(CardLocation.Tableau(source.columnIndex)) ?: return null
+            val colCards = boardState.tableau.getOrNull(source.columnIndex).orEmpty()
+            val cardIndex = if (source.cardIndex >= 0) source.cardIndex else (colCards.size - 1).coerceAtLeast(0)
+            if (colCards.isEmpty()) {
+                colBounds.topLeft
+            } else {
+                val yOffsets = calculateTableauOffsets(
+                    cards = colCards,
+                    faceDownPeek = dimensions.faceDownPeek,
+                    faceUpPeek = dimensions.faceUpPeek
+                )
+                val cardTopPx = with(density) {
+                    yOffsets.getOrElse(cardIndex) { 0.dp }.toPx()
+                }
+                Offset(colBounds.left, colBounds.top + cardTopPx)
+            }
+        }
+        is CardLocation.Waste -> {
+            registry.getBounds(CardLocation.Waste)?.topLeft
+        }
+        is CardLocation.Stock -> {
+            registry.getBounds(CardLocation.Stock)?.topLeft
+        }
+        is CardLocation.Foundation -> {
+            registry.getBounds(source)?.topLeft
+        }
+    }
+}
+
 private fun calculateFlightTargetOffset(
     target: CardLocation,
     boardState: BoardState,
@@ -471,8 +580,10 @@ fun SolitaireGameScreen(
         gameSessionId = uiState.gameSessionId,
         drawMode = uiState.drawMode,
         isAutoCompleteAvailable = uiState.isAutoCompleteAvailable,
+        isAutoCompleting = uiState.isAutoCompleting,
         isGameWon = uiState.isGameWon,
         onAutoCompleteClick = { viewModel.onIntent(GameIntent.AutoComplete) },
+        onAutoCompleteStep = { viewModel.onIntent(GameIntent.ApplyAutoCompleteMove(it)) },
         onStockClick = { viewModel.onIntent(GameIntent.DrawStockCard) },
         onWasteClick = {
             uiState.boardState.waste.lastOrNull()?.let { card ->
@@ -526,8 +637,10 @@ fun GameScreen(
     gameSessionId: Long = 1L,
     drawMode: DrawMode = DrawMode.DRAW_ONE,
     isAutoCompleteAvailable: Boolean = false,
+    isAutoCompleting: Boolean = false,
     isGameWon: Boolean = false,
     onAutoCompleteClick: () -> Unit = {},
+    onAutoCompleteStep: (AutoCompleteMove) -> Unit = {},
     onStockClick: () -> Unit = {},
     onWasteClick: () -> Unit = {},
     onFoundationClick: (foundationIndex: Int) -> Unit = {},
@@ -554,8 +667,10 @@ fun GameScreen(
         gameSessionId = gameSessionId,
         drawMode = drawMode,
         isAutoCompleteAvailable = isAutoCompleteAvailable,
+        isAutoCompleting = isAutoCompleting,
         isGameWon = isGameWon,
         onAutoCompleteClick = onAutoCompleteClick,
+        onAutoCompleteStep = onAutoCompleteStep,
         onStockClick = onStockClick,
         onWasteClick = onWasteClick,
         onFoundationClick = onFoundationClick,

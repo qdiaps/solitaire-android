@@ -7,6 +7,7 @@ import io.github.qdiaps.solitaire.domain.engine.UndoManager
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
+import io.github.qdiaps.solitaire.domain.rules.AutoCompleteMove
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteResolver
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.HintResolver
@@ -114,6 +115,7 @@ class GameViewModel(
             is GameIntent.OnCardDropped -> onCardDropped(intent.cards, intent.source, intent.target)
             is GameIntent.UndoMove -> undoMove()
             is GameIntent.AutoComplete -> autoComplete()
+            is GameIntent.ApplyAutoCompleteMove -> applyAutoCompleteMove(intent.move)
             is GameIntent.SkipWinAnimation -> { /* Handled in T-6 */ }
         }
     }
@@ -203,8 +205,7 @@ class GameViewModel(
      * Reverts the most recent game action using [undoManager].
      */
     fun undoMove() {
-        autoCompleteJob?.cancel()
-        autoCompleteJob = null
+        cancelAutoComplete()
 
         val currentBoard = _uiState.value.boardState
         val previousBoard = undoManager.undo(currentBoard) ?: return
@@ -236,8 +237,7 @@ class GameViewModel(
      * Otherwise, immediately deals a new shuffled board via [dealProvider].
      */
     fun startNewGame() {
-        autoCompleteJob?.cancel()
-        autoCompleteJob = null
+        cancelAutoComplete()
         stopTimer()
         if (dealGenerator != null) {
             _uiState.update { it.copy(isLoading = true) }
@@ -258,8 +258,7 @@ class GameViewModel(
      * Restarts the current game layout from its initial dealt state, resetting moves, score, and timer.
      */
     fun restartGame() {
-        autoCompleteJob?.cancel()
-        autoCompleteJob = null
+        cancelAutoComplete()
         stopTimer()
         undoManager.clear()
         val isWon = KlondikeRules.isGameWon(initialDealState)
@@ -306,38 +305,81 @@ class GameViewModel(
         if (!_uiState.value.isAutoCompleteAvailable) return
 
         dismissHint()
+        _uiState.update { it.copy(isAutoCompleting = true) }
         autoCompleteJob = scope.launch {
-            while (isActive) {
-                val currentBoard = _uiState.value.boardState
-                val nextMove = AutoCompleteResolver.nextMove(currentBoard) ?: break
-                undoManager.record(currentBoard)
-                val nextBoard = nextMove.resultingState
-                val isWon = KlondikeRules.isGameWon(nextBoard)
-                val isAutoComplete = if (isWon) false else AutoCompleteResolver.isAutoCompleteReady(nextBoard)
+            try {
+                while (isActive) {
+                    val currentBoard = _uiState.value.boardState
+                    val nextMove = AutoCompleteResolver.nextMove(currentBoard) ?: break
+                    undoManager.record(currentBoard)
+                    val nextBoard = nextMove.resultingState
+                    val isWon = KlondikeRules.isGameWon(nextBoard)
+                    val isAutoComplete = if (isWon) false else AutoCompleteResolver.isAutoCompleteReady(nextBoard)
 
-                _uiState.update { current ->
-                    current.copy(
-                        boardState = nextBoard,
-                        canUndo = undoManager.canUndo,
-                        isGameWon = isWon,
-                        isDeadlocked = false,
-                        isAutoCompleteAvailable = isAutoComplete,
-                        activeHint = null
-                    )
+                    _uiState.update { current ->
+                        current.copy(
+                            boardState = nextBoard,
+                            canUndo = undoManager.canUndo,
+                            isGameWon = isWon,
+                            isDeadlocked = false,
+                            isAutoCompleteAvailable = isAutoComplete,
+                            isAutoCompleting = !isWon,
+                            activeHint = null
+                        )
+                    }
+
+                    if (isWon) {
+                        stopTimer()
+                        _events.tryEmit(GameEvent.TriggerWinCelebration)
+                        break
+                    }
+
+                    delay(autoCompleteDelayMs)
                 }
-
-                _events.tryEmit(GameEvent.PlayHapticSnap)
-
-                if (isWon) {
-                    stopTimer()
-                    _events.tryEmit(GameEvent.TriggerWinCelebration)
-                    break
-                }
-
-                delay(autoCompleteDelayMs)
+            } finally {
+                _uiState.update { it.copy(isAutoCompleting = false) }
             }
         }
     }
+
+    /**
+     * Applies a single animated auto-complete foundation promotion step.
+     */
+    fun applyAutoCompleteMove(move: AutoCompleteMove) {
+        if (_uiState.value.isGameWon) return
+        dismissHint()
+        val currentBoard = _uiState.value.boardState
+        undoManager.record(currentBoard)
+        val nextBoard = move.resultingState
+        val isWon = KlondikeRules.isGameWon(nextBoard)
+        val isAutoComplete = if (isWon) false else AutoCompleteResolver.isAutoCompleteReady(nextBoard)
+
+        _uiState.update { current ->
+            current.copy(
+                boardState = nextBoard,
+                canUndo = undoManager.canUndo,
+                isGameWon = isWon,
+                isDeadlocked = false,
+                isAutoCompleteAvailable = isAutoComplete,
+                isAutoCompleting = !isWon,
+                activeHint = null
+            )
+        }
+
+        if (isWon) {
+            stopTimer()
+            _events.tryEmit(GameEvent.TriggerWinCelebration)
+        }
+    }
+
+    private fun cancelAutoComplete() {
+        autoCompleteJob?.cancel()
+        autoCompleteJob = null
+        if (_uiState.value.isAutoCompleting) {
+            _uiState.update { it.copy(isAutoCompleting = false) }
+        }
+    }
+
 
     /**
      * Starts or resumes the elapsed play time stopwatch coroutine loop.
@@ -384,8 +426,7 @@ class GameViewModel(
     override fun onCleared() {
         super.onCleared()
         stopTimer()
-        autoCompleteJob?.cancel()
-        autoCompleteJob = null
+        cancelAutoComplete()
     }
 
     /**
@@ -433,8 +474,7 @@ class GameViewModel(
     }
 
     private fun applyNewDeal(board: BoardState) {
-        autoCompleteJob?.cancel()
-        autoCompleteJob = null
+        cancelAutoComplete()
         initialDealState = board
         undoManager.clear()
         val isWon = KlondikeRules.isGameWon(board)
