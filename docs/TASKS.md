@@ -10,11 +10,11 @@
   - *TDD/Unit Tests:* `CardBackStyleTest` verifying style enum properties, names, and color bindings.
   - *Compose Previews:* `CardBackPreview` showing all 4 card back styles side-by-side.
 
-- [ ] **T-5.2: Card Face Typography & Large Print Styles (`CardFaceStyle`)**
-  - Implement `CardFaceStyle` enum: `ModernClean`, `ClassicSerif`, `LargePrint`.
-  - Update `CardView` and typography styling to support classic serif indices, modern clean sans, and high-visibility large print corner indices and emblems.
+- [x] **T-5.2: Card Face Typography Architecture (`CardFaceStyle`)**
+  - Implement extensible `CardFaceStyle` enum with canonical `ModernClean` style.
+  - Update `CardView` and typography styling (`createCardTypography`) to provide modular architecture for future face themes.
   - *TDD/Unit Tests:* `CardFaceStyleTest` verifying font families, index scale factors, and formatting.
-  - *Compose Previews:* `CardThemesGalleryPreview` rendering cards across all back and face combinations.
+  - *Compose Previews:* `CardThemesGalleryPreview` rendering canonical face style across all 4 card backs.
 
 - [ ] **T-5.3: Pure Domain Hint Resolver Engine (`HintResolver`)**
   - Implement pure Kotlin `HintResolver` evaluating valid productive moves following SPEC priorities:

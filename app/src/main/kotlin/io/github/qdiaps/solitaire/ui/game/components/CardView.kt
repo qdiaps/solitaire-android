@@ -28,9 +28,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.ui.game.audio.LocalSolitaireAudio
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
+import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 
 /**
@@ -42,6 +44,7 @@ import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
  * @param card Domain [Card] model.
  * @param modifier Compose [Modifier] applied to this card.
  * @param cardBackStyle Visual pattern style applied to face-down card back.
+ * @param cardFaceStyle Typography and index scaling style applied to face-up card face.
  * @param elevation Shadow elevation (defaults to 2.dp, or 12.dp when lifted in drag overlay).
  * @param isHighlighted Whether an active hint border is drawn around the card.
  * @param onClick Optional tap callback.
@@ -51,6 +54,7 @@ fun CardView(
     card: Card,
     modifier: Modifier = Modifier,
     cardBackStyle: CardBackStyle = SolitaireTheme.cardBackStyle,
+    cardFaceStyle: CardFaceStyle = SolitaireTheme.cardFaceStyle,
     elevation: Dp = 2.dp,
     isHighlighted: Boolean = false,
     onClick: (() -> Unit)? = null
@@ -128,7 +132,7 @@ fun CardView(
             .then(clickableModifier)
     ) {
         if (renderFaceUp) {
-            FaceUpCardContent(card = card)
+            FaceUpCardContent(card = card, cardFaceStyle = cardFaceStyle)
         } else {
             CardBackView(style = cardBackStyle)
         }
@@ -139,16 +143,29 @@ fun CardView(
  * Face-up card layout showing corner indices (rank + mini suit) and a center emblem.
  */
 @Composable
-private fun FaceUpCardContent(card: Card) {
+private fun FaceUpCardContent(
+    card: Card,
+    cardFaceStyle: CardFaceStyle
+) {
     val colors = SolitaireTheme.colors
     val typography = SolitaireTheme.typography
     val dimensions = SolitaireTheme.cardDimensions
 
+    val rankTextStyle = if (cardFaceStyle == SolitaireTheme.cardFaceStyle) {
+        typography.cardRank
+    } else {
+        typography.cardRank.copy(
+            fontFamily = cardFaceStyle.fontFamily,
+            fontWeight = cardFaceStyle.fontWeight,
+            fontSize = (14f * cardFaceStyle.rankTextScale).sp
+        )
+    }
+
     val suitColor = if (card.suit.isRed) colors.cardRed else colors.cardBlack
     val indexPaddingHorizontal = dimensions.cardWidth * 0.08f
     val indexPaddingVertical = dimensions.cardHeight * 0.05f
-    val cornerEmblemSize = dimensions.cardWidth * 0.22f
-    val centerEmblemSize = dimensions.cardWidth * 0.44f
+    val cornerEmblemSize = dimensions.cardWidth * 0.22f * cardFaceStyle.cornerEmblemScale
+    val centerEmblemSize = dimensions.cardWidth * 0.44f * cardFaceStyle.centerEmblemScale
 
     Box(
         modifier = Modifier
@@ -164,7 +181,7 @@ private fun FaceUpCardContent(card: Card) {
         ) {
             Text(
                 text = card.rank.displayLabel,
-                style = typography.cardRank,
+                style = rankTextStyle,
                 color = suitColor
             )
             SuitEmblem(
@@ -193,7 +210,7 @@ private fun FaceUpCardContent(card: Card) {
         ) {
             Text(
                 text = card.rank.displayLabel,
-                style = typography.cardRank,
+                style = rankTextStyle,
                 color = suitColor
             )
             SuitEmblem(
