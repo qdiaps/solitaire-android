@@ -102,6 +102,8 @@ class GameContractTest {
                 GameIntent.RequestHint,
                 GameIntent.DismissHint,
                 GameIntent.AutoComplete,
+                GameIntent.StartAutoComplete,
+                GameIntent.FinishAutoComplete,
                 GameIntent.ApplyAutoCompleteMove(
                     AutoCompleteMove(
                         card = Card(Suit.SPADES, Rank.ACE, isFaceUp = true),
@@ -117,7 +119,7 @@ class GameContractTest {
                 GameIntent.SkipWinAnimation
             )
 
-            assertEquals(14, intents.size)
+            assertEquals(16, intents.size)
 
             for (intent in intents) {
                 val label = when (intent) {
@@ -129,6 +131,8 @@ class GameContractTest {
                     is GameIntent.RequestHint -> "RequestHint"
                     is GameIntent.DismissHint -> "DismissHint"
                     is GameIntent.AutoComplete -> "AutoComplete"
+                    is GameIntent.StartAutoComplete -> "StartAutoComplete"
+                    is GameIntent.FinishAutoComplete -> "FinishAutoComplete"
                     is GameIntent.ApplyAutoCompleteMove -> "ApplyAutoCompleteMove:${intent.move.card.id}"
                     is GameIntent.StartNewGame -> "StartNewGame"
                     is GameIntent.RestartGame -> "RestartGame"

@@ -100,33 +100,33 @@ object AutoCompleteResolver {
             }
         }
 
-        // 2. Candidate from top of Waste pile
+        // 2. Candidates from Waste pile (top card and buried cards)
         if (state.waste.isNotEmpty()) {
-            val wasteCard = state.waste.last()
-            val targetFoundationIndex = KlondikeRules.findTargetFoundationIndex(state, wasteCard)
-            if (targetFoundationIndex != null) {
-                val newState = KlondikeRules.moveWasteToFoundation(state, targetFoundationIndex)
+            // First check top of waste
+            val topWaste = state.waste.last()
+            val topTarget = KlondikeRules.findTargetFoundationIndex(state, topWaste)
+            if (topTarget != null) {
+                val newState = KlondikeRules.moveWasteToFoundation(state, topTarget)
                 candidates.add(
                     AutoCompleteMove(
-                        card = wasteCard,
+                        card = topWaste,
                         from = CardLocation.Waste,
-                        to = CardLocation.Foundation(targetFoundationIndex),
+                        to = CardLocation.Foundation(topTarget),
                         resultingState = newState
                     )
                 )
             }
-        }
 
-        // 3. Candidates from any remaining card in Waste pile
-        if (candidates.isEmpty() && state.waste.isNotEmpty()) {
-            for (wasteIndex in state.waste.indices.reversed()) {
+            // Also check buried cards in waste
+            for (wasteIndex in (state.waste.size - 2) downTo 0) {
                 val wasteCard = state.waste[wasteIndex]
-                val targetFoundationIndex = KlondikeRules.findTargetFoundationIndex(state, wasteCard)
+                val faceUpWaste = wasteCard.copy(isFaceUp = true)
+                val targetFoundationIndex = KlondikeRules.findTargetFoundationIndex(state, faceUpWaste)
                 if (targetFoundationIndex != null) {
                     val newWaste = state.waste.toMutableList().apply { removeAt(wasteIndex) }
                     val newFoundations = state.foundations.toMutableList()
                     val targetCol = newFoundations[targetFoundationIndex].toMutableList()
-                    targetCol.add(wasteCard.copy(isFaceUp = true))
+                    targetCol.add(faceUpWaste)
                     newFoundations[targetFoundationIndex] = targetCol
                     val newState = state.copy(
                         waste = newWaste,
@@ -136,27 +136,27 @@ object AutoCompleteResolver {
                     )
                     candidates.add(
                         AutoCompleteMove(
-                            card = wasteCard,
+                            card = faceUpWaste,
                             from = CardLocation.Waste,
                             to = CardLocation.Foundation(targetFoundationIndex),
                             resultingState = newState
                         )
                     )
-                    break
                 }
             }
         }
 
-        // 4. Candidate from Stock pile
+        // 3. Candidates from Stock pile (testing with isFaceUp = true)
         if (state.stock.isNotEmpty()) {
             for (stockIndex in state.stock.indices.reversed()) {
                 val stockCard = state.stock[stockIndex]
-                val targetFoundationIndex = KlondikeRules.findTargetFoundationIndex(state, stockCard)
+                val faceUpStock = stockCard.copy(isFaceUp = true)
+                val targetFoundationIndex = KlondikeRules.findTargetFoundationIndex(state, faceUpStock)
                 if (targetFoundationIndex != null) {
                     val newStock = state.stock.toMutableList().apply { removeAt(stockIndex) }
                     val newFoundations = state.foundations.toMutableList()
                     val targetCol = newFoundations[targetFoundationIndex].toMutableList()
-                    targetCol.add(stockCard.copy(isFaceUp = true))
+                    targetCol.add(faceUpStock)
                     newFoundations[targetFoundationIndex] = targetCol
                     val newState = state.copy(
                         stock = newStock,
@@ -166,13 +166,12 @@ object AutoCompleteResolver {
                     )
                     candidates.add(
                         AutoCompleteMove(
-                            card = stockCard,
+                            card = faceUpStock,
                             from = CardLocation.Stock,
                             to = CardLocation.Foundation(targetFoundationIndex),
                             resultingState = newState
                         )
                     )
-                    break
                 }
             }
         }

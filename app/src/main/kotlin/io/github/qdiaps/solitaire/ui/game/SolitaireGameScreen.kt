@@ -119,6 +119,7 @@ fun SolitaireGameScreen(
     isGameWon: Boolean = false,
     onAutoCompleteClick: () -> Unit = {},
     onAutoCompleteStep: (AutoCompleteMove) -> Unit = {},
+    onAutoCompleteFinished: () -> Unit = {},
     onStockClick: () -> Unit = {},
     onWasteClick: () -> Unit = {},
     onFoundationClick: (foundationIndex: Int) -> Unit = {},
@@ -165,42 +166,47 @@ fun SolitaireGameScreen(
             // Animated Smart Tap and Stock Draw handlers
             val currentBoardState by rememberUpdatedState(boardState)
             val latestOnAutoCompleteStep by rememberUpdatedState(onAutoCompleteStep)
+            val latestOnAutoCompleteFinished by rememberUpdatedState(onAutoCompleteFinished)
 
             val animatedAutoCompleteClick: () -> Unit = {
                 if (!isAutoCompleting) {
                     dragDropState.reset()
                     onAutoCompleteClick()
                     coroutineScope.launch {
-                        while (isActive) {
-                            val current = currentBoardState
-                            val move = AutoCompleteResolver.nextMove(current) ?: break
-                            val startOffset = calculateFlightSourceOffset(
-                                source = move.from,
-                                boardState = current,
-                                registry = dropTargetRegistry,
-                                dimensions = dimensions,
-                                density = density
-                            )
-                            val targetOffset = calculateFlightTargetOffset(
-                                target = move.to,
-                                boardState = current,
-                                registry = dropTargetRegistry,
-                                dimensions = dimensions,
-                                density = density
-                            )
-                            if (startOffset != null && targetOffset != null) {
-                                cardFlightState.startFlight(
-                                    cards = listOf(move.card),
-                                    startOffset = startOffset,
-                                    targetOffset = targetOffset,
-                                    isStockFlip = (move.from is CardLocation.Stock),
-                                    durationMillis = 130
-                                ) {
+                        try {
+                            while (isActive) {
+                                val current = currentBoardState
+                                val move = AutoCompleteResolver.nextMove(current) ?: break
+                                val startOffset = calculateFlightSourceOffset(
+                                    source = move.from,
+                                    boardState = current,
+                                    registry = dropTargetRegistry,
+                                    dimensions = dimensions,
+                                    density = density
+                                )
+                                val targetOffset = calculateFlightTargetOffset(
+                                    target = move.to,
+                                    boardState = current,
+                                    registry = dropTargetRegistry,
+                                    dimensions = dimensions,
+                                    density = density
+                                )
+                                if (startOffset != null && targetOffset != null) {
+                                    cardFlightState.startFlight(
+                                        cards = listOf(move.card),
+                                        startOffset = startOffset,
+                                        targetOffset = targetOffset,
+                                        isStockFlip = (move.from is CardLocation.Stock),
+                                        durationMillis = 130
+                                    ) {
+                                        latestOnAutoCompleteStep(move)
+                                    }
+                                } else {
                                     latestOnAutoCompleteStep(move)
                                 }
-                            } else {
-                                latestOnAutoCompleteStep(move)
                             }
+                        } finally {
+                            latestOnAutoCompleteFinished()
                         }
                     }
                 }
@@ -579,8 +585,9 @@ fun SolitaireGameScreen(
         isAutoCompleteAvailable = uiState.isAutoCompleteAvailable,
         isAutoCompleting = uiState.isAutoCompleting,
         isGameWon = uiState.isGameWon,
-        onAutoCompleteClick = { viewModel.onIntent(GameIntent.AutoComplete) },
+        onAutoCompleteClick = { viewModel.onIntent(GameIntent.StartAutoComplete) },
         onAutoCompleteStep = { viewModel.onIntent(GameIntent.ApplyAutoCompleteMove(it)) },
+        onAutoCompleteFinished = { viewModel.onIntent(GameIntent.FinishAutoComplete) },
         onStockClick = { viewModel.onIntent(GameIntent.DrawStockCard) },
         onWasteClick = {
             uiState.boardState.waste.lastOrNull()?.let { card ->
@@ -638,6 +645,7 @@ fun GameScreen(
     isGameWon: Boolean = false,
     onAutoCompleteClick: () -> Unit = {},
     onAutoCompleteStep: (AutoCompleteMove) -> Unit = {},
+    onAutoCompleteFinished: () -> Unit = {},
     onStockClick: () -> Unit = {},
     onWasteClick: () -> Unit = {},
     onFoundationClick: (foundationIndex: Int) -> Unit = {},

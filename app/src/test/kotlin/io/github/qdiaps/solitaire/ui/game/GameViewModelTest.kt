@@ -1290,5 +1290,25 @@ class GameViewModelTest {
 
             assertEquals(readyBoard, viewModel.uiState.value.boardState)
         }
+
+        @Test
+        @DisplayName("StartAutoComplete and FinishAutoComplete toggle isAutoCompleting state")
+        fun `StartAutoComplete and FinishAutoComplete toggle isAutoCompleting state`() = runTest(testDispatcher) {
+            val readyBoard = createAutoCompleteReadyBoard()
+            val viewModel = GameViewModel(
+                initialBoardState = readyBoard,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            assertFalse(viewModel.uiState.value.isAutoCompleting)
+
+            viewModel.onIntent(GameIntent.StartAutoComplete)
+            assertTrue(viewModel.uiState.value.isAutoCompleting)
+
+            viewModel.onIntent(GameIntent.FinishAutoComplete)
+            assertFalse(viewModel.uiState.value.isAutoCompleting)
+        }
     }
 }

@@ -16,12 +16,22 @@
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-5.6` with auto-complete refinements and hint stock recycle placeholder highlighting. Ready to proceed to `T-5.7` (Victory Celebration Overlay & Cascading Card Physics / Confetti).
+- **Current Focus:** Completed `T-5.6` with auto-complete stock/waste promotion bugfix and deadlock prevention. Ready to proceed to `T-5.7` (Victory Celebration Overlay & Cascading Card Physics / Confetti).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-26 (Fix: Auto-Complete Stock/Waste Promotion & UI Hang Resolution):**
+  - Identified and resolved the bug where auto-completing with remaining stock cards caused the cascade to stall after tableau moves, locking the UI with an active timer and unresponsive touch barrier.
+  - **Root Cause 1 (Stock evaluation ignored):** In `AutoCompleteResolver.kt`, `KlondikeRules.findTargetFoundationIndex(state, stockCard)` checked `if (!card.isFaceUp) return null`. Because all stock cards have `isFaceUp = false`, it returned `null` for every stock card, causing `nextMove` to report no available moves while cards remained in stock.
+  - **Root Cause 2 (UI lock in un-reset auto-complete state):** When `nextMove` returned `null` or when the animation loop terminated, `animatedAutoCompleteClick` broke out of its coroutine loop without resetting `isAutoCompleting = false`, leaving the transparent full-screen touch interceptor permanently blocking touches while the timer continued to run.
+  - **Root Cause 3 (Competing concurrent loops):** `SolitaireGameScreen` was triggering `onAutoCompleteClick()` (launching headless `viewModel.autoComplete()` in parallel) while simultaneously running its own flight animation loop via `applyAutoCompleteMove(move)`.
+  - **Resolution:**
+    - Updated `AutoCompleteResolver.kt` to evaluate stock cards with `stockCard.copy(isFaceUp = true)` and check all accessible cards in waste and stock, properly cascading them to foundations with rank-first ordering.
+    - Added `GameIntent.StartAutoComplete` and `GameIntent.FinishAutoComplete` to `GameContract` and `GameViewModel`.
+    - Updated `SolitaireGameScreen.kt` to decouple the UI animation loop from the headless ViewModel loop, wrapping flight execution in `try { ... } finally { latestOnAutoCompleteFinished() }` ensuring `isAutoCompleting` is guaranteed to reset to `false` on any exit.
+  - Verified suite: 481 unit tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
 - **2026-09-26 (Fix: Highlight Stock Recycle Placeholder instead of Waste Card on Stock Recycle Hint):**
   - Identified and fixed bug where requesting a hint when stock is empty and recycling is recommended erroneously highlighted the top face-up waste card instead of the empty stock recycle placeholder (`CardSlotPlaceholder`).
   - Root cause: `HintResolver` emitted recycle move with `source = CardLocation.Waste`, causing `SolitaireGameScreen` to treat the top waste card as `highlightedCard`. The user saw a glowing card in waste with nowhere legal to move it, while the recycle slot remained unhighlighted.
@@ -58,7 +68,7 @@
   - Root cause: `KlondikeRules.draw()` extracts cards from the beginning of the stock list (`state.stock.take(count)`), whereas `SolitaireGameScreen.kt` took `boardState.stock.last()` (the 24th/bottom card of the stock pile) as the animated `movingCard`.
   - Added `drawMode: DrawMode = DrawMode.DRAW_ONE` to `GameUiState` and `SolitaireGameScreen`.
   - Updated `SolitaireGameScreen.kt` to compute `movingCard = boardState.stock.take(drawCount).last()`, perfectly matching the domain rules for both Draw 1 and Draw 3 modes.
-  - Guarded `isFlipping = animateFlip && flipAnimatable.value < 1f && card.isFaceUp` in `CardView.kt` to eliminate 1-frame face-down flashes when `animateFlip = false`.
+  - Guarded `isFlipping = animateFlip && flipAnimatable.value < 1f && card.isFaceUp` in `CardView.kt` to eliminate 1-frame face-down flashes when `animateFlip = false``.
   - Added `key(card.id)` to `AnimatedMoveOverlay.kt` to prevent composable slot reuse glitches across flights.
   - Verified suite: 457 unit tests pass (100%), 0 Android lint errors.
 - **2026-09-26 (T-5.4b: Fix Ghost Card Flip Turnover Animation on New Game / Deal Reset):**

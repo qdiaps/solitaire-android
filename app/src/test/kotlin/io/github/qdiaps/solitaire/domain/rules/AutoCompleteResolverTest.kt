@@ -275,6 +275,34 @@ class AutoCompleteResolverTest {
         }
 
         @Test
+        @DisplayName("Resolves mixed tableau, waste, and stock to victory")
+        fun `resolves mixed tableau, waste, and stock to victory`() {
+            // Ace of Spades in stock (face down), Two of Spades in waste, Three of Spades in tableau
+            val state = BoardState(
+                stock = listOf(aceSpades.copy(isFaceUp = false)),
+                waste = listOf(twoSpades),
+                tableau = List(7) { col -> if (col == 0) listOf(threeSpades) else emptyList() }
+            )
+
+            val moves = AutoCompleteResolver.resolveAllMoves(state)
+            assertEquals(3, moves.size)
+
+            assertEquals(CardLocation.Stock, moves[0].from)
+            assertEquals(aceSpades, moves[0].card)
+
+            assertEquals(CardLocation.Waste, moves[1].from)
+            assertEquals(twoSpades, moves[1].card)
+
+            assertEquals(CardLocation.Tableau(0, 0), moves[2].from)
+            assertEquals(threeSpades, moves[2].card)
+
+            assertTrue(moves[2].resultingState.stock.isEmpty())
+            assertTrue(moves[2].resultingState.waste.isEmpty())
+            assertTrue(moves[2].resultingState.tableau[0].isEmpty())
+            assertEquals(listOf(aceSpades, twoSpades, threeSpades), moves[2].resultingState.foundations[0])
+        }
+
+        @Test
         @DisplayName("Resolves mixed tableau and waste to victory")
         fun `resolves mixed tableau and waste to victory`() {
             // Ace of Spades in waste, Two of Spades in tableau

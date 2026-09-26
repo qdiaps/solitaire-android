@@ -119,6 +119,16 @@ sealed interface GameIntent {
     data object AutoComplete : GameIntent
 
     /**
+     * Marks the beginning of an auto-complete sequence in the UI.
+     */
+    data object StartAutoComplete : GameIntent
+
+    /**
+     * Marks the conclusion or cancellation of an auto-complete sequence in the UI.
+     */
+    data object FinishAutoComplete : GameIntent
+
+    /**
      * Applies a single animated auto-complete foundation promotion step.
      */
     data class ApplyAutoCompleteMove(val move: AutoCompleteMove) : GameIntent

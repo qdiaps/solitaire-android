@@ -115,6 +115,8 @@ class GameViewModel(
             is GameIntent.OnCardDropped -> onCardDropped(intent.cards, intent.source, intent.target)
             is GameIntent.UndoMove -> undoMove()
             is GameIntent.AutoComplete -> autoComplete()
+            is GameIntent.StartAutoComplete -> startAutoComplete()
+            is GameIntent.FinishAutoComplete -> finishAutoComplete()
             is GameIntent.ApplyAutoCompleteMove -> applyAutoCompleteMove(intent.move)
             is GameIntent.SkipWinAnimation -> { /* Handled in T-6 */ }
         }
@@ -339,6 +341,24 @@ class GameViewModel(
             } finally {
                 _uiState.update { it.copy(isAutoCompleting = false) }
             }
+        }
+    }
+
+    /**
+     * Marks the beginning of an animated auto-complete sequence in the UI.
+     */
+    fun startAutoComplete() {
+        if (_uiState.value.isGameWon) return
+        dismissHint()
+        _uiState.update { it.copy(isAutoCompleting = true) }
+    }
+
+    /**
+     * Marks the conclusion of an animated auto-complete sequence in the UI.
+     */
+    fun finishAutoComplete() {
+        if (_uiState.value.isAutoCompleting) {
+            _uiState.update { it.copy(isAutoCompleting = false) }
         }
     }
 
