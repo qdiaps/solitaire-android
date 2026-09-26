@@ -22,6 +22,12 @@
 ---
 
 ## Recent Progress Log
+- **2026-09-26 (Bug Fixes & Polish):**
+  - **Fix 1 (Audio & Haptics Muting):** Added `isEnabled: Boolean` to `SolitaireHaptics` and `AndroidSolitaireHaptics`, passed `enabled` through `rememberSolitaireHaptics` and `rememberSolitaireAudio` in `SolitaireGameScreen` to strictly mute all sound and haptic feedback when disabled. (`356c98c`)
+  - **Fix 2 (Settings Timer Pause):** Paused elapsed timer upon `openSettings()` and resumed on `closeSettings()` if `autoStartTimer` is enabled and game is not won. Added unit test in `GameViewModelTest`. (`fc2d789`)
+  - **Fix 3 (Auto-Hint Inactivity Timer):** Implemented 10-second idle timer in `GameViewModel` triggering `requestHint()` on player inactivity when `autoHintEnabled` is true. Any player action, settings sheet opening, or game victory resets or cancels the timer cleanly. Added comprehensive unit tests in `GameViewModelTest`. (`47bb0fc`)
+  - **Fix 4 (Draw 3 Waste Horizontal Fan):** Implemented horizontal 3-card fanning for the waste pile in `WastePileView` and `TopRowView` with left-handed mode mirroring. Updated card flight animations (`animatedStockClick` and `animatedWasteClick`) to correctly target the fanned position. Added `WastePileOffsetTest` with 8 unit tests and `TopRowDrawThreePreview`. (`d4342ba`)
+  - Full suite verified: 522 unit tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
 - **2026-09-26 (T-5.8: Settings Bottom Sheet UI):**
   - Implemented `SettingsBottomSheet.kt` and `SettingsSheetContent` in `io.github.qdiaps.solitaire.ui.game.components`:
     - **Gameplay section:** Segmented choice row for Draw Mode (`Draw 1 Card` vs `Draw 3 Cards`), toggle switch for Left-Handed Mode (mirrored layout), toggle switch for Auto-Hints.

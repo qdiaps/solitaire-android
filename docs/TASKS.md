@@ -69,6 +69,13 @@
   - Connect settings triggers to `GameViewModel` / `SettingsRepository` for immediate live updates without restarting games.
   - *Compose Previews:* `SettingsBottomSheetPreview` in compact and large heights across felt table themes.
 
+- [x] **T-5.8b: Fix Settings & Gameplay Polish (Muting, Timer Pause, 10s Auto-Hint, Draw 3 Waste Fan)**
+  - Respect `soundEnabled` and `hapticsEnabled` across `rememberSolitaireAudio`, `rememberSolitaireHaptics`, and gesture modifiers.
+  - Pause game elapsed timer while settings bottom sheet is open.
+  - Implement 10-second idle inactivity timer in `GameViewModel` triggering `requestHint()` when `autoHintEnabled` is true.
+  - Implement horizontal 3-card fanning for waste pile in `WastePileView` and `TopRowView` with left-handed mode support and flight animation alignment.
+  - *Verify:* 522 unit tests passing, 0 lint errors in `./gradlew check`.
+
 - [ ] **T-5.9: Statistics Repository (`StatsRepository`)**
   - Implement `StatsRepository` storing player records: `gamesPlayed`, `gamesWon`, `winPercentage`, `currentStreak`, `bestStreak`, `bestTimeSeconds`, `fewestMoves`, and `highScore`.
   - Implement record updating methods on game start and game victory, plus `resetStats()`.
