@@ -206,12 +206,14 @@ class GameViewModelTest {
             testScheduler.advanceTimeBy(3000)
             testScheduler.runCurrent()
             assertEquals(3L, viewModel.uiState.value.elapsedTimeSeconds)
+            assertEquals(1L, viewModel.uiState.value.gameSessionId)
             assertEquals("deal_1", viewModel.uiState.value.boardState.stock.first().id)
 
             viewModel.onIntent(GameIntent.StartNewGame)
             testScheduler.runCurrent()
 
             assertEquals("deal_2", viewModel.uiState.value.boardState.stock.first().id)
+            assertEquals(2L, viewModel.uiState.value.gameSessionId)
             assertEquals(0L, viewModel.uiState.value.elapsedTimeSeconds)
 
             testScheduler.advanceTimeBy(1000)
@@ -236,11 +238,13 @@ class GameViewModelTest {
             testScheduler.advanceTimeBy(5000)
             testScheduler.runCurrent()
             assertEquals(5L, viewModel.uiState.value.elapsedTimeSeconds)
+            assertEquals(1L, viewModel.uiState.value.gameSessionId)
 
             viewModel.onIntent(GameIntent.RestartGame)
             testScheduler.runCurrent()
 
             assertEquals(initialBoard, viewModel.uiState.value.boardState)
+            assertEquals(2L, viewModel.uiState.value.gameSessionId)
             assertEquals(0L, viewModel.uiState.value.elapsedTimeSeconds)
             assertTrue(viewModel.isTimerRunning)
 

@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ProvidableCompositionLocal
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +56,11 @@ import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
  * @param isHighlighted Whether an active hint border is drawn around the card with pulsing glow.
  * @param onClick Optional tap callback.
  */
+/**
+ * CompositionLocal providing active game session ID to invalidate remembered card flip states on new deals.
+ */
+val LocalGameSessionId: ProvidableCompositionLocal<Long> = compositionLocalOf { 1L }
+
 @Composable
 fun CardView(
     card: Card,
@@ -61,6 +68,7 @@ fun CardView(
     cardBackStyle: CardBackStyle = SolitaireTheme.cardBackStyle,
     cardFaceStyle: CardFaceStyle = SolitaireTheme.cardFaceStyle,
     elevation: Dp = 2.dp,
+    animateFlip: Boolean = true,
     isHighlighted: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
@@ -69,12 +77,13 @@ fun CardView(
     val density = LocalDensity.current
     val shape = RoundedCornerShape(dimensions.cornerRadius)
     val solitaireAudio = LocalSolitaireAudio.current
+    val gameSessionId = LocalGameSessionId.current
 
-    var previousFaceUp by remember(card.id) { mutableStateOf(card.isFaceUp) }
-    val flipAnimatable = remember(card.id) { Animatable(if (card.isFaceUp) 1f else 0f) }
+    var previousFaceUp by remember(card.id, gameSessionId) { mutableStateOf(card.isFaceUp) }
+    val flipAnimatable = remember(card.id, gameSessionId) { Animatable(if (card.isFaceUp) 1f else 0f) }
 
-    LaunchedEffect(card.isFaceUp) {
-        if (!previousFaceUp && card.isFaceUp) {
+    LaunchedEffect(card.isFaceUp, gameSessionId) {
+        if (animateFlip && !previousFaceUp && card.isFaceUp) {
             solitaireAudio.playFlip()
             // Animate 3D turnover when card is uncovered
             flipAnimatable.snapTo(0f)

@@ -31,6 +31,15 @@
   - Dismiss hint highlight automatically when player touches any card, draws from stock, or makes a move.
   - *TDD/Unit Tests:* `GameViewModelTest` verifying hint request, dismiss triggers, and auto-dismiss on interaction.
 
+- [x] **T-5.4b: Fix Ghost Card Flip Turnover Animation on New Game / Deal Reset**
+  - Resolved spurious 3D flip turnover animation and turnover audio playing on face-up cards when starting a new game or restarting a deal.
+  - Root cause: Compose node slot reuse across deals preserved stale `previousFaceUp = false` state for static card IDs (`card.id`), causing `LaunchedEffect(card.isFaceUp)` to erroneously trigger turnover animation on newly dealt face-up cards.
+  - Introduced `gameSessionId` in `GameUiState` and `LocalGameSessionId` composition local, incremented on every `StartNewGame` and `RestartGame`.
+  - Keyed tableau card composables with `"${gameSessionId}_${card.id}"` and `remember(card.id, gameSessionId)` in `CardView`.
+  - Added `animateFlip: Boolean = true` parameter to `CardView`, disabling redundant turnover animations in `AnimatedMoveOverlay`, `StockPileView`, `WastePileView`, `FoundationRowView`, and `DragOverlay`.
+  - Disambiguated `StockPileView` top card ID to `STOCK_PILE_TOP` to eliminate ID collisions with the King of Spades.
+  - *TDD/Unit Tests:* `GameViewModelTest` and `GameContractTest` verifying session ID incrementation and default state.
+
 - [ ] **T-5.5: Pure Domain Auto-Complete Resolver (`AutoCompleteResolver`)**
   - Implement pure Kotlin `AutoCompleteResolver` detecting when all tableau columns contain zero face-down cards and stock/waste can be safely cleared.
   - Calculate the next immediate safe foundation promotion move until board reaches victory state (`KlondikeRules.isGameWon`).

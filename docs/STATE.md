@@ -16,12 +16,21 @@
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-5.4` (Hint Pulsing UI Highlighting & ViewModel Integration). Ready to proceed to `T-5.5` (Pure Domain Auto-Complete Resolver).
+- **Current Focus:** Completed `T-5.4b` (Fix Ghost Card Flip Turnover Animation on New Game / Deal Reset). Ready to proceed to `T-5.5` (Pure Domain Auto-Complete Resolver).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-26 (T-5.4b: Fix Ghost Card Flip Turnover Animation on New Game / Deal Reset):**
+  - Identified and fixed intermittent 3D card flip turnover animation and audio playing on face-up tableau cards when dealing a new game or restarting.
+  - Root cause: Compose node slot reuse across deals preserved stale `previousFaceUp = false` state for static card IDs (`card.id`), causing `LaunchedEffect(card.isFaceUp)` to erroneously interpret freshly dealt face-up cards as having just been uncovered.
+  - Added `gameSessionId: Long` to `GameUiState`, automatically incremented by `GameViewModel` on each `StartNewGame` and `RestartGame`.
+  - Exposed `LocalGameSessionId` composition local and keyed tableau column cards with `"${gameSessionId}_${card.id}"`, resetting all remembered flip states on every deal.
+  - Added `animateFlip: Boolean = true` parameter to `CardView`, explicitly disabling turnover animations in `AnimatedMoveOverlay`, `StockPileView`, `WastePileView`, `FoundationRowView`, and `DragOverlay`.
+  - Fixed `StockPileView` static card ID from colliding with the real King of Spades by assigning dedicated ID `"STOCK_PILE_TOP"`.
+  - Cancelled any active card flights or drag gestures on deal reset.
+  - Suite verification: 457 unit tests passing (100%), 0 Android lint errors.
 - **2026-09-26 (T-5.4: Hint Pulsing UI Highlighting & ViewModel Integration):**
   - Integrated `HintResolver` with `GameViewModel`: implemented `requestHint()` and `dismissHint()`, connected `GameIntent.RequestHint` and `GameIntent.DismissHint`.
   - Updated `GameContract`: `GameUiState.activeHint` is now `Hint?`, exposing `highlightedCard`, `hintSourceLocation`, `hintTargetLocation`, and `isHintActive`.

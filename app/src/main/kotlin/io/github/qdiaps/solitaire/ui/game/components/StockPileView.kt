@@ -11,7 +11,8 @@ import io.github.qdiaps.solitaire.ui.game.gesture.dropTarget
 private val STOCK_FACE_DOWN_CARD = Card(
     suit = Suit.SPADES,
     rank = Rank.KING,
-    isFaceUp = false
+    isFaceUp = false,
+    id = "STOCK_PILE_TOP"
 )
 
 /**
@@ -42,6 +43,7 @@ fun StockPileView(
         CardView(
             card = STOCK_FACE_DOWN_CARD,
             modifier = boundsModifier,
+            animateFlip = false,
             isHighlighted = isHighlighted,
             onClick = onClick
         )

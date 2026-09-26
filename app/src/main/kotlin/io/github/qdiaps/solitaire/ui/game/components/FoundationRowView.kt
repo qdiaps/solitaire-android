@@ -73,7 +73,8 @@ fun FoundationPileView(
         if (underCard != null) {
             CardView(
                 card = underCard,
-                modifier = Modifier.size(dimensions.cardWidth, dimensions.cardHeight)
+                modifier = Modifier.size(dimensions.cardWidth, dimensions.cardHeight),
+                animateFlip = false
             )
         }
 
@@ -111,6 +112,7 @@ fun FoundationPileView(
                                 alpha = 0f
                             }
                         },
+                    animateFlip = false,
                     isHighlighted = isHighlighted,
                     onClick = onClick
                 )

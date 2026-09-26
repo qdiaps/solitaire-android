@@ -76,6 +76,7 @@ fun TableauColumnView(
     destinationCard: Card? = null,
     isSlotHighlighted: Boolean = false,
     columnIndex: Int = 0,
+    gameSessionId: Long = 1L,
     boardState: (() -> BoardState)? = null,
     onCardClick: ((card: Card) -> Unit)? = null,
     onEmptySlotClick: (() -> Unit)? = null,
@@ -108,7 +109,7 @@ fun TableauColumnView(
         )
 
         cards.forEachIndexed { index, card ->
-            key(card.id) {
+            key("${gameSessionId}_${card.id}") {
                 val isCardDragged = dragDropState != null && dragDropState.isCardDragged(card)
                 val isCardFlying = flightState != null && flightState.isCardFlying(card)
                 val isCardHidden = isCardDragged || isCardFlying

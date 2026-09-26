@@ -115,6 +115,7 @@ fun DragOverlayContent(
                 CardView(
                     card = card,
                     elevation = DRAG_OVERLAY_ELEVATION,
+                    animateFlip = false,
                     modifier = Modifier.offset(y = offsets[index])
                 )
             }

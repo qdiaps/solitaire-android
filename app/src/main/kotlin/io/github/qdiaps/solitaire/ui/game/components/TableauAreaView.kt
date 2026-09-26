@@ -46,6 +46,7 @@ fun TableauAreaView(
     destinationCard: Card? = null,
     highlightedEmptyColumnIndex: Int? = null,
     boardState: (() -> BoardState)? = null,
+    gameSessionId: Long = 1L,
     onCardClick: ((columnIndex: Int, card: Card) -> Unit)? = null,
     onEmptyColumnClick: ((columnIndex: Int) -> Unit)? = null,
     onCardDropped: ((cards: List<Card>, source: CardLocation, target: CardLocation) -> Unit)? = null
@@ -67,6 +68,7 @@ fun TableauAreaView(
                 destinationCard = destinationCard,
                 isSlotHighlighted = columnIndex == highlightedEmptyColumnIndex,
                 columnIndex = columnIndex,
+                gameSessionId = gameSessionId,
                 boardState = boardState,
                 onCardClick = onCardClick?.let { callback ->
                     { card -> callback(columnIndex, card) }
@@ -91,6 +93,7 @@ fun TableauAreaView(
     highlightedCards: List<Card> = emptyList(),
     destinationCard: Card? = null,
     highlightedEmptyColumnIndex: Int? = null,
+    gameSessionId: Long = 1L,
     onCardClick: ((columnIndex: Int, card: Card) -> Unit)? = null,
     onEmptyColumnClick: ((columnIndex: Int) -> Unit)? = null,
     onCardDropped: ((cards: List<Card>, source: CardLocation, target: CardLocation) -> Unit)? = null
@@ -103,6 +106,7 @@ fun TableauAreaView(
         destinationCard = destinationCard,
         highlightedEmptyColumnIndex = highlightedEmptyColumnIndex,
         boardState = { boardState },
+        gameSessionId = gameSessionId,
         onCardClick = onCardClick,
         onEmptyColumnClick = onEmptyColumnClick,
         onCardDropped = onCardDropped

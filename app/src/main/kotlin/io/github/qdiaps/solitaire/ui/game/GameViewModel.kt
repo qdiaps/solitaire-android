@@ -246,7 +246,8 @@ class GameViewModel(
                 elapsedTimeSeconds = 0L,
                 activeHint = null,
                 isLoading = false,
-                isAutoCompleteAvailable = false
+                isAutoCompleteAvailable = false,
+                gameSessionId = current.gameSessionId + 1L
             )
         }
         if (autoStartTimer && !isWon) {
@@ -370,7 +371,8 @@ class GameViewModel(
                 elapsedTimeSeconds = 0L,
                 activeHint = null,
                 isLoading = false,
-                isAutoCompleteAvailable = false
+                isAutoCompleteAvailable = false,
+                gameSessionId = current.gameSessionId + 1L
             )
         }
         if (autoStartTimer && !isWon) {

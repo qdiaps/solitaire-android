@@ -37,6 +37,7 @@ class GameContractTest {
             assertNull(state.activeHint)
             assertFalse(state.isLoading)
             assertFalse(state.isAutoCompleteAvailable)
+            assertEquals(1L, state.gameSessionId)
             assertNull(state.highlightedCard)
             assertFalse(state.isHintActive)
         }

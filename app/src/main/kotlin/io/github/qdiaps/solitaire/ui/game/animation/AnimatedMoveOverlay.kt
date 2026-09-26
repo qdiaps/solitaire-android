@@ -64,7 +64,8 @@ fun AnimatedMoveOverlay(
                     modifier = Modifier
                         .offset(y = yOffset)
                         .size(dimensions.cardWidth, dimensions.cardHeight),
-                    elevation = 10.dp
+                    elevation = 10.dp,
+                    animateFlip = false
                 )
             }
         }

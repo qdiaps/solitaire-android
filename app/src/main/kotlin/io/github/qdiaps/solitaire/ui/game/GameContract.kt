@@ -32,7 +32,8 @@ data class GameUiState(
     val isLeftHanded: Boolean = false,
     val activeHint: Hint? = null,
     val isLoading: Boolean = false,
-    val isAutoCompleteAvailable: Boolean = false
+    val isAutoCompleteAvailable: Boolean = false,
+    val gameSessionId: Long = 1L
 ) {
     /**
      * Cards that should be highlighted on the board (e.g., all cards in the moving stack from [activeHint]).

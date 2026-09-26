@@ -34,6 +34,7 @@ import io.github.qdiaps.solitaire.ui.game.animation.rememberCardFlightState
 import io.github.qdiaps.solitaire.ui.game.audio.LocalSolitaireAudio
 import io.github.qdiaps.solitaire.ui.game.audio.rememberSolitaireAudio
 import io.github.qdiaps.solitaire.ui.game.components.BottomActionBarView
+import io.github.qdiaps.solitaire.ui.game.components.LocalGameSessionId
 import io.github.qdiaps.solitaire.ui.game.components.DragOverlay
 import io.github.qdiaps.solitaire.ui.game.components.TableauAreaView
 import io.github.qdiaps.solitaire.ui.game.components.TopRowView
@@ -102,6 +103,7 @@ fun SolitaireGameScreen(
     isHintActive: Boolean = false,
     hintSourceLocation: CardLocation? = null,
     hintTargetLocation: CardLocation? = null,
+    gameSessionId: Long = 1L,
     onStockClick: () -> Unit = {},
     onWasteClick: () -> Unit = {},
     onFoundationClick: (foundationIndex: Int) -> Unit = {},
@@ -121,12 +123,18 @@ fun SolitaireGameScreen(
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
 
+    LaunchedEffect(gameSessionId) {
+        cardFlightState.cancelFlight()
+        dragDropState.reset()
+    }
+
     CompositionLocalProvider(
         LocalDragDropState provides dragDropState,
         LocalDropTargetRegistry provides dropTargetRegistry,
         LocalSolitaireHaptics provides solitaireHaptics,
         LocalSolitaireAudio provides solitaireAudio,
-        LocalCardFlightState provides cardFlightState
+        LocalCardFlightState provides cardFlightState,
+        LocalGameSessionId provides gameSessionId
     ) {
         BoxWithConstraints(
             modifier = modifier
@@ -319,6 +327,7 @@ fun SolitaireGameScreen(
                                 highlightedCards = highlightedCards,
                                 destinationCard = destinationTableauCard,
                                 highlightedEmptyColumnIndex = highlightedEmptyTableauColumnIndex,
+                                gameSessionId = gameSessionId,
                                 onCardClick = animatedTableauCardClick,
                                 onEmptyColumnClick = onTableauEmptyClick,
                                 onCardDropped = onCardDropped
@@ -440,6 +449,7 @@ fun SolitaireGameScreen(
         isHintActive = uiState.isHintActive,
         hintSourceLocation = uiState.hintSourceLocation,
         hintTargetLocation = uiState.hintTargetLocation,
+        gameSessionId = uiState.gameSessionId,
         onStockClick = { viewModel.onIntent(GameIntent.DrawStockCard) },
         onWasteClick = {
             uiState.boardState.waste.lastOrNull()?.let { card ->
@@ -490,6 +500,7 @@ fun GameScreen(
     isHintActive: Boolean = false,
     hintSourceLocation: CardLocation? = null,
     hintTargetLocation: CardLocation? = null,
+    gameSessionId: Long = 1L,
     onStockClick: () -> Unit = {},
     onWasteClick: () -> Unit = {},
     onFoundationClick: (foundationIndex: Int) -> Unit = {},
@@ -513,6 +524,7 @@ fun GameScreen(
         isHintActive = isHintActive,
         hintSourceLocation = hintSourceLocation,
         hintTargetLocation = hintTargetLocation,
+        gameSessionId = gameSessionId,
         onStockClick = onStockClick,
         onWasteClick = onWasteClick,
         onFoundationClick = onFoundationClick,
