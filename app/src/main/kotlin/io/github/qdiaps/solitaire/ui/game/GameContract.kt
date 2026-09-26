@@ -7,6 +7,8 @@ import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteMove
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.Hint
+import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
+import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
 
 /**
@@ -22,6 +24,12 @@ import io.github.qdiaps.solitaire.ui.theme.FeltTheme
  * @property activeHint Suggested move currently displayed to the player, or null if none.
  * @property isLoading Whether background deal generation or solver calculations are currently running.
  * @property isAutoCompleteAvailable Whether all remaining face-down cards are revealed and can safely auto-complete.
+ * @property cardBackStyle Active design pattern rendered on face-down cards.
+ * @property cardFaceStyle Active typography and pip iconography style rendered on face-up cards.
+ * @property soundEnabled Whether audio playback is enabled for card moves, deals, and celebrations.
+ * @property hapticsEnabled Whether device vibration feedback is enabled for taps and snaps.
+ * @property autoHintEnabled Whether moves are automatically hinted after idle periods.
+ * @property isSettingsOpen Whether the settings bottom sheet is currently visible.
  */
 @Immutable
 data class GameUiState(
@@ -37,7 +45,13 @@ data class GameUiState(
     val isAutoCompleteAvailable: Boolean = false,
     val isAutoCompleting: Boolean = false,
     val gameSessionId: Long = 1L,
-    val drawMode: DrawMode = DrawMode.DRAW_ONE
+    val drawMode: DrawMode = DrawMode.DRAW_ONE,
+    val cardBackStyle: CardBackStyle = CardBackStyle.CLASSIC_LATTICE,
+    val cardFaceStyle: CardFaceStyle = CardFaceStyle.MODERN_CLEAN,
+    val soundEnabled: Boolean = true,
+    val hapticsEnabled: Boolean = true,
+    val autoHintEnabled: Boolean = false,
+    val isSettingsOpen: Boolean = false
 ) {
     /**
      * Cards that should be highlighted on the board (e.g., all cards in the moving stack from [activeHint]).
@@ -154,9 +168,64 @@ sealed interface GameIntent {
     data class SelectFeltTheme(val theme: FeltTheme) : GameIntent
 
     /**
+     * Set felt table surface theme.
+     */
+    data class SetFeltTheme(val theme: FeltTheme) : GameIntent
+
+    /**
      * Skip victory cascade animation and show final win summary dialog.
      */
     data object SkipWinAnimation : GameIntent
+
+    /**
+     * Open settings bottom sheet.
+     */
+    data object OpenSettings : GameIntent
+
+    /**
+     * Close settings bottom sheet.
+     */
+    data object CloseSettings : GameIntent
+
+    /**
+     * Update draw mode rule setting (Draw 1 or Draw 3).
+     */
+    data class SetDrawMode(val drawMode: DrawMode) : GameIntent
+
+    /**
+     * Update left-handed layout orientation setting.
+     */
+    data class SetLeftHanded(val isLeftHanded: Boolean) : GameIntent
+
+    /**
+     * Update card back visual style.
+     */
+    data class SetCardBackStyle(val cardBackStyle: CardBackStyle) : GameIntent
+
+    /**
+     * Update card face visual style.
+     */
+    data class SetCardFaceStyle(val cardFaceStyle: CardFaceStyle) : GameIntent
+
+    /**
+     * Enable or disable audio sound effects.
+     */
+    data class SetSoundEnabled(val enabled: Boolean) : GameIntent
+
+    /**
+     * Enable or disable haptic vibration feedback.
+     */
+    data class SetHapticsEnabled(val enabled: Boolean) : GameIntent
+
+    /**
+     * Enable or disable idle auto-hinting.
+     */
+    data class SetAutoHintEnabled(val enabled: Boolean) : GameIntent
+
+    /**
+     * Reset all gameplay, appearance, and feedback settings to factory defaults.
+     */
+    data object ResetSettingsToDefaults : GameIntent
 }
 
 /**

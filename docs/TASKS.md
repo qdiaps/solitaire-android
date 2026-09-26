@@ -64,7 +64,7 @@
   - Implement `SettingsRepository` exposing `Flow<GameSettings>`: `drawMode`, `isLeftHanded`, `feltTheme`, `cardBackStyle`, `cardFaceStyle`, `soundEnabled`, `hapticsEnabled`, and `autoHintEnabled`.
   - *TDD/Unit Tests:* `SettingsRepositoryTest` verifying default settings, persistence mutations, and flow emissions.
 
-- [ ] **T-5.8: Settings Bottom Sheet UI (`SettingsBottomSheet`)**
+- [x] **T-5.8: Settings Bottom Sheet UI (`SettingsBottomSheet`)**
   - Implement modal `SettingsBottomSheet` with sections: Gameplay (Draw 1 / Draw 3, Left-handed mode), Appearance (Felt cloth themes, Card backs, Card faces), and Feedback (Sound FX, Haptic feedback).
   - Connect settings triggers to `GameViewModel` / `SettingsRepository` for immediate live updates without restarting games.
   - *Compose Previews:* `SettingsBottomSheetPreview` in compact and large heights across felt table themes.

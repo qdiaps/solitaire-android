@@ -7,8 +7,11 @@ import io.github.qdiaps.solitaire.domain.model.Move
 import io.github.qdiaps.solitaire.domain.model.Rank
 import io.github.qdiaps.solitaire.domain.model.Suit
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteMove
+import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.Hint
 import io.github.qdiaps.solitaire.domain.rules.HintPriority
+import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
+import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -39,7 +42,13 @@ class GameContractTest {
             assertFalse(state.isLoading)
             assertFalse(state.isAutoCompleteAvailable)
             assertEquals(1L, state.gameSessionId)
-            assertEquals(io.github.qdiaps.solitaire.domain.rules.DrawMode.DRAW_ONE, state.drawMode)
+            assertEquals(DrawMode.DRAW_ONE, state.drawMode)
+            assertEquals(CardBackStyle.CLASSIC_LATTICE, state.cardBackStyle)
+            assertEquals(CardFaceStyle.MODERN_CLEAN, state.cardFaceStyle)
+            assertTrue(state.soundEnabled)
+            assertTrue(state.hapticsEnabled)
+            assertFalse(state.autoHintEnabled)
+            assertFalse(state.isSettingsOpen)
             assertNull(state.highlightedCard)
             assertFalse(state.isHintActive)
         }
@@ -70,15 +79,25 @@ class GameContractTest {
         @Test
         fun `verify state copying retains immutability`() {
             val initial = GameUiState(elapsedTimeSeconds = 10L, isGameWon = false)
-            val updated = initial.copy(elapsedTimeSeconds = 11L, isGameWon = true, canUndo = true)
+            val updated = initial.copy(
+                elapsedTimeSeconds = 11L,
+                isGameWon = true,
+                canUndo = true,
+                isSettingsOpen = true,
+                drawMode = DrawMode.DRAW_THREE
+            )
 
             assertEquals(10L, initial.elapsedTimeSeconds)
             assertFalse(initial.isGameWon)
             assertFalse(initial.canUndo)
+            assertFalse(initial.isSettingsOpen)
+            assertEquals(DrawMode.DRAW_ONE, initial.drawMode)
 
             assertEquals(11L, updated.elapsedTimeSeconds)
             assertTrue(updated.isGameWon)
             assertTrue(updated.canUndo)
+            assertTrue(updated.isSettingsOpen)
+            assertEquals(DrawMode.DRAW_THREE, updated.drawMode)
         }
     }
 
@@ -116,10 +135,21 @@ class GameContractTest {
                 GameIntent.RestartGame,
                 GameIntent.ToggleLeftHanded,
                 GameIntent.SelectFeltTheme(FeltTheme.DEEP_NAVY),
-                GameIntent.SkipWinAnimation
+                GameIntent.SetFeltTheme(FeltTheme.DARK_CHARCOAL),
+                GameIntent.SkipWinAnimation,
+                GameIntent.OpenSettings,
+                GameIntent.CloseSettings,
+                GameIntent.SetDrawMode(DrawMode.DRAW_THREE),
+                GameIntent.SetLeftHanded(true),
+                GameIntent.SetCardBackStyle(CardBackStyle.CRIMSON_VINTAGE),
+                GameIntent.SetCardFaceStyle(CardFaceStyle.MODERN_CLEAN),
+                GameIntent.SetSoundEnabled(false),
+                GameIntent.SetHapticsEnabled(false),
+                GameIntent.SetAutoHintEnabled(true),
+                GameIntent.ResetSettingsToDefaults
             )
 
-            assertEquals(16, intents.size)
+            assertEquals(27, intents.size)
 
             for (intent in intents) {
                 val label = when (intent) {
@@ -138,7 +168,18 @@ class GameContractTest {
                     is GameIntent.RestartGame -> "RestartGame"
                     is GameIntent.ToggleLeftHanded -> "ToggleLeftHanded"
                     is GameIntent.SelectFeltTheme -> "SelectFeltTheme:${intent.theme.name}"
+                    is GameIntent.SetFeltTheme -> "SetFeltTheme:${intent.theme.name}"
                     is GameIntent.SkipWinAnimation -> "SkipWinAnimation"
+                    is GameIntent.OpenSettings -> "OpenSettings"
+                    is GameIntent.CloseSettings -> "CloseSettings"
+                    is GameIntent.SetDrawMode -> "SetDrawMode:${intent.drawMode}"
+                    is GameIntent.SetLeftHanded -> "SetLeftHanded:${intent.isLeftHanded}"
+                    is GameIntent.SetCardBackStyle -> "SetCardBackStyle:${intent.cardBackStyle}"
+                    is GameIntent.SetCardFaceStyle -> "SetCardFaceStyle:${intent.cardFaceStyle}"
+                    is GameIntent.SetSoundEnabled -> "SetSoundEnabled:${intent.enabled}"
+                    is GameIntent.SetHapticsEnabled -> "SetHapticsEnabled:${intent.enabled}"
+                    is GameIntent.SetAutoHintEnabled -> "SetAutoHintEnabled:${intent.enabled}"
+                    is GameIntent.ResetSettingsToDefaults -> "ResetSettingsToDefaults"
                 }
                 assertTrue(label.isNotEmpty())
             }

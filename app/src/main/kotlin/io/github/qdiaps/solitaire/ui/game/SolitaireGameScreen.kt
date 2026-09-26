@@ -42,6 +42,9 @@ import io.github.qdiaps.solitaire.ui.game.audio.LocalSolitaireAudio
 import io.github.qdiaps.solitaire.ui.game.audio.rememberSolitaireAudio
 import io.github.qdiaps.solitaire.ui.game.components.AutoCompleteBannerView
 import io.github.qdiaps.solitaire.ui.game.components.BottomActionBarView
+import io.github.qdiaps.solitaire.ui.game.components.SettingsBottomSheet
+import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
+import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
 import io.github.qdiaps.solitaire.ui.game.components.LocalGameSessionId
 import io.github.qdiaps.solitaire.ui.game.components.DragOverlay
 import io.github.qdiaps.solitaire.ui.game.components.TableauAreaView
@@ -114,6 +117,12 @@ fun SolitaireGameScreen(
     hintTargetLocation: CardLocation? = null,
     gameSessionId: Long = 1L,
     drawMode: DrawMode = DrawMode.DRAW_ONE,
+    cardBackStyle: CardBackStyle = CardBackStyle.DEFAULT,
+    cardFaceStyle: CardFaceStyle = CardFaceStyle.DEFAULT,
+    soundEnabled: Boolean = true,
+    hapticsEnabled: Boolean = true,
+    autoHintEnabled: Boolean = false,
+    isSettingsOpen: Boolean = false,
     isAutoCompleteAvailable: Boolean = false,
     isAutoCompleting: Boolean = false,
     isGameWon: Boolean = false,
@@ -129,7 +138,17 @@ fun SolitaireGameScreen(
     onUndoClick: () -> Unit = {},
     onHintClick: () -> Unit = {},
     onNewGameClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
+    onDismissSettings: () -> Unit = {},
+    onDrawModeChange: (DrawMode) -> Unit = {},
+    onLeftHandedChange: (Boolean) -> Unit = {},
+    onAutoHintChange: (Boolean) -> Unit = {},
+    onFeltThemeChange: (FeltTheme) -> Unit = {},
+    onCardBackStyleChange: (CardBackStyle) -> Unit = {},
+    onCardFaceStyleChange: (CardFaceStyle) -> Unit = {},
+    onSoundChange: (Boolean) -> Unit = {},
+    onHapticsChange: (Boolean) -> Unit = {},
+    onResetSettingsToDefaults: () -> Unit = {}
 ) {
     val dragDropState = rememberDragDropState()
     val dropTargetRegistry = rememberDropTargetRegistry()
@@ -328,7 +347,7 @@ fun SolitaireGameScreen(
                 }
             }
 
-            SolitaireTheme(feltTheme = feltTheme, cardDimensions = dimensions) {
+            SolitaireTheme(feltTheme = feltTheme, cardBackStyle = cardBackStyle, cardFaceStyle = cardFaceStyle, cardDimensions = dimensions) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     Column(
                         modifier = Modifier
@@ -440,6 +459,30 @@ fun SolitaireGameScreen(
                                 }
                         )
                     }
+
+                    // Modal Settings Bottom Sheet
+                    if (isSettingsOpen) {
+                        SettingsBottomSheet(
+                            drawMode = drawMode,
+                            isLeftHanded = isLeftHanded,
+                            autoHintEnabled = autoHintEnabled,
+                            feltTheme = feltTheme,
+                            cardBackStyle = cardBackStyle,
+                            cardFaceStyle = cardFaceStyle,
+                            soundEnabled = soundEnabled,
+                            hapticsEnabled = hapticsEnabled,
+                            onDrawModeChange = onDrawModeChange,
+                            onLeftHandedChange = onLeftHandedChange,
+                            onAutoHintChange = onAutoHintChange,
+                            onFeltThemeChange = onFeltThemeChange,
+                            onCardBackStyleChange = onCardBackStyleChange,
+                            onCardFaceStyleChange = onCardFaceStyleChange,
+                            onSoundChange = onSoundChange,
+                            onHapticsChange = onHapticsChange,
+                            onResetToDefaults = onResetSettingsToDefaults,
+                            onDismiss = onDismissSettings
+                        )
+                    }
                 }
             }
         }
@@ -545,21 +588,22 @@ fun SolitaireGameScreen(
 
     LaunchedEffect(viewModel, solitaireHaptics, solitaireAudio) {
         viewModel.events.collect { event ->
+            val currentState = viewModel.uiState.value
             when (event) {
                 is GameEvent.PlayHapticTick -> {
-                    solitaireHaptics.playTick()
-                    solitaireAudio.playFlip()
+                    if (currentState.hapticsEnabled) solitaireHaptics.playTick()
+                    if (currentState.soundEnabled) solitaireAudio.playFlip()
                 }
                 is GameEvent.PlayHapticSnap -> {
-                    solitaireHaptics.playSnap()
-                    solitaireAudio.playSnap()
+                    if (currentState.hapticsEnabled) solitaireHaptics.playSnap()
+                    if (currentState.soundEnabled) solitaireAudio.playSnap()
                 }
                 is GameEvent.PlayDealSound -> {
-                    solitaireAudio.playDeal()
+                    if (currentState.soundEnabled) solitaireAudio.playDeal()
                 }
                 is GameEvent.TriggerWinCelebration -> {
-                    solitaireHaptics.playSnap()
-                    solitaireAudio.playSnap()
+                    if (currentState.hapticsEnabled) solitaireHaptics.playSnap()
+                    if (currentState.soundEnabled) solitaireAudio.playSnap()
                 }
                 is GameEvent.ShowMessage -> {
                     // Message snackbar / banner
@@ -617,8 +661,24 @@ fun SolitaireGameScreen(
                 viewModel.onIntent(GameIntent.RequestHint)
             }
         },
+        cardBackStyle = uiState.cardBackStyle,
+        cardFaceStyle = uiState.cardFaceStyle,
+        soundEnabled = uiState.soundEnabled,
+        hapticsEnabled = uiState.hapticsEnabled,
+        autoHintEnabled = uiState.autoHintEnabled,
+        isSettingsOpen = uiState.isSettingsOpen,
         onNewGameClick = { viewModel.onIntent(GameIntent.StartNewGame) },
-        onSettingsClick = { /* Settings sheet */ }
+        onSettingsClick = { viewModel.onIntent(GameIntent.OpenSettings) },
+        onDismissSettings = { viewModel.onIntent(GameIntent.CloseSettings) },
+        onDrawModeChange = { viewModel.onIntent(GameIntent.SetDrawMode(it)) },
+        onLeftHandedChange = { viewModel.onIntent(GameIntent.SetLeftHanded(it)) },
+        onAutoHintChange = { viewModel.onIntent(GameIntent.SetAutoHintEnabled(it)) },
+        onFeltThemeChange = { viewModel.onIntent(GameIntent.SetFeltTheme(it)) },
+        onCardBackStyleChange = { viewModel.onIntent(GameIntent.SetCardBackStyle(it)) },
+        onCardFaceStyleChange = { viewModel.onIntent(GameIntent.SetCardFaceStyle(it)) },
+        onSoundChange = { viewModel.onIntent(GameIntent.SetSoundEnabled(it)) },
+        onHapticsChange = { viewModel.onIntent(GameIntent.SetHapticsEnabled(it)) },
+        onResetSettingsToDefaults = { viewModel.onIntent(GameIntent.ResetSettingsToDefaults) }
     )
 }
 
@@ -640,6 +700,12 @@ fun GameScreen(
     hintTargetLocation: CardLocation? = null,
     gameSessionId: Long = 1L,
     drawMode: DrawMode = DrawMode.DRAW_ONE,
+    cardBackStyle: CardBackStyle = CardBackStyle.DEFAULT,
+    cardFaceStyle: CardFaceStyle = CardFaceStyle.DEFAULT,
+    soundEnabled: Boolean = true,
+    hapticsEnabled: Boolean = true,
+    autoHintEnabled: Boolean = false,
+    isSettingsOpen: Boolean = false,
     isAutoCompleteAvailable: Boolean = false,
     isAutoCompleting: Boolean = false,
     isGameWon: Boolean = false,
@@ -655,7 +721,17 @@ fun GameScreen(
     onUndoClick: () -> Unit = {},
     onHintClick: () -> Unit = {},
     onNewGameClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
+    onDismissSettings: () -> Unit = {},
+    onDrawModeChange: (DrawMode) -> Unit = {},
+    onLeftHandedChange: (Boolean) -> Unit = {},
+    onAutoHintChange: (Boolean) -> Unit = {},
+    onFeltThemeChange: (FeltTheme) -> Unit = {},
+    onCardBackStyleChange: (CardBackStyle) -> Unit = {},
+    onCardFaceStyleChange: (CardFaceStyle) -> Unit = {},
+    onSoundChange: (Boolean) -> Unit = {},
+    onHapticsChange: (Boolean) -> Unit = {},
+    onResetSettingsToDefaults: () -> Unit = {}
 ) {
     SolitaireGameScreen(
         boardState = boardState,
@@ -684,8 +760,24 @@ fun GameScreen(
         onCardDropped = onCardDropped,
         onUndoClick = onUndoClick,
         onHintClick = onHintClick,
+        cardBackStyle = cardBackStyle,
+        cardFaceStyle = cardFaceStyle,
+        soundEnabled = soundEnabled,
+        hapticsEnabled = hapticsEnabled,
+        autoHintEnabled = autoHintEnabled,
+        isSettingsOpen = isSettingsOpen,
         onNewGameClick = onNewGameClick,
-        onSettingsClick = onSettingsClick
+        onSettingsClick = onSettingsClick,
+        onDismissSettings = onDismissSettings,
+        onDrawModeChange = onDrawModeChange,
+        onLeftHandedChange = onLeftHandedChange,
+        onAutoHintChange = onAutoHintChange,
+        onFeltThemeChange = onFeltThemeChange,
+        onCardBackStyleChange = onCardBackStyleChange,
+        onCardFaceStyleChange = onCardFaceStyleChange,
+        onSoundChange = onSoundChange,
+        onHapticsChange = onHapticsChange,
+        onResetSettingsToDefaults = onResetSettingsToDefaults
     )
 }
 

@@ -16,12 +16,25 @@
   - **Phase 3: Compose Board Layout & Static Presentation** — 31 unit tests (100% pass), full vector board, themes, dimensions, 38 previews. (Complete)
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-5.7` (`DataStoreManager` & `SettingsRepository`). Ready to proceed to `T-5.8` (`SettingsBottomSheet`).
+- **Current Focus:** Completed `T-5.8` (`SettingsBottomSheet`). Ready to proceed to `T-5.9` (`StatsRepository`).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-26 (T-5.8: Settings Bottom Sheet UI):**
+  - Implemented `SettingsBottomSheet.kt` and `SettingsSheetContent` in `io.github.qdiaps.solitaire.ui.game.components`:
+    - **Gameplay section:** Segmented choice row for Draw Mode (`Draw 1 Card` vs `Draw 3 Cards`), toggle switch for Left-Handed Mode (mirrored layout), toggle switch for Auto-Hints.
+    - **Appearance section:** 4 selectable felt cloth swatches (`Classic Green`, `Deep Navy`, `Dark Charcoal`, `Wine Red`) with active checkmark indicators; 4 card back style miniature vector previews (`Classic Lattice`, `Crimson Vintage`, `Emerald Art Deco`, `Obsidian Minimal`); card face style selector (`Modern Clean`).
+    - **Feedback section:** Toggle switches for Sound Effects (`soundEnabled`) and Haptic Feedback (`hapticsEnabled`).
+    - **Reset section:** Styled "Reset Settings to Defaults" action button.
+  - Implemented live immediate application: setting changes update `GameUiState` synchronously for instant feedback and persist asynchronously to `SettingsRepository` in DataStore without restarting games.
+  - Connected `drawStockCard()`, `requestHint()`, and `undoMove()` in `GameViewModel` to reactive `_uiState.value.drawMode` for live draw mode changes.
+  - Gated audio and haptics in `SolitaireGameScreen` with `uiState.soundEnabled` and `uiState.hapticsEnabled`.
+  - Added `GameViewModel.provideFactory(context)` and updated `MainActivity` to instantiate `GameViewModel` with it.
+  - Added unit test coverage: `GameContractTest` and `GameViewModelTest` (`SettingsIntentsTests` covering all 8 settings intents, state toggles, and DataStore synchronization).
+  - Added Compose Previews in `SettingsBottomSheetPreview.kt` across felt themes and device heights (compact 600dp, standard Pixel 7, and full in-game modal preview).
+  - Full suite verified: 506 unit tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
 - **2026-09-26 (T-5.7: DataStore Manager & Settings Repository):**
   - Implemented `DataStoreManager` in `io.github.qdiaps.solitaire.data.local`: thread-safe and resilient wrapper around Jetpack `DataStore<Preferences>` with `IOException` error boundary, type-safe getters/setters, preference removal, and clear helpers.
   - Implemented `@Immutable` `GameSettings` in `io.github.qdiaps.solitaire.data.model` covering all game customization options and toggles: `drawMode`, `isLeftHanded`, `feltTheme`, `cardBackStyle`, `cardFaceStyle`, `soundEnabled`, `hapticsEnabled`, and `autoHintEnabled`.
@@ -129,4 +142,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-5.8: Settings Bottom Sheet UI (SettingsBottomSheet)`
+- **Target Task:** `T-5.9: Statistics Repository (StatsRepository)`

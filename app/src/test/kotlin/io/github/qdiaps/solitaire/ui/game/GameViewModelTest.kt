@@ -10,6 +10,14 @@ import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.KlondikeRules
 import io.github.qdiaps.solitaire.domain.solver.DealGenerator
 import io.github.qdiaps.solitaire.domain.solver.SolvabilityResult
+import io.github.qdiaps.solitaire.data.model.GameSettings
+import io.github.qdiaps.solitaire.data.repository.SettingsRepository
+import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
+import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -51,6 +59,27 @@ class GameViewModelTest {
     private fun createCustomBoard(id: String = "test"): BoardState {
         val card = Card(Suit.SPADES, Rank.ACE, isFaceUp = true, id = id)
         return BoardState(stock = listOf(card))
+    }
+
+    private class FakeSettingsRepository(
+        initialSettings: GameSettings = GameSettings()
+    ) : SettingsRepository {
+        private val _flow = MutableStateFlow(initialSettings)
+        override val settingsFlow: StateFlow<GameSettings> = _flow.asStateFlow()
+
+        override suspend fun getSettings(): GameSettings = _flow.value
+        override suspend fun updateSettings(transform: (GameSettings) -> GameSettings) {
+            _flow.update(transform)
+        }
+        override suspend fun setDrawMode(drawMode: DrawMode) { _flow.update { it.copy(drawMode = drawMode) } }
+        override suspend fun setLeftHanded(isLeftHanded: Boolean) { _flow.update { it.copy(isLeftHanded = isLeftHanded) } }
+        override suspend fun setFeltTheme(feltTheme: FeltTheme) { _flow.update { it.copy(feltTheme = feltTheme) } }
+        override suspend fun setCardBackStyle(cardBackStyle: CardBackStyle) { _flow.update { it.copy(cardBackStyle = cardBackStyle) } }
+        override suspend fun setCardFaceStyle(cardFaceStyle: CardFaceStyle) { _flow.update { it.copy(cardFaceStyle = cardFaceStyle) } }
+        override suspend fun setSoundEnabled(enabled: Boolean) { _flow.update { it.copy(soundEnabled = enabled) } }
+        override suspend fun setHapticsEnabled(enabled: Boolean) { _flow.update { it.copy(hapticsEnabled = enabled) } }
+        override suspend fun setAutoHintEnabled(enabled: Boolean) { _flow.update { it.copy(autoHintEnabled = enabled) } }
+        override suspend fun resetToDefaults() { _flow.value = GameSettings() }
     }
 
     private fun createWonBoard(): BoardState {
@@ -1309,6 +1338,199 @@ class GameViewModelTest {
 
             viewModel.onIntent(GameIntent.FinishAutoComplete)
             assertFalse(viewModel.uiState.value.isAutoCompleting)
+        }
+    }
+    @Nested
+    @DisplayName("Settings Intents and Repository Integration")
+    inner class SettingsIntentsTests {
+
+
+
+        @Test
+        @DisplayName("OpenSettings and CloseSettings toggle isSettingsOpen")
+        fun `OpenSettings and CloseSettings toggle isSettingsOpen`() = runTest(testDispatcher) {
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            assertFalse(viewModel.uiState.value.isSettingsOpen)
+            viewModel.onIntent(GameIntent.OpenSettings)
+            assertTrue(viewModel.uiState.value.isSettingsOpen)
+            viewModel.onIntent(GameIntent.CloseSettings)
+            assertFalse(viewModel.uiState.value.isSettingsOpen)
+        }
+
+        @Test
+        @DisplayName("SetDrawMode updates drawMode in uiState and calls repository")
+        fun `SetDrawMode updates drawMode in uiState and calls repository`() = runTest(testDispatcher) {
+            val fakeRepo = FakeSettingsRepository()
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                settingsRepository = fakeRepo
+            )
+
+            assertEquals(DrawMode.DRAW_ONE, viewModel.uiState.value.drawMode)
+            viewModel.onIntent(GameIntent.SetDrawMode(DrawMode.DRAW_THREE))
+            testScheduler.runCurrent()
+
+            assertEquals(DrawMode.DRAW_THREE, viewModel.uiState.value.drawMode)
+            assertEquals(DrawMode.DRAW_THREE, fakeRepo.getSettings().drawMode)
+        }
+
+        @Test
+        @DisplayName("SetLeftHanded and ToggleLeftHanded update isLeftHanded and repository")
+        fun `SetLeftHanded and ToggleLeftHanded update isLeftHanded and repository`() = runTest(testDispatcher) {
+            val fakeRepo = FakeSettingsRepository()
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                settingsRepository = fakeRepo
+            )
+
+            assertFalse(viewModel.uiState.value.isLeftHanded)
+            viewModel.onIntent(GameIntent.SetLeftHanded(true))
+            testScheduler.runCurrent()
+            assertTrue(viewModel.uiState.value.isLeftHanded)
+            assertTrue(fakeRepo.getSettings().isLeftHanded)
+
+            viewModel.onIntent(GameIntent.ToggleLeftHanded)
+            testScheduler.runCurrent()
+            assertFalse(viewModel.uiState.value.isLeftHanded)
+            assertFalse(fakeRepo.getSettings().isLeftHanded)
+        }
+
+        @Test
+        @DisplayName("SetFeltTheme and SelectFeltTheme update feltTheme and repository")
+        fun `SetFeltTheme and SelectFeltTheme update feltTheme and repository`() = runTest(testDispatcher) {
+            val fakeRepo = FakeSettingsRepository()
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                settingsRepository = fakeRepo
+            )
+
+            viewModel.onIntent(GameIntent.SetFeltTheme(FeltTheme.DARK_CHARCOAL))
+            testScheduler.runCurrent()
+            assertEquals(FeltTheme.DARK_CHARCOAL, viewModel.uiState.value.feltTheme)
+            assertEquals(FeltTheme.DARK_CHARCOAL, fakeRepo.getSettings().feltTheme)
+
+            viewModel.onIntent(GameIntent.SelectFeltTheme(FeltTheme.WINE_RED))
+            testScheduler.runCurrent()
+            assertEquals(FeltTheme.WINE_RED, viewModel.uiState.value.feltTheme)
+            assertEquals(FeltTheme.WINE_RED, fakeRepo.getSettings().feltTheme)
+        }
+
+        @Test
+        @DisplayName("SetCardBackStyle and SetCardFaceStyle update styles and repository")
+        fun `SetCardBackStyle and SetCardFaceStyle update styles and repository`() = runTest(testDispatcher) {
+            val fakeRepo = FakeSettingsRepository()
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                settingsRepository = fakeRepo
+            )
+
+            viewModel.onIntent(GameIntent.SetCardBackStyle(CardBackStyle.EMERALD_ART_DECO))
+            viewModel.onIntent(GameIntent.SetCardFaceStyle(CardFaceStyle.MODERN_CLEAN))
+            testScheduler.runCurrent()
+
+            assertEquals(CardBackStyle.EMERALD_ART_DECO, viewModel.uiState.value.cardBackStyle)
+            assertEquals(CardBackStyle.EMERALD_ART_DECO, fakeRepo.getSettings().cardBackStyle)
+            assertEquals(CardFaceStyle.MODERN_CLEAN, viewModel.uiState.value.cardFaceStyle)
+            assertEquals(CardFaceStyle.MODERN_CLEAN, fakeRepo.getSettings().cardFaceStyle)
+        }
+
+        @Test
+        @DisplayName("SetSoundEnabled, SetHapticsEnabled, SetAutoHintEnabled update toggles and repository")
+        fun `SetSoundEnabled, SetHapticsEnabled, SetAutoHintEnabled update toggles and repository`() = runTest(testDispatcher) {
+            val fakeRepo = FakeSettingsRepository()
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                settingsRepository = fakeRepo
+            )
+
+            viewModel.onIntent(GameIntent.SetSoundEnabled(false))
+            viewModel.onIntent(GameIntent.SetHapticsEnabled(false))
+            viewModel.onIntent(GameIntent.SetAutoHintEnabled(true))
+            testScheduler.runCurrent()
+
+            assertFalse(viewModel.uiState.value.soundEnabled)
+            assertFalse(fakeRepo.getSettings().soundEnabled)
+            assertFalse(viewModel.uiState.value.hapticsEnabled)
+            assertFalse(fakeRepo.getSettings().hapticsEnabled)
+            assertTrue(viewModel.uiState.value.autoHintEnabled)
+            assertTrue(fakeRepo.getSettings().autoHintEnabled)
+        }
+
+        @Test
+        @DisplayName("ResetSettingsToDefaults restores all defaults in repository and uiState")
+        fun `ResetSettingsToDefaults restores all defaults in repository and uiState`() = runTest(testDispatcher) {
+            val modified = GameSettings(
+                drawMode = DrawMode.DRAW_THREE,
+                isLeftHanded = true,
+                feltTheme = FeltTheme.WINE_RED,
+                cardBackStyle = CardBackStyle.OBSIDIAN_MINIMAL,
+                soundEnabled = false,
+                hapticsEnabled = false,
+                autoHintEnabled = true
+            )
+            val fakeRepo = FakeSettingsRepository(initialSettings = modified)
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                settingsRepository = fakeRepo
+            )
+            testScheduler.runCurrent()
+
+            assertEquals(DrawMode.DRAW_THREE, viewModel.uiState.value.drawMode)
+            assertTrue(viewModel.uiState.value.isLeftHanded)
+
+            viewModel.onIntent(GameIntent.ResetSettingsToDefaults)
+            testScheduler.runCurrent()
+
+            val defaults = GameSettings()
+            assertEquals(defaults.drawMode, viewModel.uiState.value.drawMode)
+            assertEquals(defaults.isLeftHanded, viewModel.uiState.value.isLeftHanded)
+            assertEquals(defaults.feltTheme, viewModel.uiState.value.feltTheme)
+            assertEquals(defaults.cardBackStyle, viewModel.uiState.value.cardBackStyle)
+            assertEquals(defaults.soundEnabled, viewModel.uiState.value.soundEnabled)
+            assertEquals(defaults.hapticsEnabled, viewModel.uiState.value.hapticsEnabled)
+            assertEquals(defaults.autoHintEnabled, viewModel.uiState.value.autoHintEnabled)
+        }
+
+        @Test
+        @DisplayName("Repository settingsFlow updates GameUiState reactively")
+        fun `Repository settingsFlow updates GameUiState reactively`() = runTest(testDispatcher) {
+            val fakeRepo = FakeSettingsRepository()
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                settingsRepository = fakeRepo
+            )
+            testScheduler.runCurrent()
+
+            fakeRepo.setFeltTheme(FeltTheme.DEEP_NAVY)
+            testScheduler.runCurrent()
+
+            assertEquals(FeltTheme.DEEP_NAVY, viewModel.uiState.value.feltTheme)
         }
     }
 }

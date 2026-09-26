@@ -1,7 +1,12 @@
 package io.github.qdiaps.solitaire.ui.game
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import io.github.qdiaps.solitaire.data.local.DataStoreManager
+import io.github.qdiaps.solitaire.data.repository.DataStoreSettingsRepository
+import io.github.qdiaps.solitaire.data.repository.SettingsRepository
 import io.github.qdiaps.solitaire.domain.deck.KlondikeDealer
 import io.github.qdiaps.solitaire.domain.engine.UndoManager
 import io.github.qdiaps.solitaire.domain.model.BoardState
@@ -15,6 +20,8 @@ import io.github.qdiaps.solitaire.domain.rules.KlondikeRules
 import io.github.qdiaps.solitaire.domain.rules.SmartTapResolver
 import io.github.qdiaps.solitaire.domain.solver.DeadlockDetector
 import io.github.qdiaps.solitaire.domain.solver.DealGenerator
+import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
+import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -44,6 +51,7 @@ import kotlinx.coroutines.launch
  * @param drawMode Configures whether 1 card or 3 cards are drawn from the stock pile (default: [DrawMode.DRAW_ONE]).
  * @param coroutineScope Optional coroutine scope for managing background tasks and timer (defaults to [viewModelScope]).
  * @param autoCompleteDelayMs Interval in milliseconds between cascade moves during auto-complete (default: 120ms).
+ * @param settingsRepository Optional repository persisting and broadcasting player preferences.
  */
 class GameViewModel(
     private val dealGenerator: DealGenerator? = null,
@@ -54,7 +62,8 @@ class GameViewModel(
     private val autoStartTimer: Boolean = true,
     private val drawMode: DrawMode = DrawMode.DRAW_ONE,
     coroutineScope: CoroutineScope? = null,
-    private val autoCompleteDelayMs: Long = 120L
+    private val autoCompleteDelayMs: Long = 120L,
+    private val settingsRepository: SettingsRepository? = null
 ) : ViewModel() {
 
     private val scope: CoroutineScope = coroutineScope ?: viewModelScope
@@ -94,6 +103,25 @@ class GameViewModel(
         if (autoStartTimer && !_uiState.value.isGameWon) {
             startTimer()
         }
+
+        if (settingsRepository != null) {
+            scope.launch {
+                settingsRepository.settingsFlow.collect { settings ->
+                    _uiState.update { current ->
+                        current.copy(
+                            drawMode = settings.drawMode,
+                            isLeftHanded = settings.isLeftHanded,
+                            feltTheme = settings.feltTheme,
+                            cardBackStyle = settings.cardBackStyle,
+                            cardFaceStyle = settings.cardFaceStyle,
+                            soundEnabled = settings.soundEnabled,
+                            hapticsEnabled = settings.hapticsEnabled,
+                            autoHintEnabled = settings.autoHintEnabled
+                        )
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -107,6 +135,7 @@ class GameViewModel(
             is GameIntent.RestartGame -> restartGame()
             is GameIntent.ToggleLeftHanded -> toggleLeftHanded()
             is GameIntent.SelectFeltTheme -> selectFeltTheme(intent.theme)
+            is GameIntent.SetFeltTheme -> selectFeltTheme(intent.theme)
             is GameIntent.RequestHint -> requestHint()
             is GameIntent.DismissHint -> dismissHint()
             is GameIntent.DrawStockCard -> drawStockCard()
@@ -119,6 +148,122 @@ class GameViewModel(
             is GameIntent.FinishAutoComplete -> finishAutoComplete()
             is GameIntent.ApplyAutoCompleteMove -> applyAutoCompleteMove(intent.move)
             is GameIntent.SkipWinAnimation -> { /* Handled in T-6 */ }
+            is GameIntent.OpenSettings -> openSettings()
+            is GameIntent.CloseSettings -> closeSettings()
+            is GameIntent.SetDrawMode -> setDrawMode(intent.drawMode)
+            is GameIntent.SetLeftHanded -> setLeftHanded(intent.isLeftHanded)
+            is GameIntent.SetCardBackStyle -> setCardBackStyle(intent.cardBackStyle)
+            is GameIntent.SetCardFaceStyle -> setCardFaceStyle(intent.cardFaceStyle)
+            is GameIntent.SetSoundEnabled -> setSoundEnabled(intent.enabled)
+            is GameIntent.SetHapticsEnabled -> setHapticsEnabled(intent.enabled)
+            is GameIntent.SetAutoHintEnabled -> setAutoHintEnabled(intent.enabled)
+            is GameIntent.ResetSettingsToDefaults -> resetSettingsToDefaults()
+        }
+    }
+
+    /**
+     * Opens the modal settings bottom sheet.
+     */
+    fun openSettings() {
+        _uiState.update { it.copy(isSettingsOpen = true) }
+    }
+
+    /**
+     * Closes the modal settings bottom sheet.
+     */
+    fun closeSettings() {
+        _uiState.update { it.copy(isSettingsOpen = false) }
+    }
+
+    /**
+     * Updates draw mode (Draw 1 or Draw 3) live and persists change to settings repository.
+     */
+    fun setDrawMode(newDrawMode: DrawMode) {
+        _uiState.update { it.copy(drawMode = newDrawMode) }
+        settingsRepository?.let { repo ->
+            scope.launch { repo.setDrawMode(newDrawMode) }
+        }
+    }
+
+    /**
+     * Updates left-handed layout mode and persists change to settings repository.
+     */
+    fun setLeftHanded(isLeftHanded: Boolean) {
+        _uiState.update { it.copy(isLeftHanded = isLeftHanded) }
+        settingsRepository?.let { repo ->
+            scope.launch { repo.setLeftHanded(isLeftHanded) }
+        }
+    }
+
+    /**
+     * Updates card back style and persists change to settings repository.
+     */
+    fun setCardBackStyle(cardBackStyle: CardBackStyle) {
+        _uiState.update { it.copy(cardBackStyle = cardBackStyle) }
+        settingsRepository?.let { repo ->
+            scope.launch { repo.setCardBackStyle(cardBackStyle) }
+        }
+    }
+
+    /**
+     * Updates card face style and persists change to settings repository.
+     */
+    fun setCardFaceStyle(cardFaceStyle: CardFaceStyle) {
+        _uiState.update { it.copy(cardFaceStyle = cardFaceStyle) }
+        settingsRepository?.let { repo ->
+            scope.launch { repo.setCardFaceStyle(cardFaceStyle) }
+        }
+    }
+
+    /**
+     * Toggles sound effects audio output and persists change to settings repository.
+     */
+    fun setSoundEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(soundEnabled = enabled) }
+        settingsRepository?.let { repo ->
+            scope.launch { repo.setSoundEnabled(enabled) }
+        }
+    }
+
+    /**
+     * Toggles haptic feedback vibrations and persists change to settings repository.
+     */
+    fun setHapticsEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(hapticsEnabled = enabled) }
+        settingsRepository?.let { repo ->
+            scope.launch { repo.setHapticsEnabled(enabled) }
+        }
+    }
+
+    /**
+     * Toggles idle auto-hinting and persists change to settings repository.
+     */
+    fun setAutoHintEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(autoHintEnabled = enabled) }
+        settingsRepository?.let { repo ->
+            scope.launch { repo.setAutoHintEnabled(enabled) }
+        }
+    }
+
+    /**
+     * Resets all game settings to default values.
+     */
+    fun resetSettingsToDefaults() {
+        if (settingsRepository != null) {
+            scope.launch { settingsRepository.resetToDefaults() }
+        } else {
+            _uiState.update {
+                it.copy(
+                    drawMode = DrawMode.DRAW_ONE,
+                    isLeftHanded = false,
+                    feltTheme = FeltTheme.CLASSIC_GREEN,
+                    cardBackStyle = CardBackStyle.CLASSIC_LATTICE,
+                    cardFaceStyle = CardFaceStyle.MODERN_CLEAN,
+                    soundEnabled = true,
+                    hapticsEnabled = true,
+                    autoHintEnabled = false
+                )
+            }
         }
     }
 
@@ -127,7 +272,7 @@ class GameViewModel(
      */
     fun requestHint() {
         val currentBoard = _uiState.value.boardState
-        val hint = HintResolver.findHint(currentBoard, drawMode)
+        val hint = HintResolver.findHint(currentBoard, _uiState.value.drawMode)
         _uiState.update { it.copy(activeHint = hint) }
     }
 
@@ -178,9 +323,10 @@ class GameViewModel(
         }
 
         val currentBoard = _uiState.value.boardState
+        val currentDrawMode = _uiState.value.drawMode
         if (KlondikeRules.canDraw(currentBoard)) {
             undoManager.record(currentBoard)
-            val nextBoard = KlondikeRules.draw(currentBoard, drawMode)
+            val nextBoard = KlondikeRules.draw(currentBoard, currentDrawMode)
             updateBoardStateAfterMove(nextBoard)
         } else if (KlondikeRules.canRecycle(currentBoard)) {
             recycleStock()
@@ -213,7 +359,7 @@ class GameViewModel(
         val previousBoard = undoManager.undo(currentBoard) ?: return
         val wasWon = _uiState.value.isGameWon
         val isWonNow = KlondikeRules.isGameWon(previousBoard)
-        val isDeadlocked = if (isWonNow) false else DeadlockDetector.detect(previousBoard, drawMode).isDeadlocked
+        val isDeadlocked = if (isWonNow) false else DeadlockDetector.detect(previousBoard, _uiState.value.drawMode).isDeadlocked
         val isAutoComplete = if (isWonNow) false else AutoCompleteResolver.isAutoCompleteReady(previousBoard)
 
         _uiState.update { current ->
@@ -288,7 +434,11 @@ class GameViewModel(
      * Toggles left-handed UI orientation mirroring top row foundations and stock piles.
      */
     fun toggleLeftHanded() {
-        _uiState.update { it.copy(isLeftHanded = !it.isLeftHanded) }
+        val next = !_uiState.value.isLeftHanded
+        _uiState.update { it.copy(isLeftHanded = next) }
+        settingsRepository?.let { repo ->
+            scope.launch { repo.setLeftHanded(next) }
+        }
     }
 
     /**
@@ -296,6 +446,9 @@ class GameViewModel(
      */
     fun selectFeltTheme(theme: FeltTheme) {
         _uiState.update { it.copy(feltTheme = theme) }
+        settingsRepository?.let { repo ->
+            scope.launch { repo.setFeltTheme(theme) }
+        }
     }
 
     /**
@@ -400,7 +553,6 @@ class GameViewModel(
         }
     }
 
-
     /**
      * Starts or resumes the elapsed play time stopwatch coroutine loop.
      */
@@ -472,7 +624,7 @@ class GameViewModel(
 
     private fun updateBoardStateAfterMove(nextBoard: BoardState, isDrop: Boolean = false) {
         val isWon = KlondikeRules.isGameWon(nextBoard)
-        val isDeadlocked = if (isWon) false else DeadlockDetector.detect(nextBoard, drawMode).isDeadlocked
+        val isDeadlocked = if (isWon) false else DeadlockDetector.detect(nextBoard, _uiState.value.drawMode).isDeadlocked
         val isAutoComplete = if (isWon) false else AutoCompleteResolver.isAutoCompleteReady(nextBoard)
         _uiState.update { current ->
             current.copy(
@@ -516,5 +668,22 @@ class GameViewModel(
             startTimer()
         }
         _events.tryEmit(GameEvent.PlayDealSound)
+    }
+
+    companion object {
+        fun provideFactory(
+            context: Context,
+            dealGenerator: DealGenerator? = null
+        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val dataStoreManager = DataStoreManager.fromContext(context)
+                val settingsRepo = DataStoreSettingsRepository(dataStoreManager)
+                return GameViewModel(
+                    dealGenerator = dealGenerator,
+                    settingsRepository = settingsRepo
+                ) as T
+            }
+        }
     }
 }
