@@ -152,8 +152,8 @@ fun SolitaireGameScreen(
 ) {
     val dragDropState = rememberDragDropState()
     val dropTargetRegistry = rememberDropTargetRegistry()
-    val solitaireHaptics = rememberSolitaireHaptics()
-    val solitaireAudio = rememberSolitaireAudio()
+    val solitaireHaptics = rememberSolitaireHaptics(enabled = hapticsEnabled)
+    val solitaireAudio = rememberSolitaireAudio(enabled = soundEnabled)
     val cardFlightState = rememberCardFlightState()
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -583,8 +583,8 @@ fun SolitaireGameScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val solitaireHaptics = rememberSolitaireHaptics()
-    val solitaireAudio = rememberSolitaireAudio()
+    val solitaireHaptics = rememberSolitaireHaptics(enabled = uiState.hapticsEnabled)
+    val solitaireAudio = rememberSolitaireAudio(enabled = uiState.soundEnabled)
 
     LaunchedEffect(viewModel, solitaireHaptics, solitaireAudio) {
         viewModel.events.collect { event ->
@@ -747,11 +747,18 @@ fun GameScreen(
         hintTargetLocation = hintTargetLocation,
         gameSessionId = gameSessionId,
         drawMode = drawMode,
+        cardBackStyle = cardBackStyle,
+        cardFaceStyle = cardFaceStyle,
+        soundEnabled = soundEnabled,
+        hapticsEnabled = hapticsEnabled,
+        autoHintEnabled = autoHintEnabled,
+        isSettingsOpen = isSettingsOpen,
         isAutoCompleteAvailable = isAutoCompleteAvailable,
         isAutoCompleting = isAutoCompleting,
         isGameWon = isGameWon,
         onAutoCompleteClick = onAutoCompleteClick,
         onAutoCompleteStep = onAutoCompleteStep,
+        onAutoCompleteFinished = onAutoCompleteFinished,
         onStockClick = onStockClick,
         onWasteClick = onWasteClick,
         onFoundationClick = onFoundationClick,
@@ -760,12 +767,6 @@ fun GameScreen(
         onCardDropped = onCardDropped,
         onUndoClick = onUndoClick,
         onHintClick = onHintClick,
-        cardBackStyle = cardBackStyle,
-        cardFaceStyle = cardFaceStyle,
-        soundEnabled = soundEnabled,
-        hapticsEnabled = hapticsEnabled,
-        autoHintEnabled = autoHintEnabled,
-        isSettingsOpen = isSettingsOpen,
         onNewGameClick = onNewGameClick,
         onSettingsClick = onSettingsClick,
         onDismissSettings = onDismissSettings,

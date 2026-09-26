@@ -120,7 +120,7 @@ val LocalSolitaireAudio: ProvidableCompositionLocal<SolitaireAudio> =
  * Remembers and lifecycle-manages a platform [SolitaireAudio] instance.
  */
 @Composable
-fun rememberSolitaireAudio(): SolitaireAudio {
+fun rememberSolitaireAudio(enabled: Boolean = true): SolitaireAudio {
     if (LocalInspectionMode.current) {
         return remember {
             object : SolitaireAudio {
@@ -140,5 +140,6 @@ fun rememberSolitaireAudio(): SolitaireAudio {
             audio.release()
         }
     }
+    audio.isEnabled = enabled
     return audio
 }
