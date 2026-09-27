@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme after splash is dismissed -->
+    <style name="Theme.Solitaire" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Starting Splash Theme using AndroidX Core SplashScreen API -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- Deep rich green table felt background -->
+        <item name="windowSplashScreenBackground">#0F2D18</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_spinner</item>
+        <item name="windowSplashScreenAnimationDuration">1000</item>
+        <item name="postSplashScreenTheme">@style/Theme.Solitaire</item>
+    </style>
+</resources>

@@ -2241,4 +2241,76 @@ class GameViewModelTest {
             assertEquals(2, fakePersistence.clearCount)
         }
     }
+
+    @Nested
+    @DisplayName("Zero-Flicker Async Initialization Tests")
+    inner class ZeroFlickerAsyncInitTests {
+
+        @Test
+        @DisplayName("GameViewModel starts with isLoading = true when settings repo provided, then flips to false after preloading theme")
+        fun `GameViewModel starts with isLoading = true when settings repo provided, then flips to false after preloading theme`() = runTest(testDispatcher) {
+            val customSettings = GameSettings(
+                feltTheme = FeltTheme.DARK_CHARCOAL,
+                isLeftHanded = true
+            )
+            val fakeSettings = FakeSettingsRepository(initialSettings = customSettings)
+
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                settingsRepository = fakeSettings
+            )
+
+            assertTrue(viewModel.uiState.value.isLoading)
+
+            testScheduler.runCurrent()
+
+            assertFalse(viewModel.uiState.value.isLoading)
+            assertEquals(FeltTheme.DARK_CHARCOAL, viewModel.uiState.value.feltTheme)
+            assertTrue(viewModel.uiState.value.isLeftHanded)
+        }
+
+        @Test
+        @DisplayName("GameViewModel starts with isLoading = false when no async repositories are provided")
+        fun `GameViewModel starts with isLoading = false when no async repositories are provided`() {
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard()
+            )
+            assertFalse(viewModel.uiState.value.isLoading)
+        }
+
+        @Test
+        @DisplayName("GameViewModel restores saved session atomically before unveiling isLoading = false")
+        fun `GameViewModel restores saved session atomically before unveiling isLoading = false`() = runTest(testDispatcher) {
+            val customBoard = createCustomBoard()
+            val savedSession = SavedGameSession(
+                boardState = customBoard,
+                elapsedTimeSeconds = 120L,
+                drawMode = DrawMode.DRAW_THREE,
+                hasMoved = true
+            )
+            val fakePersistence = FakeGamePersistenceRepository(initialSession = savedSession)
+            val fakeSettings = FakeSettingsRepository(initialSettings = GameSettings(feltTheme = FeltTheme.WINE_RED))
+
+            val viewModel = GameViewModel(
+                initialBoardState = null,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                persistenceRepository = fakePersistence,
+                settingsRepository = fakeSettings
+            )
+
+            assertTrue(viewModel.uiState.value.isLoading)
+
+            testScheduler.runCurrent()
+
+            assertFalse(viewModel.uiState.value.isLoading)
+            assertEquals(customBoard, viewModel.uiState.value.boardState)
+            assertEquals(120L, viewModel.uiState.value.elapsedTimeSeconds)
+            assertEquals(FeltTheme.WINE_RED, viewModel.uiState.value.feltTheme)
+        }
+    }
 }

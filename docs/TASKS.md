@@ -3,6 +3,13 @@
 > **Current Phase:** Phase 6 (Victory Screen & Polish)
 > **Branch:** `feature/phase-6-victory-screen-and-polish`
 
+- [x] **T-6.FIX: SplashScreen API & Zero-Flicker Cold Start Initialization (`MainActivity`, `GameViewModel`, `SolitaireGameScreen`)**
+  - Integrated Android 12+ SplashScreen API (`androidx.core:core-splashscreen`) with custom starting theme (`Theme.App.Starting`) and animated vector spinner loader (`ic_splash_spinner.xml`).
+  - Implemented `installSplashScreen().setKeepOnScreenCondition { gameViewModel.uiState.value.isLoading }` in `MainActivity`.
+  - Updated `GameViewModel` to initialize with `isLoading = true` when settings or session repositories are present, asynchronously pre-loading settings and saved session before setting `isLoading = false` in a single atomic update.
+  - Added loading guard with `CircularProgressIndicator` in `SolitaireGameScreen` rendering centered spinner while `isLoading == true` to guarantee zero visual flash or theme blinking on cold start.
+  - *TDD/Unit Tests:* Added `ZeroFlickerAsyncInitTests` in `GameViewModelTest` verifying `isLoading` lifecycle during asynchronous initialization.
+
 - [ ] **T-6.1: Victory Animation Extensible Architecture & Bouncing Physics Engine (`VictoryAnimator`, `BouncingCardsPhysics`)**
   - Design extensible `VictoryAnimationType` enum (`CLASSIC_BOUNCE`, expandable to future effects like `FIREWORKS`, `CARD_SPIRAL`, etc.) and `VictoryAnimator` abstraction.
   - Implement pure math `BouncingCardsPhysics` engine: particles with position, velocity ($v_x, v_y$), gravity, restitution coefficient ($e \approx -0.85$), and screen boundary bouncing.

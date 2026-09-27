@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -21,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.Lifecycle
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
@@ -52,6 +54,7 @@ import io.github.qdiaps.solitaire.ui.game.components.StatsDialog
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
 import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
 import io.github.qdiaps.solitaire.ui.game.components.LocalGameSessionId
+import io.github.qdiaps.solitaire.ui.theme.ScoreGold
 import io.github.qdiaps.solitaire.ui.game.components.DragOverlay
 import io.github.qdiaps.solitaire.ui.game.components.TableauAreaView
 import io.github.qdiaps.solitaire.ui.game.components.TopRowView
@@ -673,6 +676,20 @@ fun SolitaireGameScreen(
         }
     }
 
+    if (uiState.isLoading) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(SolitaireColors(feltTheme = uiState.feltTheme).tableBackground),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                color = ScoreGold,
+                strokeWidth = 3.dp,
+                modifier = Modifier.size(44.dp)
+            )
+        }
+    } else {
     SolitaireGameScreen(
         boardState = uiState.boardState,
         modifier = modifier,
@@ -746,6 +763,7 @@ fun SolitaireGameScreen(
         onDismissStats = { viewModel.onIntent(GameIntent.CloseStats) },
         onResetStats = { viewModel.onIntent(GameIntent.ResetStats) }
     )
+    }
 }
 
 /**

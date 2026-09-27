@@ -17,12 +17,18 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Phase 6 sprint backlog decomposed into 8 atomic tasks (`T-6.1`..`T-6.8`) with extensible victory animations architecture. Ready to implement `T-6.1`.
+- **Current Focus:** Completed `T-6.FIX` (Zero-Flicker Splash & Cold Start Loader). Ready to proceed to `T-6.1`.
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-27 (T-6.FIX: SplashScreen API & Zero-Flicker Cold Start Initialization):**
+  - Integrated `androidx.core:core-splashscreen` API with starting theme `Theme.App.Starting` and gold animated vector spinner loader (`ic_splash_spinner.xml`).
+  - Added `splashScreen.setKeepOnScreenCondition { gameViewModel.uiState.value.isLoading }` in `MainActivity`.
+  - Implemented atomic async initialization in `GameViewModel`: sets `isLoading = true` while preloading preferences from `SettingsRepository` and saved session from `GamePersistenceRepository`, eliminating initial theme blinking.
+  - Added loading guard with centered `CircularProgressIndicator(color = ScoreGold)` in `SolitaireGameScreen` guaranteeing zero visual flash on cold start.
+  - Added unit tests in `GameViewModelTest` (`ZeroFlickerAsyncInitTests`) verifying `isLoading` state lifecycle. Total 558 unit tests passing (100% pass).
 - **2026-09-26 (Phase 6 Sprint Backlog Decomposition):**
   - Formulated architectural plan and decomposed Phase 6 into 8 atomic tasks (`T-6.1` through `T-6.8`) in `docs/TASKS.md`.
   - Established extensible architecture for victory effects (`VictoryAnimationType`, `VictoryAnimator`, `VictoryRenderer`), supporting classic bouncing cards and future animation styles.

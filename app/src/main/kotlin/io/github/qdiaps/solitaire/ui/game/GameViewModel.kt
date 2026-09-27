@@ -40,6 +40,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -84,13 +86,15 @@ class GameViewModel(
     private val initialIsWon = KlondikeRules.isGameWon(initialDealState)
     var hasMoved: Boolean = (initialBoardState != null && initialBoardState.movesCount > 0)
         private set
+    private val hasAsyncInit = (settingsRepository != null || (persistenceRepository != null && initialBoardState == null))
     private val _uiState = MutableStateFlow(
         GameUiState(
             boardState = initialDealState,
             isGameWon = initialIsWon,
             isAutoCompleteAvailable = if (initialIsWon) false else AutoCompleteResolver.isAutoCompleteReady(initialDealState),
             drawMode = drawMode,
-            autoHintEnabled = initialAutoHintEnabled
+            autoHintEnabled = initialAutoHintEnabled,
+            isLoading = hasAsyncInit
         )
     )
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
@@ -128,33 +132,6 @@ class GameViewModel(
             resetIdleHintTimer()
         }
 
-        if (settingsRepository != null) {
-            scope.launch {
-                settingsRepository.settingsFlow.collect { settings ->
-                    val wasAutoHint = _uiState.value.autoHintEnabled
-                    _uiState.update { current ->
-                        current.copy(
-                            drawMode = settings.drawMode,
-                            isLeftHanded = settings.isLeftHanded,
-                            feltTheme = settings.feltTheme,
-                            cardBackStyle = settings.cardBackStyle,
-                            cardFaceStyle = settings.cardFaceStyle,
-                            soundEnabled = settings.soundEnabled,
-                            hapticsEnabled = settings.hapticsEnabled,
-                            autoHintEnabled = settings.autoHintEnabled
-                        )
-                    }
-                    if (settings.autoHintEnabled != wasAutoHint) {
-                        if (settings.autoHintEnabled) {
-                            resetIdleHintTimer()
-                        } else {
-                            cancelIdleHintTimer()
-                        }
-                    }
-                }
-            }
-        }
-
         if (statsRepository != null) {
             scope.launch {
                 statsRepository.statsFlow.collect { stats ->
@@ -163,11 +140,60 @@ class GameViewModel(
             }
         }
 
-        if (persistenceRepository != null && initialBoardState == null) {
+        if (hasAsyncInit) {
             scope.launch {
-                val savedSession = persistenceRepository.getSavedSession()
-                if (savedSession != null && !KlondikeRules.isGameWon(savedSession.boardState)) {
-                    restoreGameSession(savedSession)
+                val initialSettings = settingsRepository?.settingsFlow?.first()
+                if (initialSettings != null) {
+                    _uiState.update { current ->
+                        current.copy(
+                            drawMode = initialSettings.drawMode,
+                            isLeftHanded = initialSettings.isLeftHanded,
+                            feltTheme = initialSettings.feltTheme,
+                            cardBackStyle = initialSettings.cardBackStyle,
+                            cardFaceStyle = initialSettings.cardFaceStyle,
+                            soundEnabled = initialSettings.soundEnabled,
+                            hapticsEnabled = initialSettings.hapticsEnabled,
+                            autoHintEnabled = initialSettings.autoHintEnabled
+                        )
+                    }
+                }
+
+                if (persistenceRepository != null && initialBoardState == null) {
+                    val savedSession = persistenceRepository.getSavedSession()
+                    if (savedSession != null && !KlondikeRules.isGameWon(savedSession.boardState)) {
+                        restoreGameSession(savedSession)
+                    }
+                }
+
+                _uiState.update { it.copy(isLoading = false) }
+
+                if (_uiState.value.autoHintEnabled && !_uiState.value.isGameWon) {
+                    resetIdleHintTimer()
+                }
+
+                if (settingsRepository != null) {
+                    settingsRepository.settingsFlow.drop(1).collect { settings ->
+                        val wasAutoHint = _uiState.value.autoHintEnabled
+                        _uiState.update { current ->
+                            current.copy(
+                                drawMode = settings.drawMode,
+                                isLeftHanded = settings.isLeftHanded,
+                                feltTheme = settings.feltTheme,
+                                cardBackStyle = settings.cardBackStyle,
+                                cardFaceStyle = settings.cardFaceStyle,
+                                soundEnabled = settings.soundEnabled,
+                                hapticsEnabled = settings.hapticsEnabled,
+                                autoHintEnabled = settings.autoHintEnabled
+                            )
+                        }
+                        if (settings.autoHintEnabled != wasAutoHint) {
+                            if (settings.autoHintEnabled) {
+                                resetIdleHintTimer()
+                            } else {
+                                cancelIdleHintTimer()
+                            }
+                        }
+                    }
                 }
             }
         }
