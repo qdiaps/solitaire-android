@@ -17,12 +17,17 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-6.FIX5.4` (Developer Debug Menu & Real-Time Deal Telemetry HUD). Completed entire `T-6.FIX5` milestone. Ready to proceed to `T-6.1` (Victory Animation Extensible Architecture & Bouncing Physics Engine).
+- **Current Focus:** Completed `T-6.FIX6` (Smart Cross-Difficulty Deal Harvesting & Eager Cold-Start Replenishment). Ready to proceed to `T-6.1` (Victory Animation Extensible Architecture & Bouncing Physics Engine).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-28 (T-6.FIX6: Smart Cross-Difficulty Deal Harvesting & Eager Cold-Start Replenishment):**
+  - Implemented eager cold-start replenishment in `DealGenerator`: observing `seedBank.state` automatically evaluates worker requirements on application launch, waking replenishment threads when either Easy or Medium has `< 90` seeds without requiring the player to deal a game first.
+  - Implemented cross-difficulty deal harvesting in replenishment workers: when a worker checks candidate seeds, discovered solvable deals are deposited into the appropriate difficulty bank (`DealDifficulty.EASY` or `DealDifficulty.MEDIUM`) if it has `< 100` seeds, eliminating discarded CPU effort and doubling background generation throughput.
+  - Implemented full-capacity top-up logic in `calculateDesiredWorkers`: workers that wake up when `< 90` continue topping up the bank all the way to 100 (`TARGET_CAPACITY`), and gracefully scale down when capacity reaches 100 or when crossing from deep depletion (< 50 seeds) to routine mode (>= 50 seeds).
+  - Added unit test suite in `DealGeneratorDynamicScalingTest` verifying cold-start eager replenishment, cross-difficulty harvesting, capacity bounding, and worker count calculations. 619 total unit tests passing (100% pass), 0 Android lint errors (`./gradlew testDebugUnitTest`).
 - **2026-09-28 (T-6.FIX5.4: Developer Debug Tools in SettingsBottomSheet):**
   - Added dedicated developer debug section in `SettingsBottomSheet` conditionally rendered only in debug builds (`isDebug: Boolean = BuildConfig.DEBUG`, zero release footprint).
   - Telemetry HUD display: live seed bank counts (`Easy [X/100]`, `Medium [Y/100]`), active generator workers status (`Idle (0% CPU)` or `Refilling (N active)`), candidate solvability & rejection rate (%), last solve duration (ms), and active session diagnostics (session ID, moves count, score, timer, deadlock and auto-complete state flags).

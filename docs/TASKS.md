@@ -49,6 +49,12 @@
       - **"Instant Win"**: instantly forces foundation completion to easily test victory celebration animations.
     - *TDD & Previews:* Unit tests for dev intents (`GameIntent.DevStressRefill`, `GameIntent.DevInstantWin`, `GameIntent.DevExportSeeds`), and Compose Previews in `SettingsBottomSheetPreview`.
 
+- [x] **T-6.FIX6: Smart Cross-Difficulty Deal Harvesting & Eager Cold-Start Replenishment**
+  - **Cold-Start Eager Replenishment:** Automatically trigger replenishment checks (`checkAndReplenish(EASY)` & `checkAndReplenish(MEDIUM)`) on game startup via `seedBank.state` collector in `DealGenerator`, eliminating the requirement for the player to deal a game before workers wake up.
+  - **Cross-Difficulty Deal Harvesting:** When a worker searches for candidate seeds, don't discard solvable seeds of the "other" difficulty. If an Easy worker finds a Medium seed and Medium has `< 100` seeds, deposit it into Medium (and vice versa), doubling generation efficiency and avoiding wasted solver CPU cycles.
+  - **Dynamic Worker Contraction:** When seed count crosses from `< 50` (4 workers) back to `>= 50` (1 worker), cancel excess running workers cleanly.
+  - *TDD/Unit Tests:* Update `DealGeneratorDynamicScalingTest` to verify cold-start eager replenishment and cross-difficulty harvesting.
+
 - [ ] **T-6.1: Victory Animation Extensible Architecture & Bouncing Physics Engine (`VictoryAnimator`, `BouncingCardsPhysics`)**
   - Design extensible `VictoryAnimationType` enum (`CLASSIC_BOUNCE`, expandable to future effects like `FIREWORKS`, `CARD_SPIRAL`, etc.) and `VictoryAnimator` abstraction.
   - Implement pure math `BouncingCardsPhysics` engine: particles with position, velocity ($v_x, v_y$), gravity, restitution coefficient ($e \approx -0.85$), and screen boundary bouncing.

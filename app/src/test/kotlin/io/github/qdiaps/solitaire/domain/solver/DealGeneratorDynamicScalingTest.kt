@@ -52,6 +52,30 @@ class DealGeneratorDynamicScalingTest {
             // 2 cores -> max(2, min(1, 4)) = 2
             assertEquals(2, DealGenerator.calculateWorkerCount(49, coreCount = 2))
         }
+
+        @Test
+        @DisplayName("calculateDesiredWorkers continues routine refill up to 100 once activated")
+        fun `calculateDesiredWorkers continues routine refill up to 100 once activated`() {
+            // Idle: 90..99 returns 0
+            assertEquals(0, DealGenerator.calculateDesiredWorkers(currentCount = 95, runningWorkers = 0, coreCount = 8))
+            assertEquals(0, DealGenerator.calculateDesiredWorkers(currentCount = 90, runningWorkers = 0, coreCount = 8))
+
+            // Wakes up on < 90
+            assertEquals(1, DealGenerator.calculateDesiredWorkers(currentCount = 89, runningWorkers = 0, coreCount = 8))
+
+            // Active worker keeps refilling all the way up to 100
+            assertEquals(1, DealGenerator.calculateDesiredWorkers(currentCount = 90, runningWorkers = 1, coreCount = 8))
+            assertEquals(1, DealGenerator.calculateDesiredWorkers(currentCount = 95, runningWorkers = 1, coreCount = 8))
+            assertEquals(1, DealGenerator.calculateDesiredWorkers(currentCount = 99, runningWorkers = 1, coreCount = 8))
+
+            // Stops at 100
+            assertEquals(0, DealGenerator.calculateDesiredWorkers(currentCount = 100, runningWorkers = 1, coreCount = 8))
+            assertEquals(0, DealGenerator.calculateDesiredWorkers(currentCount = 105, runningWorkers = 1, coreCount = 8))
+
+            // Deep depletion scales down to 1 when reaching 50
+            assertEquals(4, DealGenerator.calculateDesiredWorkers(currentCount = 49, runningWorkers = 4, coreCount = 8))
+            assertEquals(1, DealGenerator.calculateDesiredWorkers(currentCount = 50, runningWorkers = 4, coreCount = 8))
+        }
     }
 
     @Nested
@@ -139,6 +163,146 @@ class DealGeneratorDynamicScalingTest {
                 assertEquals(100, generator.debugStats.value.easyBankCount)
                 assertEquals(0, generator.debugStats.value.activeWorkersCount)
                 assertTrue(generator.debugStats.value.totalSolvableFound >= 11)
+            } finally {
+                generator.stop()
+            }
+        }
+
+        @Test
+        @DisplayName("Cold start with depleted bank automatically triggers replenishment without manual call")
+        fun `cold start with depleted bank automatically triggers replenishment without manual call`() = testScope.runTest {
+            val bank = PersistentSeedBank(
+                storage = InMemorySeedBankStorage(),
+                defaultCatalogProvider = {
+                    SeedBankCatalog(
+                        easySeeds = (1001L..1080L).toList(),
+                        mediumSeeds = (2001L..2100L).toList()
+                    )
+                },
+                scope = testScope
+            )
+            bank.initialize()
+
+            var seedCounter = 9000L
+            val generator = DealGenerator(
+                scope = testScope,
+                dispatcher = testDispatcher,
+                seedBank = bank,
+                coreCountProvider = { 8 },
+                candidateSeedProvider = { seedCounter++ },
+                solvabilityChecker = { _, _ ->
+                    SolvabilityResult.Solvable(
+                        moves = emptyList(),
+                        path = emptyList(),
+                        statesEvaluated = 50,
+                        durationMs = 5L
+                    )
+                },
+                difficultyClassifier = { _, _ -> DealDifficulty.EASY }
+            )
+
+            try {
+                testScope.advanceUntilIdle()
+
+                assertEquals(100, bank.getAvailableCount(DealDifficulty.EASY))
+                assertEquals(100, generator.debugStats.value.easyBankCount)
+                assertEquals(0, generator.debugStats.value.activeWorkersCount)
+            } finally {
+                generator.stop()
+            }
+        }
+
+        @Test
+        @DisplayName("Cross-difficulty harvesting: Easy worker deposits Medium deals if Medium bank needs seeds")
+        fun `cross difficulty harvesting deposits Medium deals if Medium bank needs seeds`() = testScope.runTest {
+            val bank = PersistentSeedBank(
+                storage = InMemorySeedBankStorage(),
+                defaultCatalogProvider = {
+                    SeedBankCatalog(
+                        easySeeds = (1001L..1085L).toList(),
+                        mediumSeeds = (2001L..2090L).toList()
+                    )
+                },
+                scope = testScope
+            )
+            bank.initialize()
+
+            var seedCounter = 9500L
+            var classifyAsMedium = false
+            val generator = DealGenerator(
+                scope = testScope,
+                dispatcher = testDispatcher,
+                seedBank = bank,
+                coreCountProvider = { 8 },
+                candidateSeedProvider = { seedCounter++ },
+                solvabilityChecker = { _, _ ->
+                    SolvabilityResult.Solvable(
+                        moves = emptyList(),
+                        path = emptyList(),
+                        statesEvaluated = 50,
+                        durationMs = 5L
+                    )
+                },
+                difficultyClassifier = { _, _ ->
+                    classifyAsMedium = !classifyAsMedium
+                    if (classifyAsMedium) DealDifficulty.MEDIUM else DealDifficulty.EASY
+                }
+            )
+
+            try {
+                testScope.advanceUntilIdle()
+
+                assertEquals(100, bank.getAvailableCount(DealDifficulty.EASY))
+                assertEquals(100, bank.getAvailableCount(DealDifficulty.MEDIUM))
+                assertEquals(100, generator.debugStats.value.easyBankCount)
+                assertEquals(100, generator.debugStats.value.mediumBankCount)
+                assertEquals(0, generator.debugStats.value.activeWorkersCount)
+            } finally {
+                generator.stop()
+            }
+        }
+
+        @Test
+        @DisplayName("Cross-difficulty harvesting: Does not overflow bank if other difficulty is already at 100")
+        fun `cross difficulty harvesting does not overflow bank if other difficulty is at capacity`() = testScope.runTest {
+            val bank = PersistentSeedBank(
+                storage = InMemorySeedBankStorage(),
+                defaultCatalogProvider = {
+                    SeedBankCatalog(
+                        easySeeds = (1001L..1085L).toList(),
+                        mediumSeeds = (2001L..2100L).toList()
+                    )
+                },
+                scope = testScope
+            )
+            bank.initialize()
+
+            var seedCounter = 9900L
+            val generator = DealGenerator(
+                scope = testScope,
+                dispatcher = testDispatcher,
+                seedBank = bank,
+                coreCountProvider = { 8 },
+                candidateSeedProvider = { seedCounter++ },
+                solvabilityChecker = { _, _ ->
+                    SolvabilityResult.Solvable(
+                        moves = emptyList(),
+                        path = emptyList(),
+                        statesEvaluated = 50,
+                        durationMs = 5L
+                    )
+                },
+                difficultyClassifier = { _, _ ->
+                    if (seedCounter % 2L == 0L) DealDifficulty.EASY else DealDifficulty.MEDIUM
+                }
+            )
+
+            try {
+                testScope.advanceUntilIdle()
+
+                assertEquals(100, bank.getAvailableCount(DealDifficulty.EASY))
+                assertEquals(100, bank.getAvailableCount(DealDifficulty.MEDIUM))
+                assertEquals(0, generator.debugStats.value.activeWorkersCount)
             } finally {
                 generator.stop()
             }

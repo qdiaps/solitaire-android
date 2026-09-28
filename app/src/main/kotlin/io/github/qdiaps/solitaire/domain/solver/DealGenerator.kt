@@ -67,9 +67,29 @@ class DealGenerator(
          * - < 50 seeds: max(2, min(cores - 1, 4)) workers (parallel fast replenishment)
          */
         fun calculateWorkerCount(currentCount: Int, coreCount: Int = Runtime.getRuntime().availableProcessors()): Int {
-            if (currentCount >= PersistentSeedBank.REPLENISH_THRESHOLD) return 0
-            if (currentCount >= PersistentSeedBank.DEEP_DEPLETION_THRESHOLD) return 1
-            return maxOf(2, minOf(coreCount - 1, 4))
+            return calculateDesiredWorkers(currentCount = currentCount, runningWorkers = 0, coreCount = coreCount)
+        }
+
+        /**
+         * Calculates desired replenishment workers based on current bank count, running workers, and CPU cores:
+         * - >= 100 seeds: 0 workers (at full capacity)
+         * - < 50 seeds: max(2, min(cores - 1, 4)) workers (parallel fast replenishment)
+         * - 50..99 seeds: 1 worker if already running (refill all the way to 100) or if count < 90 (wake up trigger)
+         * - 90..99 seeds when idle: 0 workers (mild dip does not disturb idle state)
+         */
+        fun calculateDesiredWorkers(
+            currentCount: Int,
+            runningWorkers: Int,
+            coreCount: Int = Runtime.getRuntime().availableProcessors()
+        ): Int {
+            if (currentCount >= PersistentSeedBank.TARGET_CAPACITY) return 0
+            if (currentCount < PersistentSeedBank.DEEP_DEPLETION_THRESHOLD) {
+                return maxOf(2, minOf(coreCount - 1, 4))
+            }
+            if (runningWorkers > 0 || currentCount < PersistentSeedBank.REPLENISH_THRESHOLD) {
+                return 1
+            }
+            return 0
         }
     }
 
@@ -109,6 +129,8 @@ class DealGenerator(
                             mediumBankCount = state.mediumSeeds.size
                         )
                     }
+                    checkAndReplenish(DealDifficulty.EASY)
+                    checkAndReplenish(DealDifficulty.MEDIUM)
                 }
             }
         }
@@ -191,13 +213,12 @@ class DealGenerator(
         val bank = seedBank ?: return
         if (difficulty != DealDifficulty.EASY && difficulty != DealDifficulty.MEDIUM) return
 
-        val currentCount = bank.getAvailableCount(difficulty)
-        val desiredWorkers = calculateWorkerCount(currentCount, coreCountProvider())
-
         val currentJobs = replenishmentJobs.getOrPut(difficulty) { mutableListOf() }
         synchronized(currentJobs) {
             currentJobs.removeAll { !it.isActive }
             val runningCount = currentJobs.size
+            val currentCount = bank.getAvailableCount(difficulty)
+            val desiredWorkers = calculateDesiredWorkers(currentCount, runningCount, coreCountProvider())
 
             if (desiredWorkers <= 0 || currentCount >= PersistentSeedBank.TARGET_CAPACITY) {
                 currentJobs.forEach { it.cancel() }
@@ -222,9 +243,11 @@ class DealGenerator(
                                 var foundSolvable = false
                                 if (result is SolvabilityResult.Solvable) {
                                     val classified = difficultyClassifier(board, result)
-                                    if (classified == difficulty) {
-                                        if (bank.addSeed(difficulty, candidateSeed)) {
-                                            foundSolvable = true
+                                    if (classified == DealDifficulty.EASY || classified == DealDifficulty.MEDIUM) {
+                                        if (bank.getAvailableCount(classified) < PersistentSeedBank.TARGET_CAPACITY) {
+                                            if (bank.addSeed(classified, candidateSeed)) {
+                                                foundSolvable = true
+                                            }
                                         }
                                     }
                                 }
@@ -240,6 +263,11 @@ class DealGenerator(
                     }
                     currentJobs.add(job)
                 }
+            } else if (needed < 0) {
+                val excess = -needed
+                val toCancel = currentJobs.takeLast(excess)
+                toCancel.forEach { it.cancel() }
+                currentJobs.removeAll(toCancel)
             }
         }
     }
