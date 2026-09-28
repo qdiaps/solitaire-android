@@ -17,12 +17,17 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Decomposed and planned `T-6.FIX2` (Configurable Deal Difficulty: Easy / Medium / Random, Human-Friendly Deal Filtering & DealGenerator Wiring). Ready to proceed to `T-6.FIX2.1`.
+- **Current Focus:** Completed `T-6.FIX2.1` (Domain DealDifficulty Enum, DealDifficultyClassifier & DealGenerator Multi-Difficulty Buffering). Ready to proceed to `T-6.FIX2.2`.
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-28 (T-6.FIX2.1: Domain DealDifficulty Enum, DealDifficultyClassifier & Multi-Difficulty DealGenerator):**
+  - Implemented `@Serializable` `DealDifficulty` enum (`EASY`, `MEDIUM`, `RANDOM`) in `io.github.qdiaps.solitaire.domain.rules`.
+  - Implemented pure Kotlin heuristic classifier `DealDifficultyClassifier` in `io.github.qdiaps.solitaire.domain.solver` (filtering out unsolvable/timeout deals, classifying deals with $\ge 2$ opening tableau moves and $\le 250$ A* states as `EASY`, other solvable boards as `MEDIUM`).
+  - Extended `DealGenerator` with multi-difficulty channels (`easyChannel`, `mediumChannel`), independent non-blocking producers with channel backpressure, and `getSolvableDeal(difficulty: DealDifficulty = DealDifficulty.EASY)` with instant `RANDOM` bypass.
+  - Verified with TDD: created `DealDifficultyClassifierTest` and `DealGeneratorDifficultyTest`. All 572 unit tests passing (100% pass).
 - **2026-09-28 (T-6.FIX2 Planning & Deal Difficulty Decomposition):**
   - Diagnosed root causes for high deal difficulty / frequent deadlocks: `DealGenerator` was omitted from runtime factory injection in `MainActivity`, causing reliance on raw random shuffles (`KlondikeDealer.dealShuffled()`), and raw solvable deals lacked human-playability filtering.
   - Formulated architecture for configurable deal difficulties: `EASY` (default, 100% winnable, high opening mobility $\ge 2$, A* states $\le 250$), `MEDIUM` (100% winnable, standard A* search), and `RANDOM` (classic unverified shuffle).
@@ -48,4 +53,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-6.FIX2.1: Domain DealDifficulty Enum, DealDifficultyClassifier & DealGenerator Multi-Difficulty Buffering`.
+- **Target Task:** `T-6.FIX2.2: DataStore Settings Persistence, GameViewModel Deal Difficulty Integration & MainActivity DealGenerator Wiring`.
