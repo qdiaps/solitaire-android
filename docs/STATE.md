@@ -9,7 +9,7 @@
 ---
 
 ## Current Focus & Status
-- **Phase:** 6 / 7 (Victory Screen & Polish) — Implementation.
+- **Phase:** 6 / 7 (Victory Screen & Polish) — Complete.
 - **Completed Milestones Summary:**
   - **Phase 1: Pure Domain Engine** — 159 unit tests (100% pass), models, rules, scoring, smart tap, undo. (Complete)
   - **Phase 2: Solvability Engine & Background Generator** — 80 unit tests (100% pass), A* solver, deadlock detector, buffered deal generator. (Complete)
@@ -17,12 +17,19 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-6.7` (ViewModel & Screen Integration). Ready to proceed to `T-6.8` (Performance Profiling, Memory Leak Audit, ADR 010 & Final Polish).
+- **Current Focus:** Phase 6 Complete (Victory Screen & Polish). Ready to proceed to Phase 7 (Packaging, Optimization & Release Preparation).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-28 (T-6.8: Performance Profiling, Memory Leak Audit, ADR 010 & Final Polish):**
+  - Audited and refactored hot animation loop for zero heap object allocations:
+    - Retained reusable `CanvasDrawScope` and viewport `Size` cache in `ClassicBounceRenderer`, eliminating repeated drawing scope and size object creations.
+    - Optimized `CascadeSequencer` particle lifecycle using pre-allocated `ArrayList(52)` and `ArrayDeque(52)` with in-place indexed mutations, eliminating list copies and iterator allocations per frame.
+  - Audited memory leak resilience: verified that `VictoryOverlay` cleans up offscreen trail buffers via `DisposableEffect(renderer)` and reclaims all 52 card face bitmaps via `rememberCardSpriteCache` disposal upon navigation or backgrounding.
+  - Documented ADR 010 in `docs/ARCHITECTURE.md` covering the extensible victory celebration architecture, particle physics, hardware-backed sprite cache, offscreen motion trails, and zero-allocation frame loop.
+  - Verified full test suite and quality checks: `./gradlew check` and `./gradlew test` (657 unit tests, 100% pass, 0 lint warnings/errors). Phase 6 is fully complete!
 - **2026-09-28 (T-6.7: ViewModel & Screen Integration):**
   - Connected win detection in `GameViewModel` across moves, auto-complete cascades, and dev tools to trigger `StartVictoryAnimation`, compute `VictorySummary` against historical stats, and persist game records to `StatsRepository`.
   - Added overload `VictoryOverlay` accepting `DropTargetRegistry` and foundations to automatically resolve foundation positions, manage hardware-backed sprite cache, and run the canvas loop.

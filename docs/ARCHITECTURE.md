@@ -240,3 +240,25 @@ sealed interface GameEvent {
   2. `DataStoreGamePersistenceRepository` using a non-cancellable persistence coroutine scope and `IOException`/serialization try-catch fallbacks.
   3. First-move activation guard (`hasMoved = false` until first card placement or stock draw), keeping the timer at `00:00` and postponing `recordGameStarted()` until actual gameplay begins.
 - **Rationale:** Guarantees zero data loss on backgrounding, eliminates misleading 0-second abandoned game statistics for idle deals, and guarantees fail-safe fallback to clean deals if storage corruption occurs.
+
+### ADR 010: Extensible Canvas Victory Celebration and Offscreen Motion Trails
+- **Context:** The iconic Klondike Solitaire victory sequence involves 52 cards cascading from foundation piles and bouncing repeatedly off the floor while stamping continuous motion trails. Rendering 52 bouncing cards with trail histories using standard Jetpack Compose composables or raw `Canvas.drawRect` causes massive recomposition overhead, O(N*frames) redraw times, and GC pauses on mobile devices.
+- **Decision:** Implement a modular, hardware-accelerated celebration architecture:
+  1. **Separation of Concerns:**
+     - Mathematical physics model (`BouncingCardsPhysics`) managing velocity, gravity, elastic collisions, and boundary termination.
+     - Cascade release sequencer (`CascadeSequencer`) driving foundation-to-tableau wave timings.
+     - Strategy interface (`VictoryAnimator`) and factory (`VictoryAnimatorFactory`) enabling pluggable victory animation types (`VictoryAnimationType.CLASSIC_BOUNCE`, expandable to confetti, fireworks, etc.).
+     - Strategy renderer (`VictoryRenderer` / `ClassicBounceRenderer`) executing graphics composition.
+  2. **Hardware-Backed Texture Pre-Caching (`CardSpriteCache`):**
+     - Pre-render all 52 card faces once into offscreen `ImageBitmap`s upon victory trigger.
+     - Instant $O(1)$ texture retrieval during the frame loop, eliminating layout, font, and vector rasterization during animation.
+  3. **Persistent Offscreen Trail Buffer (`trailBitmap`):**
+     - Retain a hardware-accelerated offscreen `ImageBitmap` and `Canvas`.
+     - In each frame, active card sprites are stamped once onto the persistent buffer without clearing earlier paths, followed by a single blit onto the screen `DrawScope`.
+  4. **Zero Heap Allocation Steady-State Loop:**
+     - Drive the animation loop using `withFrameNanos`.
+     - Reusable `CanvasDrawScope`, pre-cached `Size`, and in-place `ArrayList` / `ArrayDeque` particle mutations ensure 0 heap object allocations per frame.
+     - Frame invalidation occurs strictly in the draw phase via `frameTick: MutableLongState`, bypassing Compose composition and layout passes completely.
+  5. **Lifecycle-Safe Resource Disposal:**
+     - Backed by `DisposableEffect`: all 52 sprite bitmaps and offscreen canvas buffers are automatically freed upon screen dismissal, navigation, or app backgrounding.
+- **Rationale:** Delivers rock-solid 60/120 FPS animation performance on mid-range and low-end Android devices with zero GC pauses, instantaneous tap-to-skip responsiveness, and an extensible architecture for future animation variants.

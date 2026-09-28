@@ -27,11 +27,13 @@ class CascadeSequencer(
     val physics: BouncingCardsPhysics = BouncingCardsPhysics(),
     private val random: Random = Random.Default
 ) {
-    var queuedCards: List<BouncingCardParticle> = emptyList()
-        private set
+    private val _queuedCards = ArrayDeque<BouncingCardParticle>(52)
+    val queuedCards: List<BouncingCardParticle>
+        get() = _queuedCards
 
-    var activeCards: List<BouncingCardParticle> = emptyList()
-        private set
+    private val _activeCards = ArrayList<BouncingCardParticle>(52)
+    val activeCards: List<BouncingCardParticle>
+        get() = _activeCards
 
     var completedCardsCount: Int = 0
         private set
@@ -93,17 +95,17 @@ class CascadeSequencer(
             }
         }
 
+        _activeCards.clear()
+        _queuedCards.clear()
         elapsedTimeMs = 0L
         completedCardsCount = 0
 
         if (particles.isNotEmpty()) {
             val first = particles.removeAt(0).copy(isActive = true)
-            activeCards = listOf(first)
-            queuedCards = particles
+            _activeCards.add(first)
+            _queuedCards.addAll(particles)
             nextReleaseTimeMs = config.releaseIntervalMs
         } else {
-            activeCards = emptyList()
-            queuedCards = emptyList()
             nextReleaseTimeMs = 0L
         }
     }
@@ -122,32 +124,22 @@ class CascadeSequencer(
         elapsedTimeMs += dtMs
 
         // Release queued cards if elapsed time has reached or surpassed nextReleaseTimeMs
-        if (queuedCards.isNotEmpty()) {
-            val toRelease = mutableListOf<BouncingCardParticle>()
-            val remainingQueue = queuedCards.toMutableList()
-
-            while (remainingQueue.isNotEmpty() && elapsedTimeMs >= nextReleaseTimeMs) {
-                val next = remainingQueue.removeAt(0).copy(isActive = true)
-                toRelease.add(next)
-                nextReleaseTimeMs += config.releaseIntervalMs
-            }
-
-            if (toRelease.isNotEmpty()) {
-                queuedCards = remainingQueue
-                activeCards = activeCards + toRelease
-            }
+        while (_queuedCards.isNotEmpty() && elapsedTimeMs >= nextReleaseTimeMs) {
+            val next = _queuedCards.removeFirst().copy(isActive = true)
+            _activeCards.add(next)
+            nextReleaseTimeMs += config.releaseIntervalMs
         }
 
-        // Step active cards
-        activeCards = activeCards.map { particle ->
-            if (particle.isTerminated) {
-                particle
-            } else {
+        // Step active cards in-place to eliminate heap allocations per frame
+        val count = _activeCards.size
+        for (i in 0 until count) {
+            val particle = _activeCards[i]
+            if (!particle.isTerminated) {
                 val updated = physics.step(particle, deltaTimeSeconds, screenWidth, screenHeight)
-                if (updated.isTerminated && !particle.isTerminated) {
+                if (updated.isTerminated) {
                     completedCardsCount++
                 }
-                updated
+                _activeCards[i] = updated
             }
         }
     }

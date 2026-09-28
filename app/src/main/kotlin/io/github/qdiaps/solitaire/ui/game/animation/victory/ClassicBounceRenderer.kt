@@ -23,27 +23,51 @@ typealias ParticleStamper = (
     layoutDirection: LayoutDirection
 ) -> Unit
 
-private val defaultParticleStamper: ParticleStamper = { canvas, particles, spriteCache, width, height, density, layoutDirection ->
-    val drawScope = CanvasDrawScope()
-    drawScope.draw(
-        density = density,
-        layoutDirection = layoutDirection,
-        canvas = canvas,
-        size = Size(width.toFloat(), height.toFloat())
+private class ReusableParticleStamper : ParticleStamper {
+    private val reusableDrawScope = CanvasDrawScope()
+    private var cachedWidth: Int = -1
+    private var cachedHeight: Int = -1
+    private var cachedSize: Size = Size.Zero
+
+    override fun invoke(
+        canvas: Canvas,
+        particles: List<BouncingCardParticle>,
+        spriteCache: CardSpriteCache,
+        width: Int,
+        height: Int,
+        density: Density,
+        layoutDirection: LayoutDirection
     ) {
-        for (particle in particles) {
-            if (particle.isActive && !particle.isTerminated) {
-                val sprite = spriteCache.get(particle.card)
-                if (sprite != null) {
-                    drawImage(
-                        image = sprite,
-                        dstOffset = IntOffset(particle.x.toInt(), particle.y.toInt())
-                    )
+        if (cachedWidth != width || cachedHeight != height) {
+            cachedWidth = width
+            cachedHeight = height
+            cachedSize = Size(width.toFloat(), height.toFloat())
+        }
+
+        reusableDrawScope.draw(
+            density = density,
+            layoutDirection = layoutDirection,
+            canvas = canvas,
+            size = cachedSize
+        ) {
+            val count = particles.size
+            for (i in 0 until count) {
+                val particle = particles[i]
+                if (particle.isActive && !particle.isTerminated) {
+                    val sprite = spriteCache.get(particle.card)
+                    if (sprite != null) {
+                        drawImage(
+                            image = sprite,
+                            dstOffset = IntOffset(particle.x.toInt(), particle.y.toInt())
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+private val defaultParticleStamper: ParticleStamper = ReusableParticleStamper()
 
 /**
  * Renders the iconic Windows Solitaire classic bouncing card cascade.

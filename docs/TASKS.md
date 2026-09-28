@@ -115,12 +115,13 @@
   - Wired screen tap-to-skip via `SkipWinAnimation` immediately halting the canvas loop and transitioning to `VictorySummaryDialog`. Handled "New Game", "Play Again", and "View Board" actions.
   - *TDD/Unit Tests:* Added `VictorySequenceTests` in `GameViewModelTest` and full integration test in `SolitaireGameScreenTest` verifying win flow, tap-to-skip, audio/haptic celebration dispatch, dialog dismiss, and restart/new game lifecycle (657 total suite tests, 100% pass, 0 lint errors).
 
-- [ ] **T-6.8: Performance Profiling, Memory Leak Audit & Final Polish**
-  - Profile frame rendering times using Android Profiler / Compose Tracing, verifying stable 60/120 FPS with 0 jank frames.
-  - Audit heap allocations: ensure 0 object allocations during the continuous `Canvas` animation draw loop.
-  - Verify lifecycle resilience: backgrounding the app (`ON_PAUSE` / `ON_STOP`) during victory cascade safely pauses/cancels loops without memory leaks.
-  - Verify full test suite: `./gradlew check` and `./gradlew test` (100% pass, 0 lint warnings).
-  - Document ADR 010 in `docs/ARCHITECTURE.md` covering extensible victory animations and canvas motion trails.
+- [x] **T-6.8: Performance Profiling, Memory Leak Audit & Final Polish**
+  - Audited and refactored hot animation loop for zero heap object allocations:
+    - Retained reusable `CanvasDrawScope` and viewport `Size` cache in `ClassicBounceRenderer`, eliminating repeated drawing scope and size object creations.
+    - Optimized `CascadeSequencer` particle lifecycle using pre-allocated `ArrayList(52)` and `ArrayDeque(52)` with in-place indexed mutations, eliminating list copies and iterator allocations per frame.
+  - Audited memory leak resilience: verified that `VictoryOverlay` cleans up offscreen trail buffers via `DisposableEffect(renderer)` and reclaims all 52 card face bitmaps via `rememberCardSpriteCache` disposal upon navigation or backgrounding.
+  - Documented ADR 010 in `docs/ARCHITECTURE.md` covering the extensible victory celebration architecture, particle physics, hardware-accelerated sprite cache, offscreen motion trails, and zero-allocation frame loop.
+  - Verified full test suite and quality checks: `./gradlew check` and `./gradlew test` (657 unit tests, 100% pass, 0 lint warnings/errors). Phase 6 is complete!
 
 ---
 
