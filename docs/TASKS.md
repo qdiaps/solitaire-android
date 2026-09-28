@@ -88,11 +88,11 @@
   - *TDD/Unit Tests:* Added `ClassicBounceRendererTest` validating type mapping, offscreen buffer allocation, particle stamping, and lifecycle memory eviction (100% pass, 644 total suite tests).
   - *Compose Previews:* Created `VictoryOverlayPreview` (`VictoryOverlayBouncingCascadePreview`) demonstrating active particle cascade and motion trails.
 
-- [ ] **T-6.4: Victory Audio Fanfare & Celebration Haptics (`SolitaireAudio`, `SolitaireHaptics`)**
-  - Create and bundle crisp uncompressed 16-bit 44.1kHz PCM WAV audio asset `victory_fanfare.wav` in `app/src/main/res/raw/`.
-  - Add `playWinFanfare()` to `SolitaireAudio` and `AndroidSolitaireAudio`, respecting `soundEnabled`.
-  - Add celebratory victory haptic sequence `playWinCelebration()` to `SolitaireHaptics` and `AndroidSolitaireHaptics`, respecting `hapticsEnabled`.
-  - *TDD/Unit Tests:* `SolitaireAudioTest` and `SolitaireHapticsTest` validating victory sound/vibration triggering and muting guards.
+- [x] **T-6.4: Victory Audio Fanfare & Celebration Haptics (`SolitaireAudio`, `SolitaireHaptics`)**
+  - Synthesized and bundled crisp uncompressed 16-bit 44.1kHz PCM WAV audio asset `victory_fanfare.wav` in `app/src/main/res/raw/` (bright C Major ascending arpeggio and triumphant brass/chime chord).
+  - Extended `SolitaireAudio` and `AndroidSolitaireAudio` with `playWinFanfare()`, loaded into low-latency `SoundPool` with `USAGE_GAME` sonification and muted when audio is disabled.
+  - Extended `SolitaireHaptics` and `AndroidSolitaireHaptics` with `playWinCelebration()`, driving a multi-pulse celebratory waveform (`0, 70, 60, 70, 60, 140` ms) on supported vibrators with graceful Compose fallback.
+  - *TDD/Unit Tests:* Added tests in `SolitaireAudioTest` and `SolitaireHapticsTest` validating invocation tracking, muting guards when disabled, and no-op contract compliance (100% pass, 644 total suite tests).
 
 - [ ] **T-6.5: Victory Summary Data Model & Records Calculation (`VictorySummary`, `GameContract`)**
   - Define `@Immutable` `VictorySummary` data model: `timeSeconds`, `movesCount`, `score`, and record breakthrough flags (`isNewBestTime`, `isNewFewestMoves`, `isNewHighScore`, `isNewBestStreak`).

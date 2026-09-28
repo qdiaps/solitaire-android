@@ -21,6 +21,7 @@ import io.github.qdiaps.solitaire.R
  * - [playSnap]: card drop / sequence placement / foundation landing
  * - [playFlip]: stock draw / face-up turnover / 3D flip
  * - [playDeal]: new game deal / shuffle
+ * - [playWinFanfare]: victory fanfare chord progression flourish
  */
 interface SolitaireAudio {
     var isEnabled: Boolean
@@ -28,6 +29,7 @@ interface SolitaireAudio {
     fun playSnap()
     fun playFlip()
     fun playDeal()
+    fun playWinFanfare()
     fun release()
 }
 
@@ -55,6 +57,7 @@ class AndroidSolitaireAudio(context: Context) : SolitaireAudio {
     private val snapSoundId: Int
     private val flipSoundId: Int
     private val dealSoundId: Int
+    private val victoryFanfareSoundId: Int
 
     init {
         soundPool.setOnLoadCompleteListener { _, sampleId, status ->
@@ -66,6 +69,7 @@ class AndroidSolitaireAudio(context: Context) : SolitaireAudio {
         snapSoundId = soundPool.load(context, R.raw.card_snap, 1)
         flipSoundId = soundPool.load(context, R.raw.card_flip, 1)
         dealSoundId = soundPool.load(context, R.raw.card_deal, 1)
+        victoryFanfareSoundId = soundPool.load(context, R.raw.victory_fanfare, 1)
     }
 
     override fun playSlide() {
@@ -96,6 +100,13 @@ class AndroidSolitaireAudio(context: Context) : SolitaireAudio {
         }
     }
 
+    override fun playWinFanfare() {
+        if (!isEnabled) return
+        if (loadedSoundIds.contains(victoryFanfareSoundId)) {
+            soundPool.play(victoryFanfareSoundId, 0.95f, 0.95f, 3, 0, 1.0f)
+        }
+    }
+
     override fun release() {
         soundPool.release()
     }
@@ -112,6 +123,7 @@ val LocalSolitaireAudio: ProvidableCompositionLocal<SolitaireAudio> =
             override fun playSnap() {}
             override fun playFlip() {}
             override fun playDeal() {}
+            override fun playWinFanfare() {}
             override fun release() {}
         }
     }
@@ -129,6 +141,7 @@ fun rememberSolitaireAudio(enabled: Boolean = true): SolitaireAudio {
                 override fun playSnap() {}
                 override fun playFlip() {}
                 override fun playDeal() {}
+                override fun playWinFanfare() {}
                 override fun release() {}
             }
         }

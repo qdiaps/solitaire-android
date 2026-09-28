@@ -17,12 +17,17 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-6.3` (Hardware-Accelerated Victory Canvas Overlay). Ready to proceed to `T-6.4` (Victory Audio Fanfare & Celebration Haptics).
+- **Current Focus:** Completed `T-6.4` (Victory Audio Fanfare & Celebration Haptics). Ready to proceed to `T-6.5` (Victory Summary Data Model & Records Calculation).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-28 (T-6.4: Victory Audio Fanfare & Celebration Haptics):**
+  - Synthesized crisp 16-bit 44.1kHz mono PCM WAV audio asset `victory_fanfare.wav` in `app/src/main/res/raw/` (bright C Major ascending arpeggio and triumphant brass/chime chord).
+  - Extended `SolitaireAudio` and `AndroidSolitaireAudio` with `playWinFanfare()`, loaded into low-latency `SoundPool` with `USAGE_GAME` sonification and muted when audio is disabled.
+  - Extended `SolitaireHaptics` and `AndroidSolitaireHaptics` with `playWinCelebration()`, driving a multi-pulse celebratory waveform (`0, 70, 60, 70, 60, 140` ms) on supported vibrators with graceful Compose fallback.
+  - Added unit tests in `SolitaireAudioTest` and `SolitaireHapticsTest` validating invocation tracking, muting guards when disabled, and no-op contract compliance. Full suite: 644 unit tests passing (100% pass), 0 Android lint errors (`./gradlew test`, `./gradlew lintDebug`).
 - **2026-09-28 (T-6.3: Hardware-Accelerated Victory Canvas Overlay):**
   - Implemented pluggable `VictoryRenderer` interface and `ClassicBounceRenderer` drawing to hardware-accelerated Compose `Canvas`.
   - Implemented authentic persistent motion trails (Windows Solitaire classic card ghosting trail) via offscreen hardware-backed trail buffer without full canvas clears or excessive allocations.
