@@ -26,7 +26,7 @@
   - *TDD/Unit Tests:* Added `recordGameWon is invoked when winning via ApplyAutoCompleteMove` in `GameViewModelTest` verifying that auto-complete victory properly persists win statistics and increments win counters.
 
 - [ ] **T-6.FIX5: Fast-Fail Solver Optimization, Pre-Seeded Seed Bank (200 Deals), Dynamic Scaling & Developer Debug Panel**
-  - [ ] **T-6.FIX5.1 (A* Solver Fast-Fail & Realistic Difficulty Thresholds):**
+  - [x] **T-6.FIX5.1 (A* Solver Fast-Fail & Realistic Difficulty Thresholds):**
     - Relax `maxEasyStates` from 250 to 1000 in `DealDifficultyClassifier` for `DealDifficulty.EASY`; classify `> 1000` states as `DealDifficulty.MEDIUM`.
     - Implement aggressive Fast-Fail in `SolvabilityChecker`: introduce `fastFailTimeoutMs = 150L` and `fastFailMaxStates = 2000` for background deal screening, eliminating 1.5s stalls on unpromising or deadlocked deals.
     - *TDD/Unit Tests:* Update `DealDifficultyClassifierTest` and add `SolvabilityCheckerFastFailTest`.

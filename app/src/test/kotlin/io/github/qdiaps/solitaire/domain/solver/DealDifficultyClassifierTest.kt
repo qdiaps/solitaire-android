@@ -103,20 +103,36 @@ class DealDifficultyClassifierTest {
     inner class ClassificationHeuristicsTests {
 
         @Test
+        @DisplayName("DEFAULT_MAX_EASY_STATES_EVALUATED is 1000")
+        fun `DEFAULT_MAX_EASY_STATES_EVALUATED is 1000`() {
+            assertEquals(1000, DealDifficultyClassifier.DEFAULT_MAX_EASY_STATES_EVALUATED)
+        }
+
+        @Test
         @DisplayName("classify returns EASY when statesEvaluated is low and opening moves are high")
         fun `classify returns EASY when states evaluated is low and opening moves are sufficient`() {
             val board = createBoardWithTableauMoves(2)
-            val result = createSolvableResult(statesEvaluated = 150)
+            val result = createSolvableResult(statesEvaluated = 300)
 
             val classification = DealDifficultyClassifier.classify(board, result)
             assertEquals(DealDifficulty.EASY, classification)
         }
 
         @Test
-        @DisplayName("classify returns MEDIUM when statesEvaluated exceeds easy threshold")
+        @DisplayName("classify returns EASY at exact boundary statesEvaluated == 1000")
+        fun `classify returns EASY at exact boundary statesEvaluated 1000`() {
+            val board = createBoardWithTableauMoves(2)
+            val result = createSolvableResult(statesEvaluated = 1000)
+
+            val classification = DealDifficultyClassifier.classify(board, result)
+            assertEquals(DealDifficulty.EASY, classification)
+        }
+
+        @Test
+        @DisplayName("classify returns MEDIUM when statesEvaluated exceeds easy threshold (> 1000)")
         fun `classify returns MEDIUM when states evaluated exceeds easy limit`() {
             val board = createBoardWithTableauMoves(2)
-            val result = createSolvableResult(statesEvaluated = 300)
+            val result = createSolvableResult(statesEvaluated = 1001)
 
             val classification = DealDifficultyClassifier.classify(board, result)
             assertEquals(DealDifficulty.MEDIUM, classification)

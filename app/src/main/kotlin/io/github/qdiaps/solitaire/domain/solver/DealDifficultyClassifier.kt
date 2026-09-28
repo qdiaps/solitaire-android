@@ -8,13 +8,13 @@ import io.github.qdiaps.solitaire.domain.rules.DrawMode
 /**
  * Pure Kotlin heuristic classifier evaluating Klondike Solitaire deals for human playability.
  *
- * Distinguishes between gentle [DealDifficulty.EASY] deals (high opening mobility and low A* search depth)
- * and [DealDifficulty.MEDIUM] deals requiring deeper exploration.
+ * Distinguishes between gentle [DealDifficulty.EASY] deals (high opening mobility and low A* search depth <= 1000 states)
+ * and [DealDifficulty.MEDIUM] deals requiring deeper exploration (> 1000 states).
  */
 object DealDifficultyClassifier {
 
     /** Default upper bound on A* states evaluated for a deal to qualify as Easy. */
-    const val DEFAULT_MAX_EASY_STATES_EVALUATED: Int = 250
+    const val DEFAULT_MAX_EASY_STATES_EVALUATED: Int = 1000
 
     /** Default minimum number of opening tableau-originating moves for Easy qualification. */
     const val DEFAULT_MIN_EASY_OPENING_MOVES: Int = 2

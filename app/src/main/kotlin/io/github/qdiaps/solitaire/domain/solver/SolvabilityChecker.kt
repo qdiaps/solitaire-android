@@ -53,11 +53,35 @@ sealed interface SolvabilityResult {
  * greedily without branching, collapsing search space size by orders of magnitude.
  */
 data class SolverConfig(
-    val maxStates: Int = 10_000,
-    val timeoutMs: Long = 1_500L,
+    val maxStates: Int = DEFAULT_MAX_STATES,
+    val timeoutMs: Long = DEFAULT_TIMEOUT_MS,
     val drawMode: DrawMode = DrawMode.DRAW_ONE,
     val autoCollapseSafePromotions: Boolean = true
-)
+) {
+    companion object {
+        const val DEFAULT_MAX_STATES: Int = 10_000
+        const val DEFAULT_TIMEOUT_MS: Long = 1_500L
+        const val FAST_FAIL_MAX_STATES: Int = 2_000
+        const val FAST_FAIL_TIMEOUT_MS: Long = 150L
+
+        /**
+         * Creates a fast-fail solver configuration designed for rapid background deal screening.
+         * Cuts off unpromising, deadlocked, or deep exploration deals after [FAST_FAIL_TIMEOUT_MS] (150ms)
+         * or [FAST_FAIL_MAX_STATES] (2000 states).
+         */
+        fun fastFail(
+            drawMode: DrawMode = DrawMode.DRAW_ONE,
+            maxStates: Int = FAST_FAIL_MAX_STATES,
+            timeoutMs: Long = FAST_FAIL_TIMEOUT_MS,
+            autoCollapseSafePromotions: Boolean = true
+        ): SolverConfig = SolverConfig(
+            maxStates = maxStates,
+            timeoutMs = timeoutMs,
+            drawMode = drawMode,
+            autoCollapseSafePromotions = autoCollapseSafePromotions
+        )
+    }
+}
 
 /**
  * High-performance A* / Heuristic Solvability Search Engine for Klondike Solitaire.
@@ -66,6 +90,9 @@ data class SolverConfig(
  * greedy branch collapsing.
  */
 object SolvabilityChecker {
+
+    const val FAST_FAIL_MAX_STATES: Int = SolverConfig.FAST_FAIL_MAX_STATES
+    const val FAST_FAIL_TIMEOUT_MS: Long = SolverConfig.FAST_FAIL_TIMEOUT_MS
 
     private class SearchNode(
         val state: BoardState,
@@ -183,6 +210,30 @@ object SolvabilityChecker {
 
         val elapsed = System.currentTimeMillis() - startTime
         return SolvabilityResult.Unsolvable(statesEvaluated, elapsed)
+    }
+
+    /**
+     * Rapidly checks deal solvability using aggressive fast-fail thresholds ([FAST_FAIL_TIMEOUT_MS] and [FAST_FAIL_MAX_STATES]).
+     *
+     * Used for background deal screening to reject difficult or unpromising deals within ~150 ms
+     * without stalling on 1.5-second full timeouts.
+     */
+    fun checkSolvabilityFastFail(
+        initialState: BoardState,
+        drawMode: DrawMode = DrawMode.DRAW_ONE,
+        maxStates: Int = FAST_FAIL_MAX_STATES,
+        timeoutMs: Long = FAST_FAIL_TIMEOUT_MS,
+        autoCollapseSafePromotions: Boolean = true
+    ): SolvabilityResult {
+        return checkSolvability(
+            initialState = initialState,
+            config = SolverConfig.fastFail(
+                drawMode = drawMode,
+                maxStates = maxStates,
+                timeoutMs = timeoutMs,
+                autoCollapseSafePromotions = autoCollapseSafePromotions
+            )
+        )
     }
 
     /**
