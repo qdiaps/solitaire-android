@@ -101,10 +101,11 @@
   - Added MVI intents `StartVictoryAnimation`, `SkipWinAnimation`, and `DismissVictorySummary` in `GameIntent` and wired exhaustive branches in `GameViewModel`.
   - *TDD/Unit Tests:* Added `VictorySummaryTest` (100% pass) and updated `GameContractTest` covering state immutability, default state verification, and exhaustive intent handling (651 total suite tests).
 
-- [ ] **T-6.6: Victory Summary Dialog UI (`VictorySummaryDialog`)**
-  - Implement celebratory modal dialog `VictorySummaryDialog.kt` displaying finished game time, moves, score, and glowing golden badges for new personal records.
-  - Provide quick action buttons: "New Game", "Play Again" (restart same deal), and "Close / View Board".
-  - *Compose Previews:* `VictorySummaryDialogPreview` showcasing standard win, new record break, and dark felt themes.
+- [x] **T-6.6: Victory Summary Dialog UI (`VictorySummaryDialog`)**
+  - Implemented celebratory modal dialog `VictorySummaryDialog.kt` displaying custom vector golden trophy iconography, victory title, congratulatory subtitle, and glowing golden badges for new personal records.
+  - Implemented metrics grid for Time (with "BEST" badge), Moves (with "FEWEST" badge), Score (with "RECORD" badge), and celebratory winning streak breakthrough banner ("NEW BEST WIN STREAK ACHIEVED!").
+  - Provided prominent primary CTA "New Game" and secondary action buttons "Play Again" (replays same deal) and "View Board" (dismisses dialog to inspect completed board).
+  - *Compose Previews:* Created `VictorySummaryDialogPreview` showcasing standard win, new record break, and dark felt themes (100% test pass, 0 lint errors).
 
 - [ ] **T-6.7: ViewModel & Screen Integration (`GameViewModel`, `SolitaireGameScreen`)**
   - Connect win detection (`isGameWon`) to trigger `StartVictoryAnimation`, compute `VictorySummary`, and update `StatsRepository`.

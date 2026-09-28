@@ -17,12 +17,17 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-6.5` (Victory Summary Data Model & Records Calculation). Ready to proceed to `T-6.6` (Victory Summary Dialog UI).
+- **Current Focus:** Completed `T-6.6` (Victory Summary Dialog UI). Ready to proceed to `T-6.7` (ViewModel & Screen Integration).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-28 (T-6.6: Victory Summary Dialog UI):**
+  - Implemented celebratory modal dialog `VictorySummaryDialog.kt` displaying custom vector golden trophy iconography, victory title, congratulatory subtitle, and glowing golden badges for new personal records.
+  - Implemented metrics grid for Time (with "BEST" badge), Moves (with "FEWEST" badge), Score (with "RECORD" badge), and celebratory winning streak breakthrough banner ("NEW BEST WIN STREAK ACHIEVED!").
+  - Provided prominent primary CTA "New Game" and secondary action buttons "Play Again" (replays same deal) and "View Board" (dismisses dialog to inspect completed board).
+  - Created Compose preview `VictorySummaryDialogPreview` showcasing standard win, new record break, and dark felt themes. Full suite: 651 unit tests passing (100% pass), 0 Android lint errors (`./gradlew test`, `./gradlew lintDebug`).
 - **2026-09-28 (T-6.5: Victory Summary Data Model & Records Calculation):**
   - Defined `@Immutable` `VictorySummary` data model encapsulating `timeSeconds`, `movesCount`, `score`, breakthrough flags (`isNewBestTime`, `isNewFewestMoves`, `isNewHighScore`, `isNewBestStreak`), and composite `hasAnyNewRecord`.
   - Implemented `VictorySummary.calculate()` calculating personal records against baseline `GameStats`.
