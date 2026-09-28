@@ -20,6 +20,11 @@
   - Retained sequential board state mutation across iterations (`var current = currentBoardState` outside loop, updated to `current = move.resultingState` per step), guaranteeing unique card flight paths.
   - *TDD/Unit Tests:* Added `step by step auto complete loop advances state sequentially with unique cards` in `SolitaireGameScreenTest` verifying unique sequential moves without duplicate card animations.
 
+- [x] **T-6.FIX4: Record Victory Stats and Clear Session on Auto-Complete Win (`GameViewModel`)**
+  - Fixed a missing stats recording bug in `GameViewModel.applyAutoCompleteMove`: previously, when winning through auto-complete cascade moves, `recordVictoryInStats()` and `cancelIdleHintTimer()` were not invoked, leaving victory statistics unrecorded in `StatsRepository` and the active session un-cleared in `GamePersistenceRepository`.
+  - Added calls to `recordVictoryInStats()` and `cancelIdleHintTimer()` upon `isWon` detection in `applyAutoCompleteMove`.
+  - *TDD/Unit Tests:* Added `recordGameWon is invoked when winning via ApplyAutoCompleteMove` in `GameViewModelTest` verifying that auto-complete victory properly persists win statistics and increments win counters.
+
 - [ ] **T-6.1: Victory Animation Extensible Architecture & Bouncing Physics Engine (`VictoryAnimator`, `BouncingCardsPhysics`)**
   - Design extensible `VictoryAnimationType` enum (`CLASSIC_BOUNCE`, expandable to future effects like `FIREWORKS`, `CARD_SPIRAL`, etc.) and `VictoryAnimator` abstraction.
   - Implement pure math `BouncingCardsPhysics` engine: particles with position, velocity ($v_x, v_y$), gravity, restitution coefficient ($e \approx -0.85$), and screen boundary bouncing.

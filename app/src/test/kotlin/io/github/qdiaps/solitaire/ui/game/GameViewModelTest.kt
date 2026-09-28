@@ -39,6 +39,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -1879,6 +1880,50 @@ class GameViewModelTest {
             assertEquals(1, fakeStats.gameWonCount)
             assertEquals(680 + 10, fakeStats.lastWonScore)
             assertEquals(93, fakeStats.lastWonMoves)
+        }
+
+        @Test
+        @DisplayName("recordGameWon is invoked when winning via ApplyAutoCompleteMove")
+        fun `recordGameWon is invoked when winning via ApplyAutoCompleteMove`() = runTest(testDispatcher) {
+            val fakeStats = FakeStatsRepository()
+            val suits = Suit.entries
+            val foundations = suits.map { suit ->
+                if (suit == Suit.HEARTS) {
+                    Rank.entries.filter { it != Rank.KING }.map { Card(suit, it, isFaceUp = true) }
+                } else {
+                    Rank.entries.map { Card(suit, it, isFaceUp = true) }
+                }
+            }
+            val kingOfHearts = Card(Suit.HEARTS, Rank.KING, isFaceUp = true)
+            val tableau = List(7) { col ->
+                if (col == 0) listOf(kingOfHearts) else emptyList()
+            }
+            val almostWonBoard = BoardState(
+                foundations = foundations,
+                tableau = tableau,
+                score = 650,
+                movesCount = 40
+            )
+
+            val viewModel = GameViewModel(
+                initialBoardState = almostWonBoard,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                statsRepository = fakeStats
+            )
+            testScheduler.runCurrent()
+
+            val move = io.github.qdiaps.solitaire.domain.rules.AutoCompleteResolver.nextMove(almostWonBoard)
+            assertNotNull(move)
+
+            viewModel.onIntent(GameIntent.ApplyAutoCompleteMove(move!!))
+            testScheduler.runCurrent()
+
+            assertTrue(viewModel.uiState.value.isGameWon)
+            assertEquals(1, fakeStats.gameWonCount)
+            assertEquals(almostWonBoard.score + 10, fakeStats.lastWonScore)
+            assertEquals(41, fakeStats.lastWonMoves)
         }
 
         @Test

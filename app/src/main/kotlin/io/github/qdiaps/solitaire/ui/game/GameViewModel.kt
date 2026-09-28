@@ -784,7 +784,9 @@ class GameViewModel(
 
         if (isWon) {
             stopTimer()
+            cancelIdleHintTimer()
             _events.tryEmit(GameEvent.TriggerWinCelebration)
+            recordVictoryInStats()
         }
     }
 

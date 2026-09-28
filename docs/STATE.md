@@ -17,12 +17,17 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-6.FIX3` (Fixed duplicate card flight animation during auto-complete cascade in SolitaireGameScreen). Ready to proceed to `T-6.1`.
+- **Current Focus:** Completed `T-6.FIX4` (Fixed victory stats recording and session clearance on auto-complete win in GameViewModel). Ready to proceed to `T-6.1`.
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-28 (T-6.FIX4: Record Victory Stats and Clear Session on Auto-Complete Win):**
+  - Resolved missing victory stats recording bug in `GameViewModel.applyAutoCompleteMove`: previously, winning via animated auto-complete did not call `recordVictoryInStats()` or `cancelIdleHintTimer()`, leaving DataStore statistics (games won, win streak, best score, best time) un-updated and the saved session in DataStore un-cleared.
+  - Added `recordVictoryInStats()` and `cancelIdleHintTimer()` when `isWon` is detected in `applyAutoCompleteMove`.
+  - Added unit test `recordGameWon is invoked when winning via ApplyAutoCompleteMove` in `GameViewModelTest`.
+  - Verified full test suite and static analysis: 580 unit tests passing (100% pass), 0 Android lint errors (`./gradlew testDebugUnitTest`, `./gradlew lintDebug`).
 - **2026-09-28 (T-6.FIX3: Fix Duplicate Card Flight Animation during Auto-Complete Cascade):**
   - Resolved double flight animation bug in `SolitaireGameScreen.animatedAutoCompleteClick`: previously, `val current = currentBoardState` inside `while (isActive)` re-read stale board state before Compose recomposed on the next frame, causing each flying card to be triggered twice.
   - Initialized `var current = currentBoardState` outside the loop and updated `current = move.resultingState` sequentially for each move, guaranteeing each card flies exactly once with zero ghosting or animation repeats.
