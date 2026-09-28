@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -211,6 +212,7 @@ class DealGenerator(
                         updateActiveWorkers(1)
                         try {
                             while (isActive && bank.getAvailableCount(difficulty) < PersistentSeedBank.TARGET_CAPACITY) {
+                                yield()
                                 val candidateSeed = candidateSeedProvider()
                                 val board = KlondikeDealer.dealFromSeed(candidateSeed)
                                 val startTime = System.currentTimeMillis()

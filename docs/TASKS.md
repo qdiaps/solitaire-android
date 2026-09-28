@@ -25,7 +25,7 @@
   - Added calls to `recordVictoryInStats()` and `cancelIdleHintTimer()` upon `isWon` detection in `applyAutoCompleteMove`.
   - *TDD/Unit Tests:* Added `recordGameWon is invoked when winning via ApplyAutoCompleteMove` in `GameViewModelTest` verifying that auto-complete victory properly persists win statistics and increments win counters.
 
-- [ ] **T-6.FIX5: Fast-Fail Solver Optimization, Pre-Seeded Seed Bank (200 Deals), Dynamic Scaling & Developer Debug Panel**
+- [x] **T-6.FIX5: Fast-Fail Solver Optimization, Pre-Seeded Seed Bank (200 Deals), Dynamic Scaling & Developer Debug Panel**
   - [x] **T-6.FIX5.1 (A* Solver Fast-Fail & Realistic Difficulty Thresholds):**
     - Relax `maxEasyStates` from 250 to 1000 in `DealDifficultyClassifier` for `DealDifficulty.EASY`; classify `> 1000` states as `DealDifficulty.MEDIUM`.
     - Implement aggressive Fast-Fail in `SolvabilityChecker`: introduce `fastFailTimeoutMs = 150L` and `fastFailMaxStates = 2000` for background deal screening, eliminating 1.5s stalls on unpromising or deadlocked deals.
@@ -40,14 +40,14 @@
     - Implement dynamic coroutine replenishment in `DealGenerator`: 0 workers active when buffer is full (100/100, 0% CPU), 1 background worker on mild dip (>= 70%), scaling up to 3-4 parallel workers on heavy depletion (< 50%).
     - Expose reactive telemetry via `StateFlow<GeneratorDebugStats>` (Easy/Medium bank counts, active worker count, rejection rate, last solve duration).
     - *TDD/Unit Tests:* `PersistentSeedBankTest` (rotation, persistence, seed depletion/replenishment) and `DealGeneratorDynamicScalingTest`.
-  - [ ] **T-6.FIX5.4 (Developer Debug Tools in SettingsBottomSheet under BuildConfig.DEBUG):**
+  - [x] **T-6.FIX5.4 (Developer Debug Tools in SettingsBottomSheet under BuildConfig.DEBUG):**
     - Add **"Developer / Debug Tools"** section to `SettingsBottomSheet` rendered exclusively when `BuildConfig.DEBUG == true` (zero release overhead).
     - Telemetry UI: live seed bank counts (`Easy [X/100]`, `Medium [Y/100]`), active generator workers (`Idle` / `Refilling (N active)`), average candidate solve time, current session diagnostics (session ID, moves, score, deadlock / auto-complete flags), system DPI & card dimensions.
     - Dev Actions:
       - **"Stress Refill / Flush 90%"**: trims 90% of currently buffered seeds to trigger deep depletion and observe multi-worker dynamic scaling in real time. Guarded by a safety threshold: if total seeds < 20 (or < 10 in Easy / Medium), displays a warning banner/toast preventing over-depletion.
       - **"View / Export Seeds"**: opens dialog or copies active seed bank list to clipboard for instant inspection.
       - **"Instant Win"**: instantly forces foundation completion to easily test victory celebration animations.
-    - *TDD & Previews:* Unit tests for dev intents (`GameIntent.DevStressRefill`, `GameIntent.DevInstantWin`), and Compose Previews in `SettingsBottomSheetPreview`.
+    - *TDD & Previews:* Unit tests for dev intents (`GameIntent.DevStressRefill`, `GameIntent.DevInstantWin`, `GameIntent.DevExportSeeds`), and Compose Previews in `SettingsBottomSheetPreview`.
 
 - [ ] **T-6.1: Victory Animation Extensible Architecture & Bouncing Physics Engine (`VictoryAnimator`, `BouncingCardsPhysics`)**
   - Design extensible `VictoryAnimationType` enum (`CLASSIC_BOUNCE`, expandable to future effects like `FIREWORKS`, `CARD_SPIRAL`, etc.) and `VictoryAnimator` abstraction.

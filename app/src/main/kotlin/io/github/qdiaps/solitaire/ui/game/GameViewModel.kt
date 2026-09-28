@@ -17,6 +17,12 @@ import io.github.qdiaps.solitaire.domain.engine.UndoManager
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
+import io.github.qdiaps.solitaire.domain.model.Rank
+import io.github.qdiaps.solitaire.domain.model.Suit
+import io.github.qdiaps.solitaire.data.repository.DataStoreSeedBankStorage
+import io.github.qdiaps.solitaire.domain.solver.PersistentSeedBank
+import io.github.qdiaps.solitaire.domain.solver.SeedBankCatalog
+import io.github.qdiaps.solitaire.domain.solver.SeedBankParser
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteMove
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteResolver
 import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
@@ -106,6 +112,7 @@ class GameViewModel(
     private var timerJob: Job? = null
     private var autoCompleteJob: Job? = null
     private var idleHintJob: Job? = null
+    private var debugStatsJob: Job? = null
 
     /**
      * Indicates whether the idle auto-hint timer coroutine is currently active.
@@ -133,6 +140,14 @@ class GameViewModel(
             resetIdleHintTimer()
         }
 
+        if (dealGenerator != null) {
+            debugStatsJob = scope.launch {
+                dealGenerator.debugStats.collect { stats ->
+                    _uiState.update { it.copy(debugStats = stats) }
+                }
+            }
+        }
+
         if (statsRepository != null) {
             scope.launch {
                 statsRepository.statsFlow.collect { stats ->
@@ -143,6 +158,7 @@ class GameViewModel(
 
         if (hasAsyncInit) {
             scope.launch {
+                println("DEBUG: enter hasAsyncInit")
                 val initialSettings = settingsRepository?.settingsFlow?.first()
                 if (initialSettings != null) {
                     _uiState.update { current ->
@@ -175,8 +191,8 @@ class GameViewModel(
                         try {
                             val solvableBoard = dealGenerator.getSolvableDeal(diff)
                             applyNewDeal(solvableBoard)
-                        } catch (_: Exception) {
-                            // Keep fallback initial deal
+                        } catch (e: Exception) {
+                            println("DEBUG: init exc: " + e)
                         }
                     }
                 }
@@ -255,6 +271,9 @@ class GameViewModel(
             is GameIntent.OpenStats -> openStats()
             is GameIntent.CloseStats -> closeStats()
             is GameIntent.ResetStats -> resetStats()
+            is GameIntent.DevInstantWin -> handleDevInstantWin()
+            is GameIntent.DevStressRefill -> handleDevStressRefill()
+            is GameIntent.DevExportSeeds -> handleDevExportSeeds()
         }
     }
 
@@ -630,7 +649,9 @@ class GameViewModel(
             scope.launch {
                 val newBoard = try {
                     dealGenerator.getSolvableDeal(difficulty)
-                } catch (_: Exception) {
+                } catch (e: Throwable) {
+                    println("DEBUG: startNewGame catch: " + e)
+                    e.printStackTrace()
                     dealProvider()
                 }
                 applyNewDeal(newBoard)
@@ -847,11 +868,17 @@ class GameViewModel(
         cancelIdleHintTimer()
     }
 
+    fun stopDebugStatsCollector() {
+        debugStatsJob?.cancel()
+        debugStatsJob = null
+    }
+
     override fun onCleared() {
         super.onCleared()
         stopTimer()
         cancelAutoComplete()
         cancelIdleHintTimer()
+        stopDebugStatsCollector()
         dealGenerator?.stop()
     }
 
@@ -957,9 +984,27 @@ class GameViewModel(
                 val settingsRepo = DataStoreSettingsRepository(dataStoreManager)
                 val statsRepo = DataStoreStatsRepository(dataStoreManager)
                 val persistenceRepo = DataStoreGamePersistenceRepository(dataStoreManager)
+                val seedBankStorage = DataStoreSeedBankStorage(dataStoreManager)
+                val seedBankScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+                val seedBank = PersistentSeedBank(
+                    storage = seedBankStorage,
+                    defaultCatalogProvider = {
+                        try {
+                            val jsonString = context.assets.open("deals/seed_bank.json").bufferedReader().use { it.readText() }
+                            SeedBankParser.parse(jsonString)
+                        } catch (e: Exception) {
+                            SeedBankCatalog()
+                        }
+                    },
+                    scope = seedBankScope
+                )
+                seedBankScope.launch {
+                    seedBank.initialize()
+                }
                 val generator = dealGenerator ?: DealGenerator(
                     scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
-                    drawMode = DrawMode.DRAW_ONE
+                    drawMode = DrawMode.DRAW_ONE,
+                    seedBank = seedBank
                 )
                 return GameViewModel(
                     dealGenerator = generator,
@@ -984,5 +1029,78 @@ class GameViewModel(
                 )
             }
         }
+    }
+
+    private fun handleDevInstantWin() {
+        if (_uiState.value.isGameWon) return
+
+        val suits = listOf(Suit.HEARTS, Suit.DIAMONDS, Suit.CLUBS, Suit.SPADES)
+        val completeFoundations = suits.map { suit ->
+            Rank.entries.map { rank -> Card(suit = suit, rank = rank, isFaceUp = true) }
+        }
+
+        val wonBoard = _uiState.value.boardState.copy(
+            foundations = completeFoundations,
+            tableau = List(7) { emptyList() },
+            stock = emptyList(),
+            waste = emptyList(),
+            score = _uiState.value.boardState.score.coerceAtLeast(500)
+        )
+
+        _uiState.update { current ->
+            current.copy(
+                boardState = wonBoard,
+                isGameWon = true,
+                isAutoCompleteAvailable = false,
+                activeHint = null
+            )
+        }
+
+        stopTimer()
+        cancelIdleHintTimer()
+        recordVictoryInStats()
+        _events.tryEmit(GameEvent.PlayHapticSnap)
+        _events.tryEmit(GameEvent.TriggerWinCelebration)
+    }
+
+    private fun handleDevStressRefill() {
+        val bank = dealGenerator?.seedBank
+        if (bank == null) {
+            _events.tryEmit(GameEvent.ShowMessage("Seed bank is not initialized"))
+            return
+        }
+
+        val easyCount = bank.getAvailableCount(DealDifficulty.EASY)
+        val mediumCount = bank.getAvailableCount(DealDifficulty.MEDIUM)
+        val total = easyCount + mediumCount
+
+        if (total < 20 || easyCount < 10 || mediumCount < 10) {
+            _events.tryEmit(GameEvent.ShowMessage("Cannot flush: bank has fewer than 20 seeds (safety floor)"))
+            return
+        }
+
+        val removed = bank.flush(0.9f)
+        dealGenerator.checkAndReplenish(DealDifficulty.EASY)
+        dealGenerator.checkAndReplenish(DealDifficulty.MEDIUM)
+        _events.tryEmit(GameEvent.ShowMessage("Flushed $removed seeds (90%). Deep refill triggered!"))
+    }
+
+    private fun handleDevExportSeeds() {
+        val bank = dealGenerator?.seedBank
+        if (bank == null) {
+            _events.tryEmit(GameEvent.ShowMessage("Seed bank is not initialized"))
+            return
+        }
+
+        val state = bank.state.value
+        val text = buildString {
+            appendLine("=== SOLITAIRE SEED BANK EXPORT ===")
+            appendLine("Easy Available (${state.easySeeds.size}): ${state.easySeeds.joinToString(", ")}")
+            appendLine("Medium Available (${state.mediumSeeds.size}): ${state.mediumSeeds.joinToString(", ")}")
+            appendLine("Played History (${state.playedSeeds.size}): ${state.playedSeeds.joinToString(", ")}")
+        }
+
+        _events.tryEmit(GameEvent.CopyToClipboard(label = "Solitaire Seeds", text = text))
+        _events.tryEmit(GameEvent.ShowMessage("Exported ${state.easySeeds.size + state.mediumSeeds.size} seeds to clipboard"))
     }
 }

@@ -11,6 +11,9 @@ import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.KlondikeRules
 import io.github.qdiaps.solitaire.domain.solver.DealGenerator
 import io.github.qdiaps.solitaire.domain.solver.SolvabilityResult
+import io.github.qdiaps.solitaire.domain.solver.PersistentSeedBank
+import io.github.qdiaps.solitaire.domain.solver.InMemorySeedBankStorage
+import io.github.qdiaps.solitaire.domain.solver.SeedBankCatalog
 import io.github.qdiaps.solitaire.data.model.GameSettings
 import io.github.qdiaps.solitaire.data.model.GameStats
 import io.github.qdiaps.solitaire.data.repository.SettingsRepository
@@ -636,6 +639,7 @@ class GameViewModelTest {
             assertFalse(viewModel.uiState.value.isLoading)
 
             viewModel.stopTimer()
+            viewModel.stopDebugStatsCollector()
             generator.stop()
         }
     }
@@ -2358,6 +2362,197 @@ class GameViewModelTest {
             assertEquals(customBoard, viewModel.uiState.value.boardState)
             assertEquals(120L, viewModel.uiState.value.elapsedTimeSeconds)
             assertEquals(FeltTheme.WINE_RED, viewModel.uiState.value.feltTheme)
+        }
+    }
+    @Nested
+    @DisplayName("Developer Debug Tools Tests")
+    inner class DeveloperDebugToolsTests {
+
+        @Test
+        @DisplayName("DevInstantWin sets isGameWon to true, completes foundations, stops timer and records victory")
+        fun `DevInstantWin sets isGameWon to true, completes foundations, stops timer and records victory`() = runTest(testDispatcher) {
+            val fakeStats = FakeStatsRepository()
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                timerDelayMs = 1000L,
+                autoStartTimer = true,
+                statsRepository = fakeStats
+            )
+
+            viewModel.drawStockCard()
+            testScheduler.runCurrent()
+            assertTrue(viewModel.isTimerRunning)
+
+            viewModel.onIntent(GameIntent.DevInstantWin)
+            testScheduler.runCurrent()
+
+            val state = viewModel.uiState.value
+            assertTrue(state.isGameWon)
+            assertFalse(viewModel.isTimerRunning)
+            assertFalse(state.isAutoCompleteAvailable)
+            assertEquals(52, state.boardState.foundations.sumOf { it.size })
+            assertTrue(state.boardState.tableau.all { it.isEmpty() })
+            assertEquals(1, fakeStats.gameWonCount)
+        }
+
+        @Test
+        @DisplayName("DevStressRefill flushes 90 percent of seeds when bank capacity is healthy")
+        fun `DevStressRefill flushes 90 percent of seeds when bank capacity is healthy`() = runTest(testDispatcher) {
+            val bank = PersistentSeedBank(
+                storage = InMemorySeedBankStorage(),
+                defaultCatalogProvider = {
+                    SeedBankCatalog(
+                        easySeeds = (1001L..1100L).toList(),
+                        mediumSeeds = (2001L..2100L).toList()
+                    )
+                },
+                scope = backgroundScope
+            )
+            bank.initialize()
+
+            val generator = DealGenerator(
+                scope = backgroundScope,
+                dispatcher = Dispatchers.Default,
+                seedBank = bank,
+                coreCountProvider = { 4 },
+                solvabilityChecker = { _, _ -> SolvabilityResult.Unsolvable(statesEvaluated = 1, durationMs = 1L) }
+            )
+
+            try {
+                val viewModel = GameViewModel(
+                    initialBoardState = createCustomBoard("stress_test"),
+                    dealGenerator = generator,
+                    coroutineScope = backgroundScope,
+                    timerDispatcher = testDispatcher,
+                    autoStartTimer = false
+                )
+                testScheduler.runCurrent()
+
+                val messages = mutableListOf<String>()
+                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                    viewModel.events.collect { event ->
+                        if (event is GameEvent.ShowMessage) {
+                            messages.add(event.message)
+                        }
+                    }
+                }
+
+                viewModel.onIntent(GameIntent.DevStressRefill)
+                testScheduler.runCurrent()
+
+                assertEquals(10, bank.getAvailableCount(DealDifficulty.EASY))
+                assertEquals(10, bank.getAvailableCount(DealDifficulty.MEDIUM))
+                assertTrue(messages.any { it.contains("Flushed 180 seeds") })
+            } finally {
+                generator.stop()
+            }
+        }
+
+        @Test
+        @DisplayName("DevStressRefill respects safety floor when bank has fewer than 20 seeds")
+        fun `DevStressRefill respects safety floor when bank has fewer than 20 seeds`() = runTest(testDispatcher) {
+            val bank = PersistentSeedBank(
+                storage = InMemorySeedBankStorage(),
+                defaultCatalogProvider = {
+                    SeedBankCatalog(
+                        easySeeds = (1001L..1005L).toList(),
+                        mediumSeeds = (2001L..2005L).toList()
+                    )
+                },
+                scope = backgroundScope
+            )
+            bank.initialize()
+
+            val generator = DealGenerator(
+                scope = backgroundScope,
+                dispatcher = Dispatchers.Default,
+                seedBank = bank,
+                solvabilityChecker = { _, _ -> SolvabilityResult.Unsolvable(statesEvaluated = 1, durationMs = 1L) }
+            )
+
+            try {
+                val viewModel = GameViewModel(
+                    initialBoardState = createCustomBoard("safety_test"),
+                    dealGenerator = generator,
+                    coroutineScope = backgroundScope,
+                    timerDispatcher = testDispatcher,
+                    autoStartTimer = false
+                )
+                testScheduler.runCurrent()
+
+                val messages = mutableListOf<String>()
+                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                    viewModel.events.collect { event ->
+                        if (event is GameEvent.ShowMessage) {
+                            messages.add(event.message)
+                        }
+                    }
+                }
+
+                viewModel.onIntent(GameIntent.DevStressRefill)
+                testScheduler.runCurrent()
+
+                assertEquals(5, bank.getAvailableCount(DealDifficulty.EASY))
+                assertEquals(5, bank.getAvailableCount(DealDifficulty.MEDIUM))
+                assertTrue(messages.any { it.contains("safety floor") })
+            } finally {
+                generator.stop()
+            }
+        }
+
+        @Test
+        @DisplayName("DevExportSeeds emits CopyToClipboard event with seed bank contents")
+        fun `DevExportSeeds emits CopyToClipboard event with seed bank contents`() = runTest(testDispatcher) {
+            val bank = PersistentSeedBank(
+                storage = InMemorySeedBankStorage(),
+                defaultCatalogProvider = {
+                    SeedBankCatalog(
+                        easySeeds = listOf(111L, 222L),
+                        mediumSeeds = listOf(333L, 444L)
+                    )
+                },
+                scope = backgroundScope
+            )
+            bank.initialize()
+
+            val generator = DealGenerator(
+                scope = backgroundScope,
+                dispatcher = Dispatchers.Default,
+                seedBank = bank,
+                solvabilityChecker = { _, _ -> SolvabilityResult.Unsolvable(statesEvaluated = 1, durationMs = 1L) }
+            )
+
+            try {
+                val viewModel = GameViewModel(
+                    initialBoardState = createCustomBoard("export_test"),
+                    dealGenerator = generator,
+                    coroutineScope = backgroundScope,
+                    timerDispatcher = testDispatcher,
+                    autoStartTimer = false
+                )
+                testScheduler.runCurrent()
+
+                val clipboardEvents = mutableListOf<GameEvent.CopyToClipboard>()
+                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                    viewModel.events.collect { event ->
+                        if (event is GameEvent.CopyToClipboard) {
+                            clipboardEvents.add(event)
+                        }
+                    }
+                }
+
+                viewModel.onIntent(GameIntent.DevExportSeeds)
+                testScheduler.runCurrent()
+
+                assertEquals(1, clipboardEvents.size)
+                val event = clipboardEvents.first()
+                assertTrue(event.text.contains("111"))
+                assertTrue(event.text.contains("333"))
+            } finally {
+                generator.stop()
+            }
         }
     }
 }

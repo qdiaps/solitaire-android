@@ -34,6 +34,11 @@ import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import io.github.qdiaps.solitaire.domain.solver.GeneratorDebugStats
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -165,7 +170,12 @@ fun SolitaireGameScreen(
     onHapticsChange: (Boolean) -> Unit = {},
     onResetSettingsToDefaults: () -> Unit = {},
     dealDifficulty: DealDifficulty = DealDifficulty.EASY,
-    onDealDifficultyChange: (DealDifficulty) -> Unit = {}
+    onDealDifficultyChange: (DealDifficulty) -> Unit = {},
+    isDeadlocked: Boolean = false,
+    debugStats: GeneratorDebugStats = GeneratorDebugStats(),
+    onDevInstantWin: () -> Unit = {},
+    onDevStressRefill: () -> Unit = {},
+    onDevExportSeeds: () -> Unit = {}
 ) {
     val dragDropState = rememberDragDropState()
     val dropTargetRegistry = rememberDropTargetRegistry()
@@ -530,7 +540,18 @@ fun SolitaireGameScreen(
                             onResetToDefaults = onResetSettingsToDefaults,
                             onDismiss = onDismissSettings,
                             dealDifficulty = dealDifficulty,
-                            onDealDifficultyChange = onDealDifficultyChange
+                            onDealDifficultyChange = onDealDifficultyChange,
+                            debugStats = debugStats,
+                            gameSessionId = gameSessionId,
+                            movesCount = boardState.movesCount,
+                            score = boardState.score,
+                            elapsedTimeSeconds = timeSeconds,
+                            isGameWon = isGameWon,
+                            isDeadlocked = isDeadlocked,
+                            isAutoCompleteAvailable = isAutoCompleteAvailable,
+                            onDevInstantWin = onDevInstantWin,
+                            onDevStressRefill = onDevStressRefill,
+                            onDevExportSeeds = onDevExportSeeds
                         )
                     }
                 }
@@ -635,6 +656,8 @@ fun SolitaireGameScreen(
     val uiState by viewModel.uiState.collectAsState()
     val solitaireHaptics = rememberSolitaireHaptics(enabled = uiState.hapticsEnabled)
     val solitaireAudio = rememberSolitaireAudio(enabled = uiState.soundEnabled)
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, viewModel) {
@@ -676,7 +699,11 @@ fun SolitaireGameScreen(
                     if (currentState.soundEnabled) solitaireAudio.playSnap()
                 }
                 is GameEvent.ShowMessage -> {
-                    // Message snackbar / banner
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                }
+                is GameEvent.CopyToClipboard -> {
+                    clipboardManager.setText(AnnotatedString(event.text))
+                    Toast.makeText(context, "${event.label} copied to clipboard", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -769,7 +796,12 @@ fun SolitaireGameScreen(
         onDealDifficultyChange = { viewModel.onIntent(GameIntent.SetDealDifficulty(it)) },
         onStatsClick = { viewModel.onIntent(GameIntent.OpenStats) },
         onDismissStats = { viewModel.onIntent(GameIntent.CloseStats) },
-        onResetStats = { viewModel.onIntent(GameIntent.ResetStats) }
+        onResetStats = { viewModel.onIntent(GameIntent.ResetStats) },
+        isDeadlocked = uiState.isDeadlocked,
+        debugStats = uiState.debugStats,
+        onDevInstantWin = { viewModel.onIntent(GameIntent.DevInstantWin) },
+        onDevStressRefill = { viewModel.onIntent(GameIntent.DevStressRefill) },
+        onDevExportSeeds = { viewModel.onIntent(GameIntent.DevExportSeeds) }
     )
     }
 }
@@ -828,7 +860,14 @@ fun GameScreen(
     stats: GameStats = GameStats(),
     onStatsClick: () -> Unit = {},
     onDismissStats: () -> Unit = {},
-    onResetStats: () -> Unit = {}
+    onResetStats: () -> Unit = {},
+    dealDifficulty: DealDifficulty = DealDifficulty.EASY,
+    onDealDifficultyChange: (DealDifficulty) -> Unit = {},
+    isDeadlocked: Boolean = false,
+    debugStats: GeneratorDebugStats = GeneratorDebugStats(),
+    onDevInstantWin: () -> Unit = {},
+    onDevStressRefill: () -> Unit = {},
+    onDevExportSeeds: () -> Unit = {}
 ) {
     SolitaireGameScreen(
         boardState = boardState,
@@ -880,7 +919,14 @@ fun GameScreen(
         stats = stats,
         onStatsClick = onStatsClick,
         onDismissStats = onDismissStats,
-        onResetStats = onResetStats
+        onResetStats = onResetStats,
+        dealDifficulty = dealDifficulty,
+        onDealDifficultyChange = onDealDifficultyChange,
+        isDeadlocked = isDeadlocked,
+        debugStats = debugStats,
+        onDevInstantWin = onDevInstantWin,
+        onDevStressRefill = onDevStressRefill,
+        onDevExportSeeds = onDevExportSeeds
     )
 }
 

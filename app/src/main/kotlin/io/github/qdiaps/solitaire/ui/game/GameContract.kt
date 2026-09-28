@@ -1,14 +1,15 @@
 package io.github.qdiaps.solitaire.ui.game
 
 import androidx.compose.runtime.Immutable
+import io.github.qdiaps.solitaire.data.model.GameStats
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteMove
 import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
-import io.github.qdiaps.solitaire.data.model.GameStats
 import io.github.qdiaps.solitaire.domain.rules.Hint
+import io.github.qdiaps.solitaire.domain.solver.GeneratorDebugStats
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
 import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
@@ -33,6 +34,7 @@ import io.github.qdiaps.solitaire.ui.theme.FeltTheme
  * @property autoHintEnabled Whether moves are automatically hinted after idle periods.
  * @property isSettingsOpen Whether the settings bottom sheet is currently visible.
  * @property dealDifficulty Solvability guarantee and difficulty for card deal generation.
+ * @property debugStats Real-time telemetry metrics emitted by DealGenerator (active in debug builds).
  */
 @Immutable
 data class GameUiState(
@@ -57,7 +59,8 @@ data class GameUiState(
     val autoHintEnabled: Boolean = false,
     val isSettingsOpen: Boolean = false,
     val isStatsDialogOpen: Boolean = false,
-    val stats: GameStats = GameStats()
+    val stats: GameStats = GameStats(),
+    val debugStats: GeneratorDebugStats = GeneratorDebugStats()
 ) {
     /**
      * Cards that should be highlighted on the board (e.g., all cards in the moving stack from [activeHint]).
@@ -257,6 +260,21 @@ sealed interface GameIntent {
      * Persists active gameplay session snapshot to persistent storage (e.g. on lifecycle pause).
      */
     data object SaveSession : GameIntent
+
+    /**
+     * Developer action: instantly forces foundation completion to test victory animations.
+     */
+    data object DevInstantWin : GameIntent
+
+    /**
+     * Developer action: trims 90% of buffered seeds to trigger multi-worker dynamic scaling.
+     */
+    data object DevStressRefill : GameIntent
+
+    /**
+     * Developer action: exports active seed bank snapshot to clipboard.
+     */
+    data object DevExportSeeds : GameIntent
 }
 
 /**
@@ -287,4 +305,9 @@ sealed interface GameEvent {
      * Trigger full-screen victory cascade animation celebration.
      */
     data object TriggerWinCelebration : GameEvent
+
+    /**
+     * Copy text content to device clipboard.
+     */
+    data class CopyToClipboard(val label: String, val text: String) : GameEvent
 }

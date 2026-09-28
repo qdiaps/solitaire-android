@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.deck.KlondikeDealer
 import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
+import io.github.qdiaps.solitaire.domain.solver.GeneratorDebugStats
 import io.github.qdiaps.solitaire.ui.game.SolitaireGameScreen
 import io.github.qdiaps.solitaire.ui.game.components.SettingsSheetContent
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
@@ -201,4 +202,55 @@ fun SolitaireScreenWithSettingsOpenPreview() {
         feltTheme = FeltTheme.CLASSIC_GREEN,
         cardBackStyle = CardBackStyle.CLASSIC_LATTICE
     )
+}
+
+@Preview(name = "7. Settings Sheet - Developer Debug Tools (Debug Build)", device = "id:pixel_7", showBackground = true)
+@Composable
+fun SettingsSheetDeveloperDebugPreview() {
+    SolitaireTheme(feltTheme = FeltTheme.CLASSIC_GREEN) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(SolitaireTheme.colors.tableSurface)
+        ) {
+            SettingsSheetContent(
+                drawMode = DrawMode.DRAW_ONE,
+                dealDifficulty = DealDifficulty.EASY,
+                isLeftHanded = false,
+                autoHintEnabled = false,
+                feltTheme = FeltTheme.CLASSIC_GREEN,
+                cardBackStyle = CardBackStyle.CLASSIC_LATTICE,
+                cardFaceStyle = CardFaceStyle.MODERN_CLEAN,
+                soundEnabled = true,
+                hapticsEnabled = true,
+                onDrawModeChange = {},
+                onLeftHandedChange = {},
+                onAutoHintChange = {},
+                onFeltThemeChange = {},
+                onCardBackStyleChange = {},
+                onCardFaceStyleChange = {},
+                onSoundChange = {},
+                onHapticsChange = {},
+                onResetToDefaults = {},
+                onDismiss = {},
+                isDebug = true,
+                debugStats = GeneratorDebugStats(
+                    easyBankCount = 88,
+                    mediumBankCount = 92,
+                    activeWorkersCount = 2,
+                    totalCandidatesEvaluated = 120,
+                    totalSolvableFound = 95,
+                    rejectionRate = 0.208f,
+                    lastSolveDurationMs = 28L
+                ),
+                gameSessionId = 42L,
+                movesCount = 18,
+                score = 145,
+                elapsedTimeSeconds = 85L,
+                isGameWon = false,
+                isDeadlocked = false,
+                isAutoCompleteAvailable = false
+            )
+        }
+    }
 }

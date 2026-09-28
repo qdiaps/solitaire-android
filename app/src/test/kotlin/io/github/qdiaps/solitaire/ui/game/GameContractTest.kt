@@ -153,10 +153,13 @@ class GameContractTest {
                 GameIntent.OpenStats,
                 GameIntent.CloseStats,
                 GameIntent.ResetStats,
-                GameIntent.SaveSession
+                GameIntent.SaveSession,
+                GameIntent.DevInstantWin,
+                GameIntent.DevStressRefill,
+                GameIntent.DevExportSeeds
             )
 
-            assertEquals(32, intents.size)
+            assertEquals(35, intents.size)
 
             for (intent in intents) {
                 val label = when (intent) {
@@ -192,6 +195,9 @@ class GameContractTest {
                     is GameIntent.CloseStats -> "CloseStats"
                     is GameIntent.ResetStats -> "ResetStats"
                     is GameIntent.SaveSession -> "SaveSession"
+                    is GameIntent.DevInstantWin -> "DevInstantWin"
+                    is GameIntent.DevStressRefill -> "DevStressRefill"
+                    is GameIntent.DevExportSeeds -> "DevExportSeeds"
                 }
                 assertTrue(label.isNotEmpty())
             }
@@ -209,10 +215,11 @@ class GameContractTest {
                 GameEvent.PlayHapticSnap,
                 GameEvent.PlayDealSound,
                 GameEvent.ShowMessage("Test message"),
-                GameEvent.TriggerWinCelebration
+                GameEvent.TriggerWinCelebration,
+                GameEvent.CopyToClipboard("Test", "Clipboard data")
             )
 
-            assertEquals(5, events.size)
+            assertEquals(6, events.size)
 
             for (event in events) {
                 val name = when (event) {
@@ -221,6 +228,7 @@ class GameContractTest {
                     is GameEvent.PlayDealSound -> "deal"
                     is GameEvent.ShowMessage -> "message:${event.message}"
                     is GameEvent.TriggerWinCelebration -> "celebration"
+                    is GameEvent.CopyToClipboard -> "copy:${event.label}"
                 }
                 assertTrue(name.isNotEmpty())
             }
