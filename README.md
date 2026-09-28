@@ -64,6 +64,17 @@ Assemble debug APK:
 ```
 The APK will be available under `app/build/outputs/apk/debug/`.
 
+### Pre-generating Seed Bank
+To bundle or refresh the 200 guaranteed solvable seeds catalog (`seed_bank.json`), you can run:
+
+```bash
+# Recommended (runs out-of-the-box via Gradle):
+./gradlew generateSeedBank
+
+# Or using Kotlin CLI script (if kotlin CLI is installed):
+./scripts/generate_seed_bank.kts
+```
+
 ---
 
 ## 🤝 Contributing
