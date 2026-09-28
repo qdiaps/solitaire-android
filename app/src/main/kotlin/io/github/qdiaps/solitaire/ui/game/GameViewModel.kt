@@ -93,6 +93,7 @@ class GameViewModel(
     private val initialIsWon = KlondikeRules.isGameWon(initialDealState)
     var hasMoved: Boolean = (initialBoardState != null && initialBoardState.movesCount > 0)
         private set
+    private var isVictoryRecorded: Boolean = initialIsWon
     private val hasAsyncInit = (settingsRepository != null || (persistenceRepository != null && initialBoardState == null) || (dealGenerator != null && initialBoardState == null))
     private val _uiState = MutableStateFlow(
         GameUiState(
@@ -388,6 +389,7 @@ class GameViewModel(
         initialDealState = savedSession.undoHistory.firstOrNull() ?: board
         undoManager.restoreHistory(savedSession.undoHistory)
         hasMoved = savedSession.hasMoved
+        isVictoryRecorded = false
         _uiState.update { current ->
             current.copy(
                 boardState = board,
@@ -632,6 +634,9 @@ class GameViewModel(
             startTimer()
         }
         _events.tryEmit(GameEvent.PlayHapticTick)
+        if (!isWonNow && hasMoved) {
+            saveCurrentSession()
+        }
     }
 
     /**
@@ -672,6 +677,7 @@ class GameViewModel(
         stopTimer()
         cancelIdleHintTimer()
         hasMoved = false
+        isVictoryRecorded = false
         undoManager.clear()
         val isWon = KlondikeRules.isGameWon(initialDealState)
         val isAutoComplete = if (isWon) false else AutoCompleteResolver.isAutoCompleteReady(initialDealState)
@@ -951,6 +957,7 @@ class GameViewModel(
         stopTimer()
         cancelIdleHintTimer()
         hasMoved = false
+        isVictoryRecorded = false
         initialDealState = board
         undoManager.clear()
         val isWon = KlondikeRules.isGameWon(board)
@@ -1016,6 +1023,9 @@ class GameViewModel(
         }
     }
     private fun recordVictoryInStats() {
+        if (isVictoryRecorded) return
+        isVictoryRecorded = true
+
         if (persistenceRepository != null) {
             persistenceScope.launch { persistenceRepository.clearSavedSession() }
         }

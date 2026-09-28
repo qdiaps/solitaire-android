@@ -61,6 +61,12 @@
   - **Worker Discovery Log UI in SettingsBottomSheet:** Render a styled monospace activity feed card in the Developer Tools section displaying `[HH:mm:ss] W#id ➔ Difficulty #seed (ms)`, providing real-time visibility into worker contributions and parallel harvesting.
   - *TDD/Unit Tests:* Add unit tests in `DealGeneratorDynamicScalingTest` asserting worker log creation and ring buffer capping; verify Compose preview.
 
+- [x] **T-6.FIX8: Guard Against Duplicate Victory Recording on Undo & Re-Win (`GameViewModel`, `StatsRepository`)**
+  - Resolved a statistical corruption bug where undoing after a win and re-playing the winning move invoked `recordVictoryInStats()` again, improperly incrementing `gamesWon` and `currentWinStreak` on the same game session.
+  - Introduced `isVictoryRecorded: Boolean` session-scoped guard flag in `GameViewModel`: set to `true` upon first victory recording, and reset to `false` exclusively on fresh deals (`applyNewDeal`), game restarts (`restartGame`), or saved session restorations (`restoreGameSession`).
+  - Added session persistence update in `undoMove()` (`if (!isWonNow && hasMoved) saveCurrentSession()`) guaranteeing undone active games are safely persisted if backgrounded.
+  - *TDD/Unit Tests:* Added test cases in `GameViewModelTest` asserting that undoing a won game and completing the winning move again maintains `gameWonCount == 1`, and restarting the game allows subsequent victory recording.
+
 - [ ] **T-6.1: Victory Animation Extensible Architecture & Bouncing Physics Engine (`VictoryAnimator`, `BouncingCardsPhysics`)**
   - Design extensible `VictoryAnimationType` enum (`CLASSIC_BOUNCE`, expandable to future effects like `FIREWORKS`, `CARD_SPIRAL`, etc.) and `VictoryAnimator` abstraction.
   - Implement pure math `BouncingCardsPhysics` engine: particles with position, velocity ($v_x, v_y$), gravity, restitution coefficient ($e \approx -0.85$), and screen boundary bouncing.

@@ -17,12 +17,18 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-6.FIX7` (Real-Time Worker Discovery Log in Generator Telemetry & Debug Tools). Ready to proceed to `T-6.1` (Victory Animation Extensible Architecture & Bouncing Physics Engine).
+- **Current Focus:** Completed `T-6.FIX8` (Guard Against Duplicate Victory Recording on Undo & Re-Win). Ready to proceed to `T-6.1` (Victory Animation Extensible Architecture & Bouncing Physics Engine).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-28 (T-6.FIX8: Guard Against Duplicate Victory Recording on Undo & Re-Win):**
+  - Resolved duplicate victory and win streak recording bug when undoing after a win and re-completing the winning move: `GameViewModel` previously invoked `recordVictoryInStats()` unconditionally on any move resulting in `isGameWon == true`.
+  - Introduced session-scoped `isVictoryRecorded: Boolean` guard flag in `GameViewModel`: initialized to `initialIsWon`, guarded in `recordVictoryInStats()` (`if (isVictoryRecorded) return; isVictoryRecorded = true`), and reset on `applyNewDeal`, `restartGame`, and `restoreGameSession`.
+  - In `undoMove()`, added conditional session saving (`if (!isWonNow && hasMoved) saveCurrentSession()`) ensuring that if an undone game in progress is paused/backgrounded, the restored board is not lost.
+  - Verified with TDD: added unit tests in `GameViewModelTest` verifying that undoing from a won state and re-winning preserves `fakeStats.gameWonCount == 1`, while restarting the game properly resets the guard and increments to 2 upon subsequent win.
+  - Verified complete test suite: 621 total unit tests passing (100% pass), 0 Android lint errors (`./gradlew test`, `./gradlew lintDebug`).
 - **2026-09-28 (T-6.FIX7: Real-Time Worker Discovery Log in Generator Telemetry & Debug Tools):**
   - Defined `@Serializable` data model `WorkerLogEntry` capturing timestamp, assigned worker ID, discovered seed, classified difficulty (`EASY` or `MEDIUM`), and solving duration (ms).
   - Extended `GeneratorDebugStats` with a ring-buffered list `recentWorkerLogs: List<WorkerLogEntry>` (retaining the most recent 20 events).

@@ -1931,6 +1931,110 @@ class GameViewModelTest {
         }
 
         @Test
+        @DisplayName("recordGameWon is not invoked second time when undoing win and completing winning move again")
+        fun `recordGameWon is not invoked second time when undoing win and completing winning move again`() = runTest(testDispatcher) {
+            val fakeStats = FakeStatsRepository()
+            val fakePersistence = FakeGamePersistenceRepository(initialSession = null)
+            val presqueWonFoundations = Suit.entries.map { suit ->
+                if (suit == Suit.HEARTS) {
+                    Rank.entries.filter { it != Rank.KING }.map { Card(suit, it, isFaceUp = true) }
+                } else {
+                    Rank.entries.map { Card(suit, it, isFaceUp = true) }
+                }
+            }
+            val kingOfHearts = Card(Suit.HEARTS, Rank.KING, isFaceUp = true)
+            val tableau = List(7) { col ->
+                if (col == 0) listOf(kingOfHearts) else emptyList()
+            }
+            val almostWonBoard = BoardState(
+                foundations = presqueWonFoundations,
+                tableau = tableau,
+                score = 680,
+                movesCount = 92
+            )
+
+            val viewModel = GameViewModel(
+                initialBoardState = almostWonBoard,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                statsRepository = fakeStats,
+                persistenceRepository = fakePersistence
+            )
+            testScheduler.runCurrent()
+
+            // 1. Initial winning move
+            viewModel.onIntent(GameIntent.OnCardTapped(kingOfHearts, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+
+            assertTrue(viewModel.uiState.value.isGameWon)
+            assertEquals(1, fakeStats.gameWonCount)
+
+            // 2. Undo the winning move
+            viewModel.onIntent(GameIntent.UndoMove)
+            testScheduler.runCurrent()
+
+            assertFalse(viewModel.uiState.value.isGameWon)
+            assertEquals(1, fakeStats.gameWonCount)
+
+            // 3. Make winning move again
+            viewModel.onIntent(GameIntent.OnCardTapped(kingOfHearts, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+
+            assertTrue(viewModel.uiState.value.isGameWon)
+            // MUST remain 1, guarding against duplicate stats recording on undo-redo win
+            assertEquals(1, fakeStats.gameWonCount)
+        }
+
+        @Test
+        @DisplayName("recordGameWon is invoked for a new game after restarting won game")
+        fun `recordGameWon is invoked for a new game after restarting won game`() = runTest(testDispatcher) {
+            val fakeStats = FakeStatsRepository()
+            val presqueWonFoundations = Suit.entries.map { suit ->
+                if (suit == Suit.HEARTS) {
+                    Rank.entries.filter { it != Rank.KING }.map { Card(suit, it, isFaceUp = true) }
+                } else {
+                    Rank.entries.map { Card(suit, it, isFaceUp = true) }
+                }
+            }
+            val kingOfHearts = Card(Suit.HEARTS, Rank.KING, isFaceUp = true)
+            val tableau = List(7) { col ->
+                if (col == 0) listOf(kingOfHearts) else emptyList()
+            }
+            val almostWonBoard = BoardState(
+                foundations = presqueWonFoundations,
+                tableau = tableau,
+                score = 680,
+                movesCount = 92
+            )
+
+            val viewModel = GameViewModel(
+                initialBoardState = almostWonBoard,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                statsRepository = fakeStats
+            )
+            testScheduler.runCurrent()
+
+            // Win game
+            viewModel.onIntent(GameIntent.OnCardTapped(kingOfHearts, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+            assertEquals(1, fakeStats.gameWonCount)
+
+            // Restart game
+            viewModel.onIntent(GameIntent.RestartGame)
+            testScheduler.runCurrent()
+            assertFalse(viewModel.uiState.value.isGameWon)
+
+            // Win again in restarted session
+            viewModel.onIntent(GameIntent.OnCardTapped(kingOfHearts, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+            assertTrue(viewModel.uiState.value.isGameWon)
+            assertEquals(2, fakeStats.gameWonCount)
+        }
+
+        @Test
         @DisplayName("restartGame resets session and triggers recordGameStarted on first move")
         fun `restartGame resets session and triggers recordGameStarted on first move`() = runTest(testDispatcher) {
             val fakeStats = FakeStatsRepository()
