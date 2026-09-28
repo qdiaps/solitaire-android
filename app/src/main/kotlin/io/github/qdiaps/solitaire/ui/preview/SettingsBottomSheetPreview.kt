@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.deck.KlondikeDealer
+import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.ui.game.SolitaireGameScreen
 import io.github.qdiaps.solitaire.ui.game.components.SettingsSheetContent
@@ -29,6 +30,7 @@ fun SettingsSheetClassicGreenPreview() {
         ) {
             SettingsSheetContent(
                 drawMode = DrawMode.DRAW_ONE,
+                dealDifficulty = DealDifficulty.EASY,
                 isLeftHanded = false,
                 autoHintEnabled = false,
                 feltTheme = FeltTheme.CLASSIC_GREEN,
@@ -62,6 +64,7 @@ fun SettingsSheetCompactHeightPreview() {
         ) {
             SettingsSheetContent(
                 drawMode = DrawMode.DRAW_ONE,
+                dealDifficulty = DealDifficulty.MEDIUM,
                 isLeftHanded = false,
                 autoHintEnabled = true,
                 feltTheme = FeltTheme.CLASSIC_GREEN,
@@ -95,6 +98,7 @@ fun SettingsSheetDeepNavyPreview() {
         ) {
             SettingsSheetContent(
                 drawMode = DrawMode.DRAW_THREE,
+                dealDifficulty = DealDifficulty.RANDOM,
                 isLeftHanded = true,
                 autoHintEnabled = false,
                 feltTheme = FeltTheme.DEEP_NAVY,
@@ -128,6 +132,7 @@ fun SettingsSheetDarkCharcoalPreview() {
         ) {
             SettingsSheetContent(
                 drawMode = DrawMode.DRAW_ONE,
+                dealDifficulty = DealDifficulty.EASY,
                 isLeftHanded = false,
                 autoHintEnabled = false,
                 feltTheme = FeltTheme.DARK_CHARCOAL,
@@ -161,6 +166,7 @@ fun SettingsSheetWineRedPreview() {
         ) {
             SettingsSheetContent(
                 drawMode = DrawMode.DRAW_THREE,
+                dealDifficulty = DealDifficulty.MEDIUM,
                 isLeftHanded = true,
                 autoHintEnabled = true,
                 feltTheme = FeltTheme.WINE_RED,

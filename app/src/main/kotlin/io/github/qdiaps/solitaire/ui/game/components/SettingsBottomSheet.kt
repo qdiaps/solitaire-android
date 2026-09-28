@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
 import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
@@ -76,7 +77,9 @@ fun SettingsBottomSheet(
     onHapticsChange: (Boolean) -> Unit,
     onResetToDefaults: () -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    dealDifficulty: DealDifficulty = DealDifficulty.EASY,
+    onDealDifficultyChange: (DealDifficulty) -> Unit = {}
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val colors = SolitaireTheme.colors
@@ -111,7 +114,9 @@ fun SettingsBottomSheet(
             onSoundChange = onSoundChange,
             onHapticsChange = onHapticsChange,
             onResetToDefaults = onResetToDefaults,
-            onDismiss = onDismiss
+            onDismiss = onDismiss,
+            dealDifficulty = dealDifficulty,
+            onDealDifficultyChange = onDealDifficultyChange
         )
     }
 }
@@ -139,7 +144,9 @@ fun SettingsSheetContent(
     onHapticsChange: (Boolean) -> Unit,
     onResetToDefaults: () -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    dealDifficulty: DealDifficulty = DealDifficulty.EASY,
+    onDealDifficultyChange: (DealDifficulty) -> Unit = {}
 ) {
     val colors = SolitaireTheme.colors
 
@@ -180,6 +187,41 @@ fun SettingsSheetContent(
         SettingsSectionHeader(title = "GAMEPLAY")
 
         Spacer(modifier = Modifier.height(8.dp))
+
+        // Deal Difficulty Segmented Control
+        Text(
+            text = "Deal Difficulty",
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = FontWeight.SemiBold,
+                color = colors.onFeltText
+            )
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = when (dealDifficulty) {
+                DealDifficulty.EASY -> "100% winnable deals with high opening mobility"
+                DealDifficulty.MEDIUM -> "100% winnable deals with standard challenge"
+                DealDifficulty.RANDOM -> "Classic authentic random shuffle"
+            },
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = colors.onFeltSubtle
+            )
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        SegmentedChoiceRow(
+            items = listOf(DealDifficulty.EASY, DealDifficulty.MEDIUM, DealDifficulty.RANDOM),
+            selectedItem = dealDifficulty,
+            onItemSelected = onDealDifficultyChange,
+            labelProvider = { mode ->
+                when (mode) {
+                    DealDifficulty.EASY -> "Easy"
+                    DealDifficulty.MEDIUM -> "Medium"
+                    DealDifficulty.RANDOM -> "Random"
+                }
+            }
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
 
         // Draw Mode Segmented Control
         Text(

@@ -17,12 +17,17 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-6.FIX2.2` (DataStore Settings Persistence, GameViewModel Deal Difficulty Integration & MainActivity DealGenerator Wiring). Ready to proceed to `T-6.FIX2.3`.
+- **Current Focus:** Completed `T-6.FIX2` (Configurable Deal Difficulty & Guaranteed Solvable Deal Pre-Generation: T-6.FIX2.1 through T-6.FIX2.3). Ready to proceed to `T-6.1`.
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-28 (T-6.FIX2.3: UI & Settings Sheet Integration for Deal Difficulty):**
+  - Integrated Deal Difficulty selector (`SegmentedChoiceRow`: Easy / Medium / Random) into `SettingsBottomSheet` under Gameplay section with dynamic explanatory subtitle.
+  - Wired `dealDifficulty` and `onDealDifficultyChange` through `SolitaireGameScreen` and its ViewModel-connected overload to `GameIntent.SetDealDifficulty`.
+  - Updated all previews in `SettingsBottomSheetPreview` across multiple themes and configurations.
+  - Verified full test suite and static analysis: 577 unit tests passing (100% pass), 0 Android lint errors (`./gradlew testDebugUnitTest`, `./gradlew lintDebug`).
 - **2026-09-28 (T-6.FIX2.2: DataStore Settings Persistence, GameViewModel Deal Difficulty Integration & MainActivity Wiring):**
   - Added `dealDifficulty: DealDifficulty = DealDifficulty.EASY` to `GameSettings` and wired persistence in `SettingsRepository` / `DataStoreSettingsRepository`.
   - Added `dealDifficulty` to `GameUiState` and `GameIntent.SetDealDifficulty(difficulty)` to `GameContract`.
@@ -59,4 +64,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-6.FIX2.3: UI & Settings Sheet Integration for Deal Difficulty (SegmentedChoiceRow in SettingsBottomSheet, strings.xml & Preview Tests)`.
+- **Target Task:** `T-6.1: Victory Animation Extensible Architecture & Bouncing Physics Engine (VictoryAnimator, BouncingCardsPhysics, CascadeSequencer)`.

@@ -39,6 +39,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteMove
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteResolver
+import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.SmartTapResolver
 import io.github.qdiaps.solitaire.ui.game.animation.AnimatedMoveOverlay
@@ -162,7 +163,9 @@ fun SolitaireGameScreen(
     onCardFaceStyleChange: (CardFaceStyle) -> Unit = {},
     onSoundChange: (Boolean) -> Unit = {},
     onHapticsChange: (Boolean) -> Unit = {},
-    onResetSettingsToDefaults: () -> Unit = {}
+    onResetSettingsToDefaults: () -> Unit = {},
+    dealDifficulty: DealDifficulty = DealDifficulty.EASY,
+    onDealDifficultyChange: (DealDifficulty) -> Unit = {}
 ) {
     val dragDropState = rememberDragDropState()
     val dropTargetRegistry = rememberDropTargetRegistry()
@@ -524,7 +527,9 @@ fun SolitaireGameScreen(
                             onSoundChange = onSoundChange,
                             onHapticsChange = onHapticsChange,
                             onResetToDefaults = onResetSettingsToDefaults,
-                            onDismiss = onDismissSettings
+                            onDismiss = onDismissSettings,
+                            dealDifficulty = dealDifficulty,
+                            onDealDifficultyChange = onDealDifficultyChange
                         )
                     }
                 }
@@ -759,6 +764,8 @@ fun SolitaireGameScreen(
         onSoundChange = { viewModel.onIntent(GameIntent.SetSoundEnabled(it)) },
         onHapticsChange = { viewModel.onIntent(GameIntent.SetHapticsEnabled(it)) },
         onResetSettingsToDefaults = { viewModel.onIntent(GameIntent.ResetSettingsToDefaults) },
+        dealDifficulty = uiState.dealDifficulty,
+        onDealDifficultyChange = { viewModel.onIntent(GameIntent.SetDealDifficulty(it)) },
         onStatsClick = { viewModel.onIntent(GameIntent.OpenStats) },
         onDismissStats = { viewModel.onIntent(GameIntent.CloseStats) },
         onResetStats = { viewModel.onIntent(GameIntent.ResetStats) }
