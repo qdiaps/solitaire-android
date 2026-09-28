@@ -635,6 +635,8 @@ class GameViewModel(
                 isGameWon = isWonNow,
                 isDeadlocked = isDeadlocked,
                 isAutoCompleteAvailable = isAutoComplete,
+                isVictoryAnimationActive = if (isWonNow) current.isVictoryAnimationActive else false,
+                victorySummary = if (isWonNow) current.victorySummary else null,
                 activeHint = null
             )
         }
@@ -699,6 +701,8 @@ class GameViewModel(
                 activeHint = null,
                 isLoading = false,
                 isAutoCompleteAvailable = isAutoComplete,
+                isVictoryAnimationActive = false,
+                victorySummary = null,
                 gameSessionId = current.gameSessionId + 1L
             )
         }
@@ -980,6 +984,8 @@ class GameViewModel(
                 activeHint = null,
                 isLoading = false,
                 isAutoCompleteAvailable = isAutoComplete,
+                isVictoryAnimationActive = false,
+                victorySummary = null,
                 gameSessionId = current.gameSessionId + 1L
             )
         }
@@ -1034,11 +1040,24 @@ class GameViewModel(
         if (isVictoryRecorded) return
         isVictoryRecorded = true
 
+        val currentState = _uiState.value
+        val summary = VictorySummary.calculate(
+            timeSeconds = currentState.elapsedTimeSeconds.toInt(),
+            movesCount = currentState.boardState.movesCount,
+            score = currentState.boardState.score,
+            previousStats = currentState.stats
+        )
+        _uiState.update { current ->
+            current.copy(
+                isVictoryAnimationActive = true,
+                victorySummary = summary
+            )
+        }
+
         if (persistenceRepository != null) {
             persistenceScope.launch { persistenceRepository.clearSavedSession() }
         }
         statsRepository?.let { repo ->
-            val currentState = _uiState.value
             scope.launch {
                 repo.recordGameWon(
                     timeSeconds = currentState.elapsedTimeSeconds.toInt(),

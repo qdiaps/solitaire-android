@@ -12,6 +12,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.platform.LocalDensity
+import io.github.qdiaps.solitaire.domain.model.Card
+import io.github.qdiaps.solitaire.domain.model.CardLocation
+import io.github.qdiaps.solitaire.ui.game.gesture.DropTargetRegistry
+import io.github.qdiaps.solitaire.ui.theme.CardDimensions
 
 /**
  * Full-screen hardware-accelerated overlay that executes and displays the victory animation sequence.
@@ -86,5 +92,71 @@ fun VictoryOverlay(
                 spriteCache = spriteCache
             )
         }
+    }
+}
+
+
+/**
+ * Top-level Solitaire victory overlay managing sprite cache, animator lifecycle,
+ * and layout geometry resolution.
+ *
+ * @param animationType Active celebration animation type (e.g. [VictoryAnimationType.CLASSIC_BOUNCE]).
+ * @param foundations The completed foundation card stacks.
+ * @param dropTargetRegistry Registry for looking up measured foundation bounds.
+ * @param cardDimensions The card dimension token model.
+ * @param onSkip Invoked when user taps anywhere on screen to skip the animation.
+ * @param modifier Compose [Modifier] applied to the overlay container.
+ * @param onAnimationFinished Invoked when the victory sequence finishes naturally.
+ */
+@Composable
+fun VictoryOverlay(
+    animationType: VictoryAnimationType,
+    foundations: List<List<Card>>,
+    dropTargetRegistry: DropTargetRegistry,
+    cardDimensions: CardDimensions,
+    onSkip: () -> Unit,
+    modifier: Modifier = Modifier,
+    onAnimationFinished: () -> Unit = onSkip
+) {
+    val density = LocalDensity.current
+    val spriteCache = rememberCardSpriteCache(cardDimensions = cardDimensions)
+    val animator = remember(animationType) { VictoryAnimatorFactory.create(animationType) }
+
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val screenWidthPx = with(density) { maxWidth.toPx() }
+        val screenHeightPx = with(density) { maxHeight.toPx() }
+        val cardWidthPx = with(density) { cardDimensions.cardWidth.toPx() }
+        val cardHeightPx = with(density) { cardDimensions.cardHeight.toPx() }
+
+        LaunchedEffect(animator, screenWidthPx, screenHeightPx) {
+            val origins = (0 until 4).map { index ->
+                val bounds = dropTargetRegistry.getBounds(CardLocation.Foundation(index))
+                if (bounds != null) {
+                    FoundationOrigin(bounds.left, bounds.top)
+                } else {
+                    val startX = screenWidthPx * 0.45f + index * (cardWidthPx + with(density) { cardDimensions.columnSpacing.toPx() })
+                    FoundationOrigin(startX, screenHeightPx * 0.05f)
+                }
+            }
+
+            animator.start(
+                VictoryStartSpec(
+                    foundations = foundations,
+                    foundationOrigins = origins,
+                    screenWidth = screenWidthPx,
+                    screenHeight = screenHeightPx,
+                    cardWidth = cardWidthPx,
+                    cardHeight = cardHeightPx
+                )
+            )
+        }
+
+        VictoryOverlay(
+            animator = animator,
+            spriteCache = spriteCache,
+            onDismiss = onSkip,
+            onAnimationFinished = onAnimationFinished,
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }

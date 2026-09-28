@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -304,6 +305,73 @@ class SolitaireGameScreenTest {
             assertEquals(animatedCards.size, animatedCards.distinct().size)
             assertTrue(viewModel.uiState.value.isGameWon)
             assertFalse(viewModel.uiState.value.isAutoCompleting)
+        }
+
+        @Test
+        fun `victory sequence activates animation, supports skip to dialog, and handles dialog intents`() = runTest(testDispatcher) {
+            val suits = Suit.entries
+            val foundations = suits.map { suit ->
+                Rank.entries.filter { it != Rank.KING }.map { rank ->
+                    Card(suit, rank, isFaceUp = true)
+                }
+            }
+            val kings = suits.map { suit -> Card(suit, Rank.KING, isFaceUp = true) }
+            val tableau = List(7) { index ->
+                if (index < 4) listOf(kings[index]) else emptyList()
+            }
+            val readyBoard = BoardState(
+                stock = emptyList(),
+                waste = emptyList(),
+                foundations = foundations,
+                tableau = tableau,
+                score = 700,
+                movesCount = 80
+            )
+            val viewModel = GameViewModel(
+                initialBoardState = readyBoard,
+                coroutineScope = this,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            val emittedEvents = mutableListOf<GameEvent>()
+            val eventJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.events.collect { emittedEvents.add(it) }
+            }
+
+            viewModel.onIntent(GameIntent.AutoComplete)
+            testScheduler.advanceUntilIdle()
+
+            val wonState = viewModel.uiState.value
+            assertTrue(wonState.isGameWon)
+            assertTrue(wonState.isVictoryAnimationActive)
+            assertNotNull(wonState.victorySummary)
+            assertTrue(emittedEvents.any { it is GameEvent.TriggerWinCelebration })
+
+            viewModel.onIntent(GameIntent.SkipWinAnimation)
+            testScheduler.advanceUntilIdle()
+
+            val skippedState = viewModel.uiState.value
+            assertFalse(skippedState.isVictoryAnimationActive)
+            assertNotNull(skippedState.victorySummary)
+
+            viewModel.onIntent(GameIntent.DismissVictorySummary)
+            testScheduler.advanceUntilIdle()
+
+            val dismissedState = viewModel.uiState.value
+            assertTrue(dismissedState.isGameWon)
+            assertFalse(dismissedState.isVictoryAnimationActive)
+            assertEquals(null, dismissedState.victorySummary)
+
+            viewModel.onIntent(GameIntent.RestartGame)
+            testScheduler.advanceUntilIdle()
+
+            val restartedState = viewModel.uiState.value
+            assertFalse(restartedState.isGameWon)
+            assertFalse(restartedState.isVictoryAnimationActive)
+            assertEquals(null, restartedState.victorySummary)
+
+            eventJob.cancel()
         }
     }
 }

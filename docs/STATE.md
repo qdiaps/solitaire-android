@@ -17,12 +17,19 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-6.6` (Victory Summary Dialog UI). Ready to proceed to `T-6.7` (ViewModel & Screen Integration).
+- **Current Focus:** Completed `T-6.7` (ViewModel & Screen Integration). Ready to proceed to `T-6.8` (Performance Profiling, Memory Leak Audit, ADR 010 & Final Polish).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-28 (T-6.7: ViewModel & Screen Integration):**
+  - Connected win detection in `GameViewModel` across moves, auto-complete cascades, and dev tools to trigger `StartVictoryAnimation`, compute `VictorySummary` against historical stats, and persist game records to `StatsRepository`.
+  - Added overload `VictoryOverlay` accepting `DropTargetRegistry` and foundations to automatically resolve foundation positions, manage hardware-backed sprite cache, and run the canvas loop.
+  - Wired `VictoryOverlay` and `VictorySummaryDialog` into `SolitaireGameScreen` layout hierarchy above board components.
+  - Connected `GameEvent.TriggerWinCelebration` to dispatch low-latency celebratory fanfare audio (`solitaireAudio.playWinFanfare()`) and celebratory haptic pulses (`solitaireHaptics.playWinCelebration()`).
+  - Wired screen tap-to-skip via `SkipWinAnimation` immediately halting the canvas loop and transitioning to `VictorySummaryDialog`. Handled "New Game", "Play Again", and "View Board" actions.
+  - Added `VictorySequenceTests` in `GameViewModelTest` and full integration test in `SolitaireGameScreenTest`. Full suite: 657 unit tests passing (100% pass), 0 Android lint errors (`./gradlew test`, `./gradlew lintDebug`).
 - **2026-09-28 (T-6.6: Victory Summary Dialog UI):**
   - Implemented celebratory modal dialog `VictorySummaryDialog.kt` displaying custom vector golden trophy iconography, victory title, congratulatory subtitle, and glowing golden badges for new personal records.
   - Implemented metrics grid for Time (with "BEST" badge), Moves (with "FEWEST" badge), Score (with "RECORD" badge), and celebratory winning streak breakthrough banner ("NEW BEST WIN STREAK ACHIEVED!").

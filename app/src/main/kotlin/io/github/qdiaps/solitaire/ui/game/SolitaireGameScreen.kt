@@ -58,6 +58,9 @@ import io.github.qdiaps.solitaire.ui.game.components.BottomActionBarView
 import io.github.qdiaps.solitaire.data.model.GameStats
 import io.github.qdiaps.solitaire.ui.game.components.SettingsBottomSheet
 import io.github.qdiaps.solitaire.ui.game.components.StatsDialog
+import io.github.qdiaps.solitaire.ui.game.animation.victory.VictoryAnimationType
+import io.github.qdiaps.solitaire.ui.game.animation.victory.VictoryOverlay
+import io.github.qdiaps.solitaire.ui.game.components.VictorySummaryDialog
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
 import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
 import io.github.qdiaps.solitaire.ui.game.components.LocalGameSessionId
@@ -142,6 +145,12 @@ fun SolitaireGameScreen(
     isAutoCompleteAvailable: Boolean = false,
     isAutoCompleting: Boolean = false,
     isGameWon: Boolean = false,
+    isVictoryAnimationActive: Boolean = false,
+    victorySummary: VictorySummary? = null,
+    selectedVictoryAnimation: VictoryAnimationType = VictoryAnimationType.CLASSIC_BOUNCE,
+    onPlayAgainClick: () -> Unit = {},
+    onSkipWinAnimation: () -> Unit = {},
+    onDismissVictorySummary: () -> Unit = {},
     onAutoCompleteClick: () -> Unit = {},
     onAutoCompleteStep: (AutoCompleteMove) -> Unit = {},
     onAutoCompleteFinished: () -> Unit = {},
@@ -494,6 +503,27 @@ fun SolitaireGameScreen(
                     // Floating drag-and-drop overlay layer in root window coordinates (ADR 003)
                     DragOverlay(dragDropState = dragDropState)
 
+                    // Full-screen Victory Animation Overlay (Cascade Bouncing)
+                    if (isVictoryAnimationActive) {
+                        VictoryOverlay(
+                            animationType = selectedVictoryAnimation,
+                            foundations = boardState.foundations,
+                            dropTargetRegistry = dropTargetRegistry,
+                            cardDimensions = dimensions,
+                            onSkip = onSkipWinAnimation
+                        )
+                    }
+
+                    // Modal Victory Summary Dialog
+                    if (!isVictoryAnimationActive && victorySummary != null) {
+                        VictorySummaryDialog(
+                            summary = victorySummary,
+                            onNewGame = onNewGameClick,
+                            onPlayAgain = onPlayAgainClick,
+                            onDismiss = onDismissVictorySummary
+                        )
+                    }
+
                     // Touch interceptor barrier during auto-complete cascade:
                     // Consumes all pointer events so cards cannot be tapped, held, or dragged
                     if (isAutoCompleting) {
@@ -698,8 +728,8 @@ fun SolitaireGameScreen(
                     if (currentState.soundEnabled) solitaireAudio.playDeal()
                 }
                 is GameEvent.TriggerWinCelebration -> {
-                    if (currentState.hapticsEnabled) solitaireHaptics.playSnap()
-                    if (currentState.soundEnabled) solitaireAudio.playSnap()
+                    if (currentState.hapticsEnabled) solitaireHaptics.playWinCelebration()
+                    if (currentState.soundEnabled) solitaireAudio.playWinFanfare()
                 }
                 is GameEvent.ShowMessage -> {
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
@@ -743,6 +773,12 @@ fun SolitaireGameScreen(
         isAutoCompleteAvailable = uiState.isAutoCompleteAvailable,
         isAutoCompleting = uiState.isAutoCompleting,
         isGameWon = uiState.isGameWon,
+        isVictoryAnimationActive = uiState.isVictoryAnimationActive,
+        victorySummary = uiState.victorySummary,
+        selectedVictoryAnimation = uiState.selectedVictoryAnimation,
+        onPlayAgainClick = { viewModel.onIntent(GameIntent.RestartGame) },
+        onSkipWinAnimation = { viewModel.onIntent(GameIntent.SkipWinAnimation) },
+        onDismissVictorySummary = { viewModel.onIntent(GameIntent.DismissVictorySummary) },
         onAutoCompleteClick = { viewModel.onIntent(GameIntent.StartAutoComplete) },
         onAutoCompleteStep = { viewModel.onIntent(GameIntent.ApplyAutoCompleteMove(it)) },
         onAutoCompleteFinished = { viewModel.onIntent(GameIntent.FinishAutoComplete) },
@@ -836,6 +872,12 @@ fun GameScreen(
     isAutoCompleteAvailable: Boolean = false,
     isAutoCompleting: Boolean = false,
     isGameWon: Boolean = false,
+    isVictoryAnimationActive: Boolean = false,
+    victorySummary: VictorySummary? = null,
+    selectedVictoryAnimation: VictoryAnimationType = VictoryAnimationType.CLASSIC_BOUNCE,
+    onPlayAgainClick: () -> Unit = {},
+    onSkipWinAnimation: () -> Unit = {},
+    onDismissVictorySummary: () -> Unit = {},
     onAutoCompleteClick: () -> Unit = {},
     onAutoCompleteStep: (AutoCompleteMove) -> Unit = {},
     onAutoCompleteFinished: () -> Unit = {},
@@ -896,6 +938,12 @@ fun GameScreen(
         isAutoCompleteAvailable = isAutoCompleteAvailable,
         isAutoCompleting = isAutoCompleting,
         isGameWon = isGameWon,
+        isVictoryAnimationActive = isVictoryAnimationActive,
+        victorySummary = victorySummary,
+        selectedVictoryAnimation = selectedVictoryAnimation,
+        onPlayAgainClick = onPlayAgainClick,
+        onSkipWinAnimation = onSkipWinAnimation,
+        onDismissVictorySummary = onDismissVictorySummary,
         onAutoCompleteClick = onAutoCompleteClick,
         onAutoCompleteStep = onAutoCompleteStep,
         onAutoCompleteFinished = onAutoCompleteFinished,

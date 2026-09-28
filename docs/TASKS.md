@@ -107,11 +107,13 @@
   - Provided prominent primary CTA "New Game" and secondary action buttons "Play Again" (replays same deal) and "View Board" (dismisses dialog to inspect completed board).
   - *Compose Previews:* Created `VictorySummaryDialogPreview` showcasing standard win, new record break, and dark felt themes (100% test pass, 0 lint errors).
 
-- [ ] **T-6.7: ViewModel & Screen Integration (`GameViewModel`, `SolitaireGameScreen`)**
-  - Connect win detection (`isGameWon`) to trigger `StartVictoryAnimation`, compute `VictorySummary`, and update `StatsRepository`.
-  - Wire `VictoryOverlay` into `SolitaireGameScreen` layout hierarchy above board components.
-  - Wire `SkipWinAnimation` on screen tap to immediately halt the canvas loop and present `VictorySummaryDialog`.
-  - *TDD/Unit Tests:* `GameViewModelTest` and `SolitaireGameScreenTest` verifying win flow, tap-to-skip, audio/haptic dispatch, and dialog actions.
+- [x] **T-6.7: ViewModel & Screen Integration (`GameViewModel`, `SolitaireGameScreen`)**
+  - Connected win detection in `GameViewModel` across moves, auto-complete cascades, and dev tools to trigger `StartVictoryAnimation`, compute `VictorySummary` against historical stats, and persist game records to `StatsRepository`.
+  - Added overload `VictoryOverlay` accepting `DropTargetRegistry` and foundations to automatically resolve foundation positions, manage hardware-backed sprite cache, and run the canvas loop.
+  - Wired `VictoryOverlay` and `VictorySummaryDialog` into `SolitaireGameScreen` layout hierarchy above board components.
+  - Connected `GameEvent.TriggerWinCelebration` to dispatch low-latency celebratory fanfare audio (`solitaireAudio.playWinFanfare()`) and celebratory haptic pulses (`solitaireHaptics.playWinCelebration()`).
+  - Wired screen tap-to-skip via `SkipWinAnimation` immediately halting the canvas loop and transitioning to `VictorySummaryDialog`. Handled "New Game", "Play Again", and "View Board" actions.
+  - *TDD/Unit Tests:* Added `VictorySequenceTests` in `GameViewModelTest` and full integration test in `SolitaireGameScreenTest` verifying win flow, tap-to-skip, audio/haptic celebration dispatch, dialog dismiss, and restart/new game lifecycle (657 total suite tests, 100% pass, 0 lint errors).
 
 - [ ] **T-6.8: Performance Profiling, Memory Leak Audit & Final Polish**
   - Profile frame rendering times using Android Profiler / Compose Tracing, verifying stable 60/120 FPS with 0 jank frames.

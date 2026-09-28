@@ -70,8 +70,8 @@ class GameViewModelTest {
         return BoardState(stock = listOf(card))
     }
 
-    private class FakeStatsRepository : StatsRepository {
-        private val _flow = MutableStateFlow(GameStats())
+    private class FakeStatsRepository(initialStats: GameStats = GameStats()) : StatsRepository {
+        private val _flow = MutableStateFlow(initialStats)
         override val statsFlow: StateFlow<GameStats> = _flow.asStateFlow()
 
         var gameStartedCount = 0
@@ -2494,6 +2494,8 @@ class GameViewModelTest {
 
             val state = viewModel.uiState.value
             assertTrue(state.isGameWon)
+            assertTrue(state.isVictoryAnimationActive)
+            assertNotNull(state.victorySummary)
             assertFalse(viewModel.isTimerRunning)
             assertFalse(state.isAutoCompleteAvailable)
             assertEquals(52, state.boardState.foundations.sumOf { it.size })
@@ -2657,6 +2659,169 @@ class GameViewModelTest {
             } finally {
                 generator.stop()
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("Victory Sequence & Summary Integration Tests")
+    inner class VictorySequenceTests {
+
+        private fun createAlmostWonBoard(): Pair<BoardState, Card> {
+            val presqueWonFoundations = Suit.entries.map { suit ->
+                if (suit == Suit.HEARTS) {
+                    Rank.entries.filter { it != Rank.KING }.map { Card(suit, it, isFaceUp = true) }
+                } else {
+                    Rank.entries.map { Card(suit, it, isFaceUp = true) }
+                }
+            }
+            val kingOfHearts = Card(Suit.HEARTS, Rank.KING, isFaceUp = true)
+            val tableau = List(7) { col ->
+                if (col == 0) listOf(kingOfHearts) else emptyList()
+            }
+            val board = BoardState(
+                foundations = presqueWonFoundations,
+                tableau = tableau,
+                score = 680,
+                movesCount = 92
+            )
+            return board to kingOfHearts
+        }
+
+        @Test
+        @DisplayName("Winning move triggers celebration event, activates victory animation and computes victory summary")
+        fun `winning move activates victory animation and computes summary`() = runTest(testDispatcher) {
+            val fakeStats = FakeStatsRepository(
+                initialStats = GameStats(
+                    gamesPlayed = 5,
+                    gamesWon = 3,
+                    bestTimeSeconds = 300,
+                    fewestMoves = 100,
+                    highScore = 500
+                )
+            )
+            val (board, winningCard) = createAlmostWonBoard()
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                statsRepository = fakeStats
+            )
+            testScheduler.runCurrent()
+
+            val events = mutableListOf<GameEvent>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.events.collect { events.add(it) }
+            }
+
+            viewModel.onIntent(GameIntent.OnCardTapped(winningCard, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+
+            val state = viewModel.uiState.value
+            assertTrue(state.isGameWon)
+            assertTrue(state.isVictoryAnimationActive)
+            assertNotNull(state.victorySummary)
+            val summary = state.victorySummary!!
+            assertEquals(93, summary.movesCount)
+            assertTrue(summary.score > 500)
+            assertTrue(summary.isNewHighScore)
+            assertTrue(events.any { it is GameEvent.TriggerWinCelebration })
+        }
+
+        @Test
+        @DisplayName("SkipWinAnimation deactivates victory animation while preserving victorySummary for dialog")
+        fun `skip win animation stops animation and retains summary`() = runTest(testDispatcher) {
+            val (board, winningCard) = createAlmostWonBoard()
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+            testScheduler.runCurrent()
+
+            viewModel.onIntent(GameIntent.OnCardTapped(winningCard, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+
+            assertTrue(viewModel.uiState.value.isVictoryAnimationActive)
+            assertNotNull(viewModel.uiState.value.victorySummary)
+
+            viewModel.onIntent(GameIntent.SkipWinAnimation)
+            testScheduler.runCurrent()
+
+            assertFalse(viewModel.uiState.value.isVictoryAnimationActive)
+            assertNotNull(viewModel.uiState.value.victorySummary)
+        }
+
+        @Test
+        @DisplayName("DismissVictorySummary clears victorySummary")
+        fun `dismiss victory summary clears summary state`() = runTest(testDispatcher) {
+            val (board, winningCard) = createAlmostWonBoard()
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+            testScheduler.runCurrent()
+
+            viewModel.onIntent(GameIntent.OnCardTapped(winningCard, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+
+            viewModel.onIntent(GameIntent.DismissVictorySummary)
+            testScheduler.runCurrent()
+
+            assertNull(viewModel.uiState.value.victorySummary)
+        }
+
+        @Test
+        @DisplayName("Undo after win resets victory animation and victory summary")
+        fun `undo after win deactivates victory animation and clears summary`() = runTest(testDispatcher) {
+            val (board, winningCard) = createAlmostWonBoard()
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+            testScheduler.runCurrent()
+
+            viewModel.onIntent(GameIntent.OnCardTapped(winningCard, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+
+            assertTrue(viewModel.uiState.value.isGameWon)
+            assertTrue(viewModel.uiState.value.isVictoryAnimationActive)
+            assertNotNull(viewModel.uiState.value.victorySummary)
+
+            viewModel.onIntent(GameIntent.UndoMove)
+            testScheduler.runCurrent()
+
+            assertFalse(viewModel.uiState.value.isGameWon)
+            assertFalse(viewModel.uiState.value.isVictoryAnimationActive)
+            assertNull(viewModel.uiState.value.victorySummary)
+        }
+
+        @Test
+        @DisplayName("StartNewGame resets victory animation and summary")
+        fun `start new game resets victory animation and summary`() = runTest(testDispatcher) {
+            val (board, winningCard) = createAlmostWonBoard()
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+            testScheduler.runCurrent()
+
+            viewModel.onIntent(GameIntent.OnCardTapped(winningCard, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+
+            viewModel.onIntent(GameIntent.StartNewGame)
+            testScheduler.runCurrent()
+
+            assertFalse(viewModel.uiState.value.isGameWon)
+            assertFalse(viewModel.uiState.value.isVictoryAnimationActive)
+            assertNull(viewModel.uiState.value.victorySummary)
         }
     }
 }
