@@ -94,11 +94,12 @@
   - Extended `SolitaireHaptics` and `AndroidSolitaireHaptics` with `playWinCelebration()`, driving a multi-pulse celebratory waveform (`0, 70, 60, 70, 60, 140` ms) on supported vibrators with graceful Compose fallback.
   - *TDD/Unit Tests:* Added tests in `SolitaireAudioTest` and `SolitaireHapticsTest` validating invocation tracking, muting guards when disabled, and no-op contract compliance (100% pass, 644 total suite tests).
 
-- [ ] **T-6.5: Victory Summary Data Model & Records Calculation (`VictorySummary`, `GameContract`)**
-  - Define `@Immutable` `VictorySummary` data model: `timeSeconds`, `movesCount`, `score`, and record breakthrough flags (`isNewBestTime`, `isNewFewestMoves`, `isNewHighScore`, `isNewBestStreak`).
-  - Update `GameUiState` with `isVictoryAnimationActive: Boolean`, `victorySummary: VictorySummary?`, and `selectedVictoryAnimation: VictoryAnimationType`.
-  - Add intents: `StartVictoryAnimation`, `SkipWinAnimation`, `DismissVictorySummary`.
-  - *TDD/Unit Tests:* `GameContractTest` and `VictorySummaryTest` checking record comparisons against current `GameStats`.
+- [x] **T-6.5: Victory Summary Data Model & Records Calculation (`VictorySummary`, `GameContract`)**
+  - Defined `@Immutable` `VictorySummary` data model encapsulating `timeSeconds`, `movesCount`, `score`, breakthrough flags (`isNewBestTime`, `isNewFewestMoves`, `isNewHighScore`, `isNewBestStreak`), and composite `hasAnyNewRecord`.
+  - Implemented `VictorySummary.calculate()` calculating personal records against baseline `GameStats`.
+  - Extended `GameUiState` with `isVictoryAnimationActive: Boolean`, `victorySummary: VictorySummary?`, and `selectedVictoryAnimation: VictoryAnimationType`.
+  - Added MVI intents `StartVictoryAnimation`, `SkipWinAnimation`, and `DismissVictorySummary` in `GameIntent` and wired exhaustive branches in `GameViewModel`.
+  - *TDD/Unit Tests:* Added `VictorySummaryTest` (100% pass) and updated `GameContractTest` covering state immutability, default state verification, and exhaustive intent handling (651 total suite tests).
 
 - [ ] **T-6.6: Victory Summary Dialog UI (`VictorySummaryDialog`)**
   - Implement celebratory modal dialog `VictorySummaryDialog.kt` displaying finished game time, moves, score, and glowing golden badges for new personal records.

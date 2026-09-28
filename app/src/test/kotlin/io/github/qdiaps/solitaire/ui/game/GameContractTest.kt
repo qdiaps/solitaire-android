@@ -11,6 +11,7 @@ import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.Hint
 import io.github.qdiaps.solitaire.domain.rules.HintPriority
+import io.github.qdiaps.solitaire.ui.game.animation.victory.VictoryAnimationType
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
 import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
@@ -51,6 +52,9 @@ class GameContractTest {
             assertTrue(state.hapticsEnabled)
             assertFalse(state.autoHintEnabled)
             assertFalse(state.isSettingsOpen)
+            assertFalse(state.isVictoryAnimationActive)
+            assertNull(state.victorySummary)
+            assertEquals(VictoryAnimationType.CLASSIC_BOUNCE, state.selectedVictoryAnimation)
             assertNull(state.highlightedCard)
             assertFalse(state.isHintActive)
         }
@@ -81,24 +85,31 @@ class GameContractTest {
         @Test
         fun `verify state copying retains immutability`() {
             val initial = GameUiState(elapsedTimeSeconds = 10L, isGameWon = false)
+            val summary = VictorySummary(timeSeconds = 100, movesCount = 60, score = 500)
             val updated = initial.copy(
                 elapsedTimeSeconds = 11L,
                 isGameWon = true,
                 canUndo = true,
                 isSettingsOpen = true,
-                drawMode = DrawMode.DRAW_THREE
+                drawMode = DrawMode.DRAW_THREE,
+                isVictoryAnimationActive = true,
+                victorySummary = summary
             )
 
             assertEquals(10L, initial.elapsedTimeSeconds)
             assertFalse(initial.isGameWon)
             assertFalse(initial.canUndo)
             assertFalse(initial.isSettingsOpen)
+            assertFalse(initial.isVictoryAnimationActive)
+            assertNull(initial.victorySummary)
             assertEquals(DrawMode.DRAW_ONE, initial.drawMode)
 
             assertEquals(11L, updated.elapsedTimeSeconds)
             assertTrue(updated.isGameWon)
             assertTrue(updated.canUndo)
             assertTrue(updated.isSettingsOpen)
+            assertTrue(updated.isVictoryAnimationActive)
+            assertEquals(summary, updated.victorySummary)
             assertEquals(DrawMode.DRAW_THREE, updated.drawMode)
         }
     }
@@ -138,7 +149,9 @@ class GameContractTest {
                 GameIntent.ToggleLeftHanded,
                 GameIntent.SelectFeltTheme(FeltTheme.DEEP_NAVY),
                 GameIntent.SetFeltTheme(FeltTheme.DARK_CHARCOAL),
+                GameIntent.StartVictoryAnimation,
                 GameIntent.SkipWinAnimation,
+                GameIntent.DismissVictorySummary,
                 GameIntent.OpenSettings,
                 GameIntent.CloseSettings,
                 GameIntent.SetDrawMode(DrawMode.DRAW_THREE),
@@ -159,7 +172,7 @@ class GameContractTest {
                 GameIntent.DevExportSeeds
             )
 
-            assertEquals(35, intents.size)
+            assertEquals(37, intents.size)
 
             for (intent in intents) {
                 val label = when (intent) {
@@ -179,7 +192,9 @@ class GameContractTest {
                     is GameIntent.ToggleLeftHanded -> "ToggleLeftHanded"
                     is GameIntent.SelectFeltTheme -> "SelectFeltTheme:${intent.theme.name}"
                     is GameIntent.SetFeltTheme -> "SetFeltTheme:${intent.theme.name}"
+                    is GameIntent.StartVictoryAnimation -> "StartVictoryAnimation"
                     is GameIntent.SkipWinAnimation -> "SkipWinAnimation"
+                    is GameIntent.DismissVictorySummary -> "DismissVictorySummary"
                     is GameIntent.OpenSettings -> "OpenSettings"
                     is GameIntent.CloseSettings -> "CloseSettings"
                     is GameIntent.SetDrawMode -> "SetDrawMode:${intent.drawMode}"

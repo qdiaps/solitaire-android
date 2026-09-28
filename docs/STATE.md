@@ -17,12 +17,18 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-6.4` (Victory Audio Fanfare & Celebration Haptics). Ready to proceed to `T-6.5` (Victory Summary Data Model & Records Calculation).
+- **Current Focus:** Completed `T-6.5` (Victory Summary Data Model & Records Calculation). Ready to proceed to `T-6.6` (Victory Summary Dialog UI).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-28 (T-6.5: Victory Summary Data Model & Records Calculation):**
+  - Defined `@Immutable` `VictorySummary` data model encapsulating `timeSeconds`, `movesCount`, `score`, breakthrough flags (`isNewBestTime`, `isNewFewestMoves`, `isNewHighScore`, `isNewBestStreak`), and composite `hasAnyNewRecord`.
+  - Implemented `VictorySummary.calculate()` calculating personal records against baseline `GameStats`.
+  - Extended `GameUiState` with `isVictoryAnimationActive: Boolean`, `victorySummary: VictorySummary?`, and `selectedVictoryAnimation: VictoryAnimationType`.
+  - Added MVI intents `StartVictoryAnimation`, `SkipWinAnimation`, and `DismissVictorySummary` in `GameIntent` and wired exhaustive branches in `GameViewModel`.
+  - Added unit test suite `VictorySummaryTest` and updated `GameContractTest`. Full suite: 651 unit tests passing (100% pass), 0 Android lint errors (`./gradlew test`, `./gradlew lintDebug`).
 - **2026-09-28 (T-6.4: Victory Audio Fanfare & Celebration Haptics):**
   - Synthesized crisp 16-bit 44.1kHz mono PCM WAV audio asset `victory_fanfare.wav` in `app/src/main/res/raw/` (bright C Major ascending arpeggio and triumphant brass/chime chord).
   - Extended `SolitaireAudio` and `AndroidSolitaireAudio` with `playWinFanfare()`, loaded into low-latency `SoundPool` with `USAGE_GAME` sonification and muted when audio is disabled.

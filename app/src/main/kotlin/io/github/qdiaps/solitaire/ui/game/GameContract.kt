@@ -10,6 +10,7 @@ import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.Hint
 import io.github.qdiaps.solitaire.domain.solver.GeneratorDebugStats
+import io.github.qdiaps.solitaire.ui.game.animation.victory.VictoryAnimationType
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
 import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
@@ -35,6 +36,9 @@ import io.github.qdiaps.solitaire.ui.theme.FeltTheme
  * @property isSettingsOpen Whether the settings bottom sheet is currently visible.
  * @property dealDifficulty Solvability guarantee and difficulty for card deal generation.
  * @property debugStats Real-time telemetry metrics emitted by DealGenerator (active in debug builds).
+ * @property isVictoryAnimationActive Whether the full-screen victory animation overlay is currently running.
+ * @property victorySummary Completion statistics and breakthrough records for the won game, or null if game in progress.
+ * @property selectedVictoryAnimation Active victory celebration animation style (classic bounce cascade, etc.).
  */
 @Immutable
 data class GameUiState(
@@ -60,7 +64,10 @@ data class GameUiState(
     val isSettingsOpen: Boolean = false,
     val isStatsDialogOpen: Boolean = false,
     val stats: GameStats = GameStats(),
-    val debugStats: GeneratorDebugStats = GeneratorDebugStats()
+    val debugStats: GeneratorDebugStats = GeneratorDebugStats(),
+    val isVictoryAnimationActive: Boolean = false,
+    val victorySummary: VictorySummary? = null,
+    val selectedVictoryAnimation: VictoryAnimationType = VictoryAnimationType.CLASSIC_BOUNCE
 ) {
     /**
      * Cards that should be highlighted on the board (e.g., all cards in the moving stack from [activeHint]).
@@ -182,9 +189,19 @@ sealed interface GameIntent {
     data class SetFeltTheme(val theme: FeltTheme) : GameIntent
 
     /**
+     * Start celebratory victory cascade animation upon win completion.
+     */
+    data object StartVictoryAnimation : GameIntent
+
+    /**
      * Skip victory cascade animation and show final win summary dialog.
      */
     data object SkipWinAnimation : GameIntent
+
+    /**
+     * Dismiss victory summary dialog and return to completed board view.
+     */
+    data object DismissVictorySummary : GameIntent
 
     /**
      * Open settings bottom sheet.

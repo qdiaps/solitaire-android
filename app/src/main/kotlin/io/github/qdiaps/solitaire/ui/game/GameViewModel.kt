@@ -257,7 +257,15 @@ class GameViewModel(
             is GameIntent.FinishAutoComplete -> finishAutoComplete()
             is GameIntent.ApplyAutoCompleteMove -> applyAutoCompleteMove(intent.move)
             is GameIntent.SaveSession -> saveCurrentSession()
-            is GameIntent.SkipWinAnimation -> { /* Handled in T-6 */ }
+            is GameIntent.StartVictoryAnimation -> {
+                _uiState.update { it.copy(isVictoryAnimationActive = true) }
+            }
+            is GameIntent.SkipWinAnimation -> {
+                _uiState.update { it.copy(isVictoryAnimationActive = false) }
+            }
+            is GameIntent.DismissVictorySummary -> {
+                _uiState.update { it.copy(victorySummary = null) }
+            }
             is GameIntent.OpenSettings -> openSettings()
             is GameIntent.CloseSettings -> closeSettings()
             is GameIntent.SetDrawMode -> setDrawMode(intent.drawMode)
