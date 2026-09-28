@@ -76,3 +76,15 @@ dependencies {
     testRuntimeOnly(libs.junit.jupiter.engine)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
+
+tasks.register<JavaExec>("generateSeedBank") {
+    description = "Generates 200 guaranteed solvable seeds into assets/deals/seed_bank.json"
+    group = "generation"
+    dependsOn("compileDebugKotlin")
+    classpath = files(
+        tasks.named("compileDebugKotlin"),
+        configurations.getByName("debugRuntimeClasspath")
+    )
+    mainClass.set("io.github.qdiaps.solitaire.domain.solver.SeedBankGeneratorKt")
+    args("src/main/assets/deals/seed_bank.json")
+}

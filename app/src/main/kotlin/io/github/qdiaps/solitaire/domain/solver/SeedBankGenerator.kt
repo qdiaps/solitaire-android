@@ -3,6 +3,7 @@ package io.github.qdiaps.solitaire.domain.solver
 import io.github.qdiaps.solitaire.domain.deck.KlondikeDealer
 import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
+import java.io.File
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -84,4 +85,26 @@ object SeedBankGenerator {
             mediumSeeds = mediumSeeds.toList().take(targetMedium).sorted()
         )
     }
+}
+
+/**
+ * Entry point for CLI / Gradle execution of seed pre-generation.
+ */
+fun main(args: Array<String>) {
+    val outputPath = args.getOrNull(0) ?: "src/main/assets/deals/seed_bank.json"
+    val file = File(outputPath)
+    println("Starting Klondike Seed Bank Pre-Generation...")
+    println("Targets: 100 Easy seeds, 100 Medium seeds")
+    println("Output: ${file.absolutePath}")
+
+    val startTime = System.currentTimeMillis()
+    val catalog = SeedBankGenerator.generateCatalog(targetEasy = 100, targetMedium = 100)
+    val duration = System.currentTimeMillis() - startTime
+
+    val json = SeedBankParser.serialize(catalog)
+    file.parentFile?.mkdirs()
+    file.writeText(json, Charsets.UTF_8)
+
+    println("Successfully generated ${catalog.totalSeedsCount} seeds in ${duration}ms (${catalog.easySeeds.size} Easy, ${catalog.mediumSeeds.size} Medium).")
+    println("Wrote catalog to ${file.absolutePath}")
 }
