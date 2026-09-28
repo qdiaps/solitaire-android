@@ -210,8 +210,8 @@ fun SolitaireGameScreen(
                     onAutoCompleteClick()
                     coroutineScope.launch {
                         try {
+                            var current = currentBoardState
                             while (isActive) {
-                                val current = currentBoardState
                                 val move = AutoCompleteResolver.nextMove(current) ?: break
                                 val startOffset = calculateFlightSourceOffset(
                                     source = move.from,
@@ -227,6 +227,7 @@ fun SolitaireGameScreen(
                                     dimensions = dimensions,
                                     density = density
                                 )
+                                current = move.resultingState
                                 if (startOffset != null && targetOffset != null) {
                                     cardFlightState.startFlight(
                                         cards = listOf(move.card),

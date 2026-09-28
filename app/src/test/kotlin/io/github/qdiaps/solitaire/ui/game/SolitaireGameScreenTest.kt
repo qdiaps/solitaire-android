@@ -258,5 +258,52 @@ class SolitaireGameScreenTest {
 
             eventJob.cancel()
         }
+
+        @Test
+        fun `step by step auto complete loop advances state sequentially with unique cards`() = runTest(testDispatcher) {
+            val suits = Suit.entries
+            val foundations = suits.map { suit ->
+                Rank.entries.filter { it != Rank.KING }.map { rank ->
+                    Card(suit, rank, isFaceUp = true)
+                }
+            }
+            val kings = suits.map { suit -> Card(suit, Rank.KING, isFaceUp = true) }
+            val tableau = List(7) { index ->
+                if (index < 4) listOf(kings[index]) else emptyList()
+            }
+            val readyBoard = BoardState(
+                stock = emptyList(),
+                waste = emptyList(),
+                foundations = foundations,
+                tableau = tableau
+            )
+            val viewModel = GameViewModel(
+                initialBoardState = readyBoard,
+                coroutineScope = this,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+
+            viewModel.onIntent(GameIntent.StartAutoComplete)
+            assertTrue(viewModel.uiState.value.isAutoCompleting)
+
+            var current = viewModel.uiState.value.boardState
+            val animatedCards = mutableListOf<Card>()
+
+            while (true) {
+                val move = io.github.qdiaps.solitaire.domain.rules.AutoCompleteResolver.nextMove(current) ?: break
+                animatedCards.add(move.card)
+                current = move.resultingState
+                viewModel.onIntent(GameIntent.ApplyAutoCompleteMove(move))
+            }
+
+            viewModel.onIntent(GameIntent.FinishAutoComplete)
+
+            // Exactly 4 kings moved, each card animated exactly once
+            assertEquals(4, animatedCards.size)
+            assertEquals(animatedCards.size, animatedCards.distinct().size)
+            assertTrue(viewModel.uiState.value.isGameWon)
+            assertFalse(viewModel.uiState.value.isAutoCompleting)
+        }
     }
 }

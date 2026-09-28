@@ -15,6 +15,11 @@
   - [x] **T-6.FIX2.2 (Data & ViewModel):** Extend `GameSettings` and `SettingsRepository` with `dealDifficulty: DealDifficulty` (persisted in DataStore, default `EASY`), update `GameViewModel` to observe difficulty, wire `DealGenerator` in `MainActivity.provideFactory`, and handle `RANDOM` bypass or `EASY`/`MEDIUM` buffered deals on cold start and new game. *TDD/Unit Tests:* `SettingsRepositoryTest` and `GameViewModelDealDifficultyTest`.
   - [x] **T-6.FIX2.3 (UI & Verification):** Add Deal Difficulty selector (`SegmentedChoiceRow`: Easy / Medium / Random) to `SettingsBottomSheet` under Gameplay section, update `SettingsBottomSheetPreview`, verify full test suite (`./gradlew test`), and validate zero-regression integration.
 
+- [x] **T-6.FIX3: Fix Duplicate Card Flight Animation during Auto-Complete Cascade (`SolitaireGameScreen`)**
+  - Fixed a state desynchronization bug in `animatedAutoCompleteClick` where `val current = currentBoardState` was re-read every loop iteration from un-recomposed Compose state, causing cards to replay their flight animation twice.
+  - Retained sequential board state mutation across iterations (`var current = currentBoardState` outside loop, updated to `current = move.resultingState` per step), guaranteeing unique card flight paths.
+  - *TDD/Unit Tests:* Added `step by step auto complete loop advances state sequentially with unique cards` in `SolitaireGameScreenTest` verifying unique sequential moves without duplicate card animations.
+
 - [ ] **T-6.1: Victory Animation Extensible Architecture & Bouncing Physics Engine (`VictoryAnimator`, `BouncingCardsPhysics`)**
   - Design extensible `VictoryAnimationType` enum (`CLASSIC_BOUNCE`, expandable to future effects like `FIREWORKS`, `CARD_SPIRAL`, etc.) and `VictoryAnimator` abstraction.
   - Implement pure math `BouncingCardsPhysics` engine: particles with position, velocity ($v_x, v_y$), gravity, restitution coefficient ($e \approx -0.85$), and screen boundary bouncing.
