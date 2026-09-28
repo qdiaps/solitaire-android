@@ -41,7 +41,9 @@ class PersistentSeedBankTest {
                 scope = testScope
             )
 
+            assertFalse(bank.isInitialized)
             bank.initialize()
+            assertTrue(bank.isInitialized)
 
             assertEquals(100, bank.getAvailableCount(DealDifficulty.EASY))
             assertEquals(100, bank.getAvailableCount(DealDifficulty.MEDIUM))

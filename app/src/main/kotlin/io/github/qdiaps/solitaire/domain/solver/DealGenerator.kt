@@ -211,6 +211,7 @@ class DealGenerator(
      */
     fun checkAndReplenish(difficulty: DealDifficulty) {
         val bank = seedBank ?: return
+        if (!bank.isInitialized) return
         if (difficulty != DealDifficulty.EASY && difficulty != DealDifficulty.MEDIUM) return
 
         val currentJobs = replenishmentJobs.getOrPut(difficulty) { mutableListOf() }

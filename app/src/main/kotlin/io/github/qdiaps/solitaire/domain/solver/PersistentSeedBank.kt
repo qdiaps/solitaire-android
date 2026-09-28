@@ -63,6 +63,10 @@ class PersistentSeedBank(
     private val _state = MutableStateFlow(SeedBankState())
     val state: StateFlow<SeedBankState> = _state.asStateFlow()
 
+    @Volatile
+    var isInitialized: Boolean = false
+        private set
+
     private val lock = Any()
 
     suspend fun initialize() {
@@ -79,6 +83,7 @@ class PersistentSeedBank(
             _state.value = initialState
             persist(initialState)
         }
+        isInitialized = true
     }
 
     fun getAvailableCount(difficulty: DealDifficulty): Int = synchronized(lock) {
