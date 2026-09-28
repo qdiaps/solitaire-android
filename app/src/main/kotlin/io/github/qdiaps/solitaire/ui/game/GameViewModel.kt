@@ -19,6 +19,7 @@ import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteMove
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteResolver
+import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.HintResolver
 import io.github.qdiaps.solitaire.domain.rules.KlondikeRules
@@ -86,7 +87,7 @@ class GameViewModel(
     private val initialIsWon = KlondikeRules.isGameWon(initialDealState)
     var hasMoved: Boolean = (initialBoardState != null && initialBoardState.movesCount > 0)
         private set
-    private val hasAsyncInit = (settingsRepository != null || (persistenceRepository != null && initialBoardState == null))
+    private val hasAsyncInit = (settingsRepository != null || (persistenceRepository != null && initialBoardState == null) || (dealGenerator != null && initialBoardState == null))
     private val _uiState = MutableStateFlow(
         GameUiState(
             boardState = initialDealState,
@@ -147,6 +148,7 @@ class GameViewModel(
                     _uiState.update { current ->
                         current.copy(
                             drawMode = initialSettings.drawMode,
+                            dealDifficulty = initialSettings.dealDifficulty,
                             isLeftHanded = initialSettings.isLeftHanded,
                             feltTheme = initialSettings.feltTheme,
                             cardBackStyle = initialSettings.cardBackStyle,
@@ -158,10 +160,24 @@ class GameViewModel(
                     }
                 }
 
+                var hasRestoredSession = false
                 if (persistenceRepository != null && initialBoardState == null) {
                     val savedSession = persistenceRepository.getSavedSession()
                     if (savedSession != null && !KlondikeRules.isGameWon(savedSession.boardState)) {
                         restoreGameSession(savedSession)
+                        hasRestoredSession = true
+                    }
+                }
+
+                if (!hasRestoredSession && initialBoardState == null && dealGenerator != null) {
+                    val diff = initialSettings?.dealDifficulty ?: _uiState.value.dealDifficulty
+                    if (diff != DealDifficulty.RANDOM) {
+                        try {
+                            val solvableBoard = dealGenerator.getSolvableDeal(diff)
+                            applyNewDeal(solvableBoard)
+                        } catch (_: Exception) {
+                            // Keep fallback initial deal
+                        }
                     }
                 }
 
@@ -177,6 +193,7 @@ class GameViewModel(
                         _uiState.update { current ->
                             current.copy(
                                 drawMode = settings.drawMode,
+                                dealDifficulty = settings.dealDifficulty,
                                 isLeftHanded = settings.isLeftHanded,
                                 feltTheme = settings.feltTheme,
                                 cardBackStyle = settings.cardBackStyle,
@@ -227,6 +244,7 @@ class GameViewModel(
             is GameIntent.OpenSettings -> openSettings()
             is GameIntent.CloseSettings -> closeSettings()
             is GameIntent.SetDrawMode -> setDrawMode(intent.drawMode)
+            is GameIntent.SetDealDifficulty -> setDealDifficulty(intent.difficulty)
             is GameIntent.SetLeftHanded -> setLeftHanded(intent.isLeftHanded)
             is GameIntent.SetCardBackStyle -> setCardBackStyle(intent.cardBackStyle)
             is GameIntent.SetCardFaceStyle -> setCardFaceStyle(intent.cardFaceStyle)
@@ -372,6 +390,16 @@ class GameViewModel(
     }
 
     /**
+     * Updates deal difficulty mode live and persists change to settings repository.
+     */
+    fun setDealDifficulty(difficulty: DealDifficulty) {
+        _uiState.update { it.copy(dealDifficulty = difficulty) }
+        settingsRepository?.let { repo ->
+            scope.launch { repo.setDealDifficulty(difficulty) }
+        }
+    }
+
+    /**
      * Updates draw mode (Draw 1 or Draw 3) live and persists change to settings repository.
      */
     fun setDrawMode(newDrawMode: DrawMode) {
@@ -457,6 +485,7 @@ class GameViewModel(
             _uiState.update {
                 it.copy(
                     drawMode = DrawMode.DRAW_ONE,
+                    dealDifficulty = DealDifficulty.EASY,
                     isLeftHanded = false,
                     feltTheme = FeltTheme.CLASSIC_GREEN,
                     cardBackStyle = CardBackStyle.CLASSIC_LATTICE,
@@ -595,11 +624,12 @@ class GameViewModel(
     fun startNewGame() {
         cancelAutoComplete()
         stopTimer()
-        if (dealGenerator != null) {
+        val difficulty = _uiState.value.dealDifficulty
+        if (dealGenerator != null && difficulty != DealDifficulty.RANDOM) {
             _uiState.update { it.copy(isLoading = true) }
             scope.launch {
                 val newBoard = try {
-                    dealGenerator.getSolvableDeal()
+                    dealGenerator.getSolvableDeal(difficulty)
                 } catch (_: Exception) {
                     dealProvider()
                 }
@@ -820,6 +850,7 @@ class GameViewModel(
         stopTimer()
         cancelAutoComplete()
         cancelIdleHintTimer()
+        dealGenerator?.stop()
     }
 
     /**
@@ -924,8 +955,12 @@ class GameViewModel(
                 val settingsRepo = DataStoreSettingsRepository(dataStoreManager)
                 val statsRepo = DataStoreStatsRepository(dataStoreManager)
                 val persistenceRepo = DataStoreGamePersistenceRepository(dataStoreManager)
+                val generator = dealGenerator ?: DealGenerator(
+                    scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+                    drawMode = DrawMode.DRAW_ONE
+                )
                 return GameViewModel(
-                    dealGenerator = dealGenerator,
+                    dealGenerator = generator,
                     settingsRepository = settingsRepo,
                     statsRepository = statsRepo,
                     persistenceRepository = persistenceRepo

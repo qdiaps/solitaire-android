@@ -5,6 +5,7 @@ import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteMove
+import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.data.model.GameStats
 import io.github.qdiaps.solitaire.domain.rules.Hint
@@ -31,6 +32,7 @@ import io.github.qdiaps.solitaire.ui.theme.FeltTheme
  * @property hapticsEnabled Whether device vibration feedback is enabled for taps and snaps.
  * @property autoHintEnabled Whether moves are automatically hinted after idle periods.
  * @property isSettingsOpen Whether the settings bottom sheet is currently visible.
+ * @property dealDifficulty Solvability guarantee and difficulty for card deal generation.
  */
 @Immutable
 data class GameUiState(
@@ -47,6 +49,7 @@ data class GameUiState(
     val isAutoCompleting: Boolean = false,
     val gameSessionId: Long = 1L,
     val drawMode: DrawMode = DrawMode.DRAW_ONE,
+    val dealDifficulty: DealDifficulty = DealDifficulty.EASY,
     val cardBackStyle: CardBackStyle = CardBackStyle.CLASSIC_LATTICE,
     val cardFaceStyle: CardFaceStyle = CardFaceStyle.MODERN_CLEAN,
     val soundEnabled: Boolean = true,
@@ -194,6 +197,11 @@ sealed interface GameIntent {
      * Update draw mode rule setting (Draw 1 or Draw 3).
      */
     data class SetDrawMode(val drawMode: DrawMode) : GameIntent
+
+    /**
+     * Update deal difficulty setting (Easy, Medium, Random).
+     */
+    data class SetDealDifficulty(val difficulty: DealDifficulty) : GameIntent
 
     /**
      * Update left-handed layout orientation setting.

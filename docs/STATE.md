@@ -17,12 +17,18 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-6.FIX2.1` (Domain DealDifficulty Enum, DealDifficultyClassifier & DealGenerator Multi-Difficulty Buffering). Ready to proceed to `T-6.FIX2.2`.
+- **Current Focus:** Completed `T-6.FIX2.2` (DataStore Settings Persistence, GameViewModel Deal Difficulty Integration & MainActivity DealGenerator Wiring). Ready to proceed to `T-6.FIX2.3`.
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-28 (T-6.FIX2.2: DataStore Settings Persistence, GameViewModel Deal Difficulty Integration & MainActivity Wiring):**
+  - Added `dealDifficulty: DealDifficulty = DealDifficulty.EASY` to `GameSettings` and wired persistence in `SettingsRepository` / `DataStoreSettingsRepository`.
+  - Added `dealDifficulty` to `GameUiState` and `GameIntent.SetDealDifficulty(difficulty)` to `GameContract`.
+  - Updated `GameViewModel` to observe deal difficulty, handle `SetDealDifficulty`, fetch solvable deals per difficulty on cold start (when no saved session exists) and on `startNewGame()`, and bypass solver for `RANDOM`.
+  - Wired `DealGenerator` default lifecycle in `GameViewModel.provideFactory` and `onCleared()`.
+  - Added unit test suite `GameViewModelDealDifficultyTest` covering deal difficulty intents, DataStore persistence, new game dispatching, and cold start async initialization. All 577 unit tests passing (100% pass), 0 lint errors (`./gradlew lintDebug`).
 - **2026-09-28 (T-6.FIX2.1: Domain DealDifficulty Enum, DealDifficultyClassifier & Multi-Difficulty DealGenerator):**
   - Implemented `@Serializable` `DealDifficulty` enum (`EASY`, `MEDIUM`, `RANDOM`) in `io.github.qdiaps.solitaire.domain.rules`.
   - Implemented pure Kotlin heuristic classifier `DealDifficultyClassifier` in `io.github.qdiaps.solitaire.domain.solver` (filtering out unsolvable/timeout deals, classifying deals with $\ge 2$ opening tableau moves and $\le 250$ A* states as `EASY`, other solvable boards as `MEDIUM`).
@@ -53,4 +59,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-6.FIX2.2: DataStore Settings Persistence, GameViewModel Deal Difficulty Integration & MainActivity DealGenerator Wiring`.
+- **Target Task:** `T-6.FIX2.3: UI & Settings Sheet Integration for Deal Difficulty (SegmentedChoiceRow in SettingsBottomSheet, strings.xml & Preview Tests)`.

@@ -7,6 +7,7 @@ import io.github.qdiaps.solitaire.domain.model.Move
 import io.github.qdiaps.solitaire.domain.model.Rank
 import io.github.qdiaps.solitaire.domain.model.Suit
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteMove
+import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.Hint
 import io.github.qdiaps.solitaire.domain.rules.HintPriority
@@ -43,6 +44,7 @@ class GameContractTest {
             assertFalse(state.isAutoCompleteAvailable)
             assertEquals(1L, state.gameSessionId)
             assertEquals(DrawMode.DRAW_ONE, state.drawMode)
+            assertEquals(DealDifficulty.EASY, state.dealDifficulty)
             assertEquals(CardBackStyle.CLASSIC_LATTICE, state.cardBackStyle)
             assertEquals(CardFaceStyle.MODERN_CLEAN, state.cardFaceStyle)
             assertTrue(state.soundEnabled)
@@ -140,6 +142,7 @@ class GameContractTest {
                 GameIntent.OpenSettings,
                 GameIntent.CloseSettings,
                 GameIntent.SetDrawMode(DrawMode.DRAW_THREE),
+                GameIntent.SetDealDifficulty(DealDifficulty.MEDIUM),
                 GameIntent.SetLeftHanded(true),
                 GameIntent.SetCardBackStyle(CardBackStyle.CRIMSON_VINTAGE),
                 GameIntent.SetCardFaceStyle(CardFaceStyle.MODERN_CLEAN),
@@ -153,7 +156,7 @@ class GameContractTest {
                 GameIntent.SaveSession
             )
 
-            assertEquals(31, intents.size)
+            assertEquals(32, intents.size)
 
             for (intent in intents) {
                 val label = when (intent) {
@@ -177,6 +180,7 @@ class GameContractTest {
                     is GameIntent.OpenSettings -> "OpenSettings"
                     is GameIntent.CloseSettings -> "CloseSettings"
                     is GameIntent.SetDrawMode -> "SetDrawMode:${intent.drawMode}"
+                    is GameIntent.SetDealDifficulty -> "SetDealDifficulty:${intent.difficulty}"
                     is GameIntent.SetLeftHanded -> "SetLeftHanded:${intent.isLeftHanded}"
                     is GameIntent.SetCardBackStyle -> "SetCardBackStyle:${intent.cardBackStyle}"
                     is GameIntent.SetCardFaceStyle -> "SetCardFaceStyle:${intent.cardFaceStyle}"
