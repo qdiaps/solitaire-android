@@ -65,6 +65,17 @@ class KlondikeDealerTest {
     }
 
     @Test
+    @DisplayName("Verify dealFromSeed produces deterministic board identical to dealShuffled with same seed")
+    fun `dealFromSeed with same seed is deterministic and matches dealShuffled`() {
+        val board1 = KlondikeDealer.dealFromSeed(12345L)
+        val board2 = KlondikeDealer.dealFromSeed(12345L)
+        val boardShuffled = KlondikeDealer.dealShuffled(Random(12345L))
+
+        assertEquals(board1, board2)
+        assertEquals(board1, boardShuffled)
+    }
+
+    @Test
     @DisplayName("Verify deal throws exception if deck size is invalid")
     fun `deal throws IllegalArgumentException when deck size is not 52`() {
         val partialDeck = Deck.createStandard52().drop(1)

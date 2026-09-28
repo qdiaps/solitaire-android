@@ -1,13 +1,16 @@
 package io.github.qdiaps.solitaire.ui.game
 
 import androidx.compose.runtime.Immutable
+import io.github.qdiaps.solitaire.data.model.GameStats
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteMove
+import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
-import io.github.qdiaps.solitaire.data.model.GameStats
 import io.github.qdiaps.solitaire.domain.rules.Hint
+import io.github.qdiaps.solitaire.domain.solver.GeneratorDebugStats
+import io.github.qdiaps.solitaire.ui.game.animation.victory.VictoryAnimationType
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
 import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
@@ -31,6 +34,11 @@ import io.github.qdiaps.solitaire.ui.theme.FeltTheme
  * @property hapticsEnabled Whether device vibration feedback is enabled for taps and snaps.
  * @property autoHintEnabled Whether moves are automatically hinted after idle periods.
  * @property isSettingsOpen Whether the settings bottom sheet is currently visible.
+ * @property dealDifficulty Solvability guarantee and difficulty for card deal generation.
+ * @property debugStats Real-time telemetry metrics emitted by DealGenerator (active in debug builds).
+ * @property isVictoryAnimationActive Whether the full-screen victory animation overlay is currently running.
+ * @property victorySummary Completion statistics and breakthrough records for the won game, or null if game in progress.
+ * @property selectedVictoryAnimation Active victory celebration animation style (classic bounce cascade, etc.).
  */
 @Immutable
 data class GameUiState(
@@ -47,6 +55,7 @@ data class GameUiState(
     val isAutoCompleting: Boolean = false,
     val gameSessionId: Long = 1L,
     val drawMode: DrawMode = DrawMode.DRAW_ONE,
+    val dealDifficulty: DealDifficulty = DealDifficulty.EASY,
     val cardBackStyle: CardBackStyle = CardBackStyle.CLASSIC_LATTICE,
     val cardFaceStyle: CardFaceStyle = CardFaceStyle.MODERN_CLEAN,
     val soundEnabled: Boolean = true,
@@ -54,7 +63,11 @@ data class GameUiState(
     val autoHintEnabled: Boolean = false,
     val isSettingsOpen: Boolean = false,
     val isStatsDialogOpen: Boolean = false,
-    val stats: GameStats = GameStats()
+    val stats: GameStats = GameStats(),
+    val debugStats: GeneratorDebugStats = GeneratorDebugStats(),
+    val isVictoryAnimationActive: Boolean = false,
+    val victorySummary: VictorySummary? = null,
+    val selectedVictoryAnimation: VictoryAnimationType = VictoryAnimationType.CLASSIC_BOUNCE
 ) {
     /**
      * Cards that should be highlighted on the board (e.g., all cards in the moving stack from [activeHint]).
@@ -176,9 +189,19 @@ sealed interface GameIntent {
     data class SetFeltTheme(val theme: FeltTheme) : GameIntent
 
     /**
+     * Start celebratory victory cascade animation upon win completion.
+     */
+    data object StartVictoryAnimation : GameIntent
+
+    /**
      * Skip victory cascade animation and show final win summary dialog.
      */
     data object SkipWinAnimation : GameIntent
+
+    /**
+     * Dismiss victory summary dialog and return to completed board view.
+     */
+    data object DismissVictorySummary : GameIntent
 
     /**
      * Open settings bottom sheet.
@@ -194,6 +217,11 @@ sealed interface GameIntent {
      * Update draw mode rule setting (Draw 1 or Draw 3).
      */
     data class SetDrawMode(val drawMode: DrawMode) : GameIntent
+
+    /**
+     * Update deal difficulty setting (Easy, Medium, Random).
+     */
+    data class SetDealDifficulty(val difficulty: DealDifficulty) : GameIntent
 
     /**
      * Update left-handed layout orientation setting.
@@ -249,6 +277,21 @@ sealed interface GameIntent {
      * Persists active gameplay session snapshot to persistent storage (e.g. on lifecycle pause).
      */
     data object SaveSession : GameIntent
+
+    /**
+     * Developer action: instantly forces foundation completion to test victory animations.
+     */
+    data object DevInstantWin : GameIntent
+
+    /**
+     * Developer action: trims 90% of buffered seeds to trigger multi-worker dynamic scaling.
+     */
+    data object DevStressRefill : GameIntent
+
+    /**
+     * Developer action: exports active seed bank snapshot to clipboard.
+     */
+    data object DevExportSeeds : GameIntent
 }
 
 /**
@@ -279,4 +322,9 @@ sealed interface GameEvent {
      * Trigger full-screen victory cascade animation celebration.
      */
     data object TriggerWinCelebration : GameEvent
+
+    /**
+     * Copy text content to device clipboard.
+     */
+    data class CopyToClipboard(val label: String, val text: String) : GameEvent
 }

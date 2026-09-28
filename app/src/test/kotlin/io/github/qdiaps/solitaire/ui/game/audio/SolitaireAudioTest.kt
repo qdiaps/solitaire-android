@@ -13,6 +13,7 @@ class SolitaireAudioTest {
         var snapCount = 0
         var flipCount = 0
         var dealCount = 0
+        var winFanfareCount = 0
         var releaseCount = 0
 
         override fun playSlide() {
@@ -35,6 +36,11 @@ class SolitaireAudioTest {
             dealCount++
         }
 
+        override fun playWinFanfare() {
+            if (!isEnabled) return
+            winFanfareCount++
+        }
+
         override fun release() {
             releaseCount++
         }
@@ -48,6 +54,7 @@ class SolitaireAudioTest {
         assertEquals(0, audio.snapCount)
         assertEquals(0, audio.flipCount)
         assertEquals(0, audio.dealCount)
+        assertEquals(0, audio.winFanfareCount)
         assertEquals(0, audio.releaseCount)
 
         audio.playSlide()
@@ -61,6 +68,9 @@ class SolitaireAudioTest {
 
         audio.playDeal()
         assertEquals(1, audio.dealCount)
+
+        audio.playWinFanfare()
+        assertEquals(1, audio.winFanfareCount)
 
         audio.release()
         assertEquals(1, audio.releaseCount)
@@ -76,11 +86,13 @@ class SolitaireAudioTest {
         audio.playSnap()
         audio.playFlip()
         audio.playDeal()
+        audio.playWinFanfare()
 
         assertEquals(0, audio.slideCount)
         assertEquals(0, audio.snapCount)
         assertEquals(0, audio.flipCount)
         assertEquals(0, audio.dealCount)
+        assertEquals(0, audio.winFanfareCount)
     }
 
     @Test
@@ -91,6 +103,7 @@ class SolitaireAudioTest {
             override fun playSnap() {}
             override fun playFlip() {}
             override fun playDeal() {}
+            override fun playWinFanfare() {}
             override fun release() {}
         }
 
@@ -98,6 +111,6 @@ class SolitaireAudioTest {
         noOp.playSnap()
         noOp.playFlip()
         noOp.playDeal()
-        noOp.release()
+        noOp.playWinFanfare()
     }
 }

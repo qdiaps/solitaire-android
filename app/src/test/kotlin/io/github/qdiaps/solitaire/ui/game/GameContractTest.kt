@@ -7,9 +7,11 @@ import io.github.qdiaps.solitaire.domain.model.Move
 import io.github.qdiaps.solitaire.domain.model.Rank
 import io.github.qdiaps.solitaire.domain.model.Suit
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteMove
+import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.Hint
 import io.github.qdiaps.solitaire.domain.rules.HintPriority
+import io.github.qdiaps.solitaire.ui.game.animation.victory.VictoryAnimationType
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
 import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
@@ -43,12 +45,16 @@ class GameContractTest {
             assertFalse(state.isAutoCompleteAvailable)
             assertEquals(1L, state.gameSessionId)
             assertEquals(DrawMode.DRAW_ONE, state.drawMode)
+            assertEquals(DealDifficulty.EASY, state.dealDifficulty)
             assertEquals(CardBackStyle.CLASSIC_LATTICE, state.cardBackStyle)
             assertEquals(CardFaceStyle.MODERN_CLEAN, state.cardFaceStyle)
             assertTrue(state.soundEnabled)
             assertTrue(state.hapticsEnabled)
             assertFalse(state.autoHintEnabled)
             assertFalse(state.isSettingsOpen)
+            assertFalse(state.isVictoryAnimationActive)
+            assertNull(state.victorySummary)
+            assertEquals(VictoryAnimationType.CLASSIC_BOUNCE, state.selectedVictoryAnimation)
             assertNull(state.highlightedCard)
             assertFalse(state.isHintActive)
         }
@@ -79,24 +85,31 @@ class GameContractTest {
         @Test
         fun `verify state copying retains immutability`() {
             val initial = GameUiState(elapsedTimeSeconds = 10L, isGameWon = false)
+            val summary = VictorySummary(timeSeconds = 100, movesCount = 60, score = 500)
             val updated = initial.copy(
                 elapsedTimeSeconds = 11L,
                 isGameWon = true,
                 canUndo = true,
                 isSettingsOpen = true,
-                drawMode = DrawMode.DRAW_THREE
+                drawMode = DrawMode.DRAW_THREE,
+                isVictoryAnimationActive = true,
+                victorySummary = summary
             )
 
             assertEquals(10L, initial.elapsedTimeSeconds)
             assertFalse(initial.isGameWon)
             assertFalse(initial.canUndo)
             assertFalse(initial.isSettingsOpen)
+            assertFalse(initial.isVictoryAnimationActive)
+            assertNull(initial.victorySummary)
             assertEquals(DrawMode.DRAW_ONE, initial.drawMode)
 
             assertEquals(11L, updated.elapsedTimeSeconds)
             assertTrue(updated.isGameWon)
             assertTrue(updated.canUndo)
             assertTrue(updated.isSettingsOpen)
+            assertTrue(updated.isVictoryAnimationActive)
+            assertEquals(summary, updated.victorySummary)
             assertEquals(DrawMode.DRAW_THREE, updated.drawMode)
         }
     }
@@ -136,10 +149,13 @@ class GameContractTest {
                 GameIntent.ToggleLeftHanded,
                 GameIntent.SelectFeltTheme(FeltTheme.DEEP_NAVY),
                 GameIntent.SetFeltTheme(FeltTheme.DARK_CHARCOAL),
+                GameIntent.StartVictoryAnimation,
                 GameIntent.SkipWinAnimation,
+                GameIntent.DismissVictorySummary,
                 GameIntent.OpenSettings,
                 GameIntent.CloseSettings,
                 GameIntent.SetDrawMode(DrawMode.DRAW_THREE),
+                GameIntent.SetDealDifficulty(DealDifficulty.MEDIUM),
                 GameIntent.SetLeftHanded(true),
                 GameIntent.SetCardBackStyle(CardBackStyle.CRIMSON_VINTAGE),
                 GameIntent.SetCardFaceStyle(CardFaceStyle.MODERN_CLEAN),
@@ -150,10 +166,13 @@ class GameContractTest {
                 GameIntent.OpenStats,
                 GameIntent.CloseStats,
                 GameIntent.ResetStats,
-                GameIntent.SaveSession
+                GameIntent.SaveSession,
+                GameIntent.DevInstantWin,
+                GameIntent.DevStressRefill,
+                GameIntent.DevExportSeeds
             )
 
-            assertEquals(31, intents.size)
+            assertEquals(37, intents.size)
 
             for (intent in intents) {
                 val label = when (intent) {
@@ -173,10 +192,13 @@ class GameContractTest {
                     is GameIntent.ToggleLeftHanded -> "ToggleLeftHanded"
                     is GameIntent.SelectFeltTheme -> "SelectFeltTheme:${intent.theme.name}"
                     is GameIntent.SetFeltTheme -> "SetFeltTheme:${intent.theme.name}"
+                    is GameIntent.StartVictoryAnimation -> "StartVictoryAnimation"
                     is GameIntent.SkipWinAnimation -> "SkipWinAnimation"
+                    is GameIntent.DismissVictorySummary -> "DismissVictorySummary"
                     is GameIntent.OpenSettings -> "OpenSettings"
                     is GameIntent.CloseSettings -> "CloseSettings"
                     is GameIntent.SetDrawMode -> "SetDrawMode:${intent.drawMode}"
+                    is GameIntent.SetDealDifficulty -> "SetDealDifficulty:${intent.difficulty}"
                     is GameIntent.SetLeftHanded -> "SetLeftHanded:${intent.isLeftHanded}"
                     is GameIntent.SetCardBackStyle -> "SetCardBackStyle:${intent.cardBackStyle}"
                     is GameIntent.SetCardFaceStyle -> "SetCardFaceStyle:${intent.cardFaceStyle}"
@@ -188,6 +210,9 @@ class GameContractTest {
                     is GameIntent.CloseStats -> "CloseStats"
                     is GameIntent.ResetStats -> "ResetStats"
                     is GameIntent.SaveSession -> "SaveSession"
+                    is GameIntent.DevInstantWin -> "DevInstantWin"
+                    is GameIntent.DevStressRefill -> "DevStressRefill"
+                    is GameIntent.DevExportSeeds -> "DevExportSeeds"
                 }
                 assertTrue(label.isNotEmpty())
             }
@@ -205,10 +230,11 @@ class GameContractTest {
                 GameEvent.PlayHapticSnap,
                 GameEvent.PlayDealSound,
                 GameEvent.ShowMessage("Test message"),
-                GameEvent.TriggerWinCelebration
+                GameEvent.TriggerWinCelebration,
+                GameEvent.CopyToClipboard("Test", "Clipboard data")
             )
 
-            assertEquals(5, events.size)
+            assertEquals(6, events.size)
 
             for (event in events) {
                 val name = when (event) {
@@ -217,6 +243,7 @@ class GameContractTest {
                     is GameEvent.PlayDealSound -> "deal"
                     is GameEvent.ShowMessage -> "message:${event.message}"
                     is GameEvent.TriggerWinCelebration -> "celebration"
+                    is GameEvent.CopyToClipboard -> "copy:${event.label}"
                 }
                 assertTrue(name.isNotEmpty())
             }

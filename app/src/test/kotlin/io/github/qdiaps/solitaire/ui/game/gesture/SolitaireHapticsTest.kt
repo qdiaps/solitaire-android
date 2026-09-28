@@ -1,6 +1,5 @@
 package io.github.qdiaps.solitaire.ui.game.gesture
 
-import android.content.Context
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -22,6 +21,7 @@ class SolitaireHapticsTest {
         var pickupCount = 0
         var snapCount = 0
         var tickCount = 0
+        var winCelebrationCount = 0
 
         override fun playPickup() {
             if (!isEnabled) return
@@ -37,6 +37,11 @@ class SolitaireHapticsTest {
             if (!isEnabled) return
             tickCount++
         }
+
+        override fun playWinCelebration() {
+            if (!isEnabled) return
+            winCelebrationCount++
+        }
     }
 
     @Test
@@ -45,6 +50,7 @@ class SolitaireHapticsTest {
         assertEquals(0, haptics.pickupCount)
         assertEquals(0, haptics.snapCount)
         assertEquals(0, haptics.tickCount)
+        assertEquals(0, haptics.winCelebrationCount)
 
         haptics.playPickup()
         assertEquals(1, haptics.pickupCount)
@@ -54,6 +60,9 @@ class SolitaireHapticsTest {
 
         haptics.playTick()
         assertEquals(1, haptics.tickCount)
+
+        haptics.playWinCelebration()
+        assertEquals(1, haptics.winCelebrationCount)
     }
 
     @Test
@@ -64,10 +73,12 @@ class SolitaireHapticsTest {
         haptics.playPickup()
         haptics.playSnap()
         haptics.playTick()
+        haptics.playWinCelebration()
 
         assertEquals(0, haptics.pickupCount)
         assertEquals(0, haptics.snapCount)
         assertEquals(0, haptics.tickCount)
+        assertEquals(0, haptics.winCelebrationCount)
     }
 
     @Test
@@ -77,10 +88,12 @@ class SolitaireHapticsTest {
             override fun playPickup() {}
             override fun playSnap() {}
             override fun playTick() {}
+            override fun playWinCelebration() {}
         }
 
         noOp.playPickup()
         noOp.playSnap()
         noOp.playTick()
+        noOp.playWinCelebration()
     }
 }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -21,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.Lifecycle
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
@@ -32,11 +34,18 @@ import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import io.github.qdiaps.solitaire.domain.solver.GeneratorDebugStats
+import io.github.qdiaps.solitaire.BuildConfig
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteMove
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteResolver
+import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.SmartTapResolver
 import io.github.qdiaps.solitaire.ui.game.animation.AnimatedMoveOverlay
@@ -49,9 +58,13 @@ import io.github.qdiaps.solitaire.ui.game.components.BottomActionBarView
 import io.github.qdiaps.solitaire.data.model.GameStats
 import io.github.qdiaps.solitaire.ui.game.components.SettingsBottomSheet
 import io.github.qdiaps.solitaire.ui.game.components.StatsDialog
+import io.github.qdiaps.solitaire.ui.game.animation.victory.VictoryAnimationType
+import io.github.qdiaps.solitaire.ui.game.animation.victory.VictoryOverlay
+import io.github.qdiaps.solitaire.ui.game.components.VictorySummaryDialog
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
 import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
 import io.github.qdiaps.solitaire.ui.game.components.LocalGameSessionId
+import io.github.qdiaps.solitaire.ui.theme.ScoreGold
 import io.github.qdiaps.solitaire.ui.game.components.DragOverlay
 import io.github.qdiaps.solitaire.ui.game.components.TableauAreaView
 import io.github.qdiaps.solitaire.ui.game.components.TopRowView
@@ -132,6 +145,12 @@ fun SolitaireGameScreen(
     isAutoCompleteAvailable: Boolean = false,
     isAutoCompleting: Boolean = false,
     isGameWon: Boolean = false,
+    isVictoryAnimationActive: Boolean = false,
+    victorySummary: VictorySummary? = null,
+    selectedVictoryAnimation: VictoryAnimationType = VictoryAnimationType.CLASSIC_BOUNCE,
+    onPlayAgainClick: () -> Unit = {},
+    onSkipWinAnimation: () -> Unit = {},
+    onDismissVictorySummary: () -> Unit = {},
     onAutoCompleteClick: () -> Unit = {},
     onAutoCompleteStep: (AutoCompleteMove) -> Unit = {},
     onAutoCompleteFinished: () -> Unit = {},
@@ -159,7 +178,15 @@ fun SolitaireGameScreen(
     onCardFaceStyleChange: (CardFaceStyle) -> Unit = {},
     onSoundChange: (Boolean) -> Unit = {},
     onHapticsChange: (Boolean) -> Unit = {},
-    onResetSettingsToDefaults: () -> Unit = {}
+    onResetSettingsToDefaults: () -> Unit = {},
+    dealDifficulty: DealDifficulty = DealDifficulty.EASY,
+    onDealDifficultyChange: (DealDifficulty) -> Unit = {},
+    isDeadlocked: Boolean = false,
+    debugStats: GeneratorDebugStats = GeneratorDebugStats(),
+    isDebug: Boolean = BuildConfig.DEBUG,
+    onDevInstantWin: () -> Unit = {},
+    onDevStressRefill: () -> Unit = {},
+    onDevExportSeeds: () -> Unit = {}
 ) {
     val dragDropState = rememberDragDropState()
     val dropTargetRegistry = rememberDropTargetRegistry()
@@ -204,8 +231,8 @@ fun SolitaireGameScreen(
                     onAutoCompleteClick()
                     coroutineScope.launch {
                         try {
+                            var current = currentBoardState
                             while (isActive) {
-                                val current = currentBoardState
                                 val move = AutoCompleteResolver.nextMove(current) ?: break
                                 val startOffset = calculateFlightSourceOffset(
                                     source = move.from,
@@ -221,6 +248,7 @@ fun SolitaireGameScreen(
                                     dimensions = dimensions,
                                     density = density
                                 )
+                                current = move.resultingState
                                 if (startOffset != null && targetOffset != null) {
                                     cardFlightState.startFlight(
                                         cards = listOf(move.card),
@@ -475,6 +503,27 @@ fun SolitaireGameScreen(
                     // Floating drag-and-drop overlay layer in root window coordinates (ADR 003)
                     DragOverlay(dragDropState = dragDropState)
 
+                    // Full-screen Victory Animation Overlay (Cascade Bouncing)
+                    if (isVictoryAnimationActive) {
+                        VictoryOverlay(
+                            animationType = selectedVictoryAnimation,
+                            foundations = boardState.foundations,
+                            dropTargetRegistry = dropTargetRegistry,
+                            cardDimensions = dimensions,
+                            onSkip = onSkipWinAnimation
+                        )
+                    }
+
+                    // Modal Victory Summary Dialog
+                    if (!isVictoryAnimationActive && victorySummary != null) {
+                        VictorySummaryDialog(
+                            summary = victorySummary,
+                            onNewGame = onNewGameClick,
+                            onPlayAgain = onPlayAgainClick,
+                            onDismiss = onDismissVictorySummary
+                        )
+                    }
+
                     // Touch interceptor barrier during auto-complete cascade:
                     // Consumes all pointer events so cards cannot be tapped, held, or dragged
                     if (isAutoCompleting) {
@@ -521,7 +570,21 @@ fun SolitaireGameScreen(
                             onSoundChange = onSoundChange,
                             onHapticsChange = onHapticsChange,
                             onResetToDefaults = onResetSettingsToDefaults,
-                            onDismiss = onDismissSettings
+                            onDismiss = onDismissSettings,
+                            dealDifficulty = dealDifficulty,
+                            onDealDifficultyChange = onDealDifficultyChange,
+                            isDebug = isDebug,
+                            debugStats = debugStats,
+                            gameSessionId = gameSessionId,
+                            movesCount = boardState.movesCount,
+                            score = boardState.score,
+                            elapsedTimeSeconds = timeSeconds,
+                            isGameWon = isGameWon,
+                            isDeadlocked = isDeadlocked,
+                            isAutoCompleteAvailable = isAutoCompleteAvailable,
+                            onDevInstantWin = onDevInstantWin,
+                            onDevStressRefill = onDevStressRefill,
+                            onDevExportSeeds = onDevExportSeeds
                         )
                     }
                 }
@@ -626,6 +689,8 @@ fun SolitaireGameScreen(
     val uiState by viewModel.uiState.collectAsState()
     val solitaireHaptics = rememberSolitaireHaptics(enabled = uiState.hapticsEnabled)
     val solitaireAudio = rememberSolitaireAudio(enabled = uiState.soundEnabled)
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, viewModel) {
@@ -663,16 +728,34 @@ fun SolitaireGameScreen(
                     if (currentState.soundEnabled) solitaireAudio.playDeal()
                 }
                 is GameEvent.TriggerWinCelebration -> {
-                    if (currentState.hapticsEnabled) solitaireHaptics.playSnap()
-                    if (currentState.soundEnabled) solitaireAudio.playSnap()
+                    if (currentState.hapticsEnabled) solitaireHaptics.playWinCelebration()
+                    if (currentState.soundEnabled) solitaireAudio.playWinFanfare()
                 }
                 is GameEvent.ShowMessage -> {
-                    // Message snackbar / banner
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                }
+                is GameEvent.CopyToClipboard -> {
+                    clipboardManager.setText(AnnotatedString(event.text))
+                    Toast.makeText(context, "${event.label} copied to clipboard", Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
 
+    if (uiState.isLoading) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(SolitaireColors(feltTheme = uiState.feltTheme).tableBackground),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                color = ScoreGold,
+                strokeWidth = 3.dp,
+                modifier = Modifier.size(44.dp)
+            )
+        }
+    } else {
     SolitaireGameScreen(
         boardState = uiState.boardState,
         modifier = modifier,
@@ -690,6 +773,12 @@ fun SolitaireGameScreen(
         isAutoCompleteAvailable = uiState.isAutoCompleteAvailable,
         isAutoCompleting = uiState.isAutoCompleting,
         isGameWon = uiState.isGameWon,
+        isVictoryAnimationActive = uiState.isVictoryAnimationActive,
+        victorySummary = uiState.victorySummary,
+        selectedVictoryAnimation = uiState.selectedVictoryAnimation,
+        onPlayAgainClick = { viewModel.onIntent(GameIntent.RestartGame) },
+        onSkipWinAnimation = { viewModel.onIntent(GameIntent.SkipWinAnimation) },
+        onDismissVictorySummary = { viewModel.onIntent(GameIntent.DismissVictorySummary) },
         onAutoCompleteClick = { viewModel.onIntent(GameIntent.StartAutoComplete) },
         onAutoCompleteStep = { viewModel.onIntent(GameIntent.ApplyAutoCompleteMove(it)) },
         onAutoCompleteFinished = { viewModel.onIntent(GameIntent.FinishAutoComplete) },
@@ -742,10 +831,18 @@ fun SolitaireGameScreen(
         onSoundChange = { viewModel.onIntent(GameIntent.SetSoundEnabled(it)) },
         onHapticsChange = { viewModel.onIntent(GameIntent.SetHapticsEnabled(it)) },
         onResetSettingsToDefaults = { viewModel.onIntent(GameIntent.ResetSettingsToDefaults) },
+        dealDifficulty = uiState.dealDifficulty,
+        onDealDifficultyChange = { viewModel.onIntent(GameIntent.SetDealDifficulty(it)) },
         onStatsClick = { viewModel.onIntent(GameIntent.OpenStats) },
         onDismissStats = { viewModel.onIntent(GameIntent.CloseStats) },
-        onResetStats = { viewModel.onIntent(GameIntent.ResetStats) }
+        onResetStats = { viewModel.onIntent(GameIntent.ResetStats) },
+        isDeadlocked = uiState.isDeadlocked,
+        debugStats = uiState.debugStats,
+        onDevInstantWin = { viewModel.onIntent(GameIntent.DevInstantWin) },
+        onDevStressRefill = { viewModel.onIntent(GameIntent.DevStressRefill) },
+        onDevExportSeeds = { viewModel.onIntent(GameIntent.DevExportSeeds) }
     )
+    }
 }
 
 /**
@@ -775,6 +872,12 @@ fun GameScreen(
     isAutoCompleteAvailable: Boolean = false,
     isAutoCompleting: Boolean = false,
     isGameWon: Boolean = false,
+    isVictoryAnimationActive: Boolean = false,
+    victorySummary: VictorySummary? = null,
+    selectedVictoryAnimation: VictoryAnimationType = VictoryAnimationType.CLASSIC_BOUNCE,
+    onPlayAgainClick: () -> Unit = {},
+    onSkipWinAnimation: () -> Unit = {},
+    onDismissVictorySummary: () -> Unit = {},
     onAutoCompleteClick: () -> Unit = {},
     onAutoCompleteStep: (AutoCompleteMove) -> Unit = {},
     onAutoCompleteFinished: () -> Unit = {},
@@ -802,7 +905,15 @@ fun GameScreen(
     stats: GameStats = GameStats(),
     onStatsClick: () -> Unit = {},
     onDismissStats: () -> Unit = {},
-    onResetStats: () -> Unit = {}
+    onResetStats: () -> Unit = {},
+    dealDifficulty: DealDifficulty = DealDifficulty.EASY,
+    onDealDifficultyChange: (DealDifficulty) -> Unit = {},
+    isDeadlocked: Boolean = false,
+    debugStats: GeneratorDebugStats = GeneratorDebugStats(),
+    isDebug: Boolean = BuildConfig.DEBUG,
+    onDevInstantWin: () -> Unit = {},
+    onDevStressRefill: () -> Unit = {},
+    onDevExportSeeds: () -> Unit = {}
 ) {
     SolitaireGameScreen(
         boardState = boardState,
@@ -827,6 +938,12 @@ fun GameScreen(
         isAutoCompleteAvailable = isAutoCompleteAvailable,
         isAutoCompleting = isAutoCompleting,
         isGameWon = isGameWon,
+        isVictoryAnimationActive = isVictoryAnimationActive,
+        victorySummary = victorySummary,
+        selectedVictoryAnimation = selectedVictoryAnimation,
+        onPlayAgainClick = onPlayAgainClick,
+        onSkipWinAnimation = onSkipWinAnimation,
+        onDismissVictorySummary = onDismissVictorySummary,
         onAutoCompleteClick = onAutoCompleteClick,
         onAutoCompleteStep = onAutoCompleteStep,
         onAutoCompleteFinished = onAutoCompleteFinished,
@@ -854,7 +971,15 @@ fun GameScreen(
         stats = stats,
         onStatsClick = onStatsClick,
         onDismissStats = onDismissStats,
-        onResetStats = onResetStats
+        onResetStats = onResetStats,
+        dealDifficulty = dealDifficulty,
+        onDealDifficultyChange = onDealDifficultyChange,
+        isDeadlocked = isDeadlocked,
+        debugStats = debugStats,
+        isDebug = isDebug,
+        onDevInstantWin = onDevInstantWin,
+        onDevStressRefill = onDevStressRefill,
+        onDevExportSeeds = onDevExportSeeds
     )
 }
 

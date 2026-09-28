@@ -44,14 +44,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
+import io.github.qdiaps.solitaire.BuildConfig
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
+import io.github.qdiaps.solitaire.domain.solver.GeneratorDebugStats
+import io.github.qdiaps.solitaire.domain.solver.WorkerLogEntry
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.remember
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import io.github.qdiaps.solitaire.ui.theme.SolitaireColors
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
 import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
 import io.github.qdiaps.solitaire.ui.theme.SolitaireTheme
 
 /**
- * Modal bottom sheet presenting Klondike Solitaire gameplay, appearance, and feedback settings.
+ * Modal bottom sheet presenting Klondike Solitaire gameplay, appearance, feedback, and developer settings.
  *
  * All setting changes take immediate effect in real time without restarting the current game session.
  */
@@ -76,7 +85,21 @@ fun SettingsBottomSheet(
     onHapticsChange: (Boolean) -> Unit,
     onResetToDefaults: () -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    dealDifficulty: DealDifficulty = DealDifficulty.EASY,
+    onDealDifficultyChange: (DealDifficulty) -> Unit = {},
+    isDebug: Boolean = false,
+    debugStats: GeneratorDebugStats = GeneratorDebugStats(),
+    gameSessionId: Long = 1L,
+    movesCount: Int = 0,
+    score: Int = 0,
+    elapsedTimeSeconds: Long = 0L,
+    isGameWon: Boolean = false,
+    isDeadlocked: Boolean = false,
+    isAutoCompleteAvailable: Boolean = false,
+    onDevInstantWin: () -> Unit = {},
+    onDevStressRefill: () -> Unit = {},
+    onDevExportSeeds: () -> Unit = {}
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val colors = SolitaireTheme.colors
@@ -111,7 +134,21 @@ fun SettingsBottomSheet(
             onSoundChange = onSoundChange,
             onHapticsChange = onHapticsChange,
             onResetToDefaults = onResetToDefaults,
-            onDismiss = onDismiss
+            onDismiss = onDismiss,
+            dealDifficulty = dealDifficulty,
+            onDealDifficultyChange = onDealDifficultyChange,
+            isDebug = isDebug,
+            debugStats = debugStats,
+            gameSessionId = gameSessionId,
+            movesCount = movesCount,
+            score = score,
+            elapsedTimeSeconds = elapsedTimeSeconds,
+            isGameWon = isGameWon,
+            isDeadlocked = isDeadlocked,
+            isAutoCompleteAvailable = isAutoCompleteAvailable,
+            onDevInstantWin = onDevInstantWin,
+            onDevStressRefill = onDevStressRefill,
+            onDevExportSeeds = onDevExportSeeds
         )
     }
 }
@@ -139,7 +176,21 @@ fun SettingsSheetContent(
     onHapticsChange: (Boolean) -> Unit,
     onResetToDefaults: () -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    dealDifficulty: DealDifficulty = DealDifficulty.EASY,
+    onDealDifficultyChange: (DealDifficulty) -> Unit = {},
+    isDebug: Boolean = false,
+    debugStats: GeneratorDebugStats = GeneratorDebugStats(),
+    gameSessionId: Long = 1L,
+    movesCount: Int = 0,
+    score: Int = 0,
+    elapsedTimeSeconds: Long = 0L,
+    isGameWon: Boolean = false,
+    isDeadlocked: Boolean = false,
+    isAutoCompleteAvailable: Boolean = false,
+    onDevInstantWin: () -> Unit = {},
+    onDevStressRefill: () -> Unit = {},
+    onDevExportSeeds: () -> Unit = {}
 ) {
     val colors = SolitaireTheme.colors
 
@@ -180,6 +231,41 @@ fun SettingsSheetContent(
         SettingsSectionHeader(title = "GAMEPLAY")
 
         Spacer(modifier = Modifier.height(8.dp))
+
+        // Deal Difficulty Segmented Control
+        Text(
+            text = "Deal Difficulty",
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = FontWeight.SemiBold,
+                color = colors.onFeltText
+            )
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = when (dealDifficulty) {
+                DealDifficulty.EASY -> "100% winnable deals with high opening mobility"
+                DealDifficulty.MEDIUM -> "100% winnable deals with standard challenge"
+                DealDifficulty.RANDOM -> "Classic authentic random shuffle"
+            },
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = colors.onFeltSubtle
+            )
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        SegmentedChoiceRow(
+            items = listOf(DealDifficulty.EASY, DealDifficulty.MEDIUM, DealDifficulty.RANDOM),
+            selectedItem = dealDifficulty,
+            onItemSelected = onDealDifficultyChange,
+            labelProvider = { mode ->
+                when (mode) {
+                    DealDifficulty.EASY -> "Easy"
+                    DealDifficulty.MEDIUM -> "Medium"
+                    DealDifficulty.RANDOM -> "Random"
+                }
+            }
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
 
         // Draw Mode Segmented Control
         Text(
@@ -334,7 +420,340 @@ fun SettingsSheetContent(
             }
         }
 
+        // SECTION 5: DEVELOPER / DEBUG TOOLS (Exclusive to DEBUG build)
+        if (isDebug) {
+            Spacer(modifier = Modifier.height(24.dp))
+            HorizontalDivider(color = colors.slotBorder)
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SettingsSectionHeader(title = "DEVELOPER / DEBUG TOOLS")
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = colors.scoreGold.copy(alpha = 0.2f),
+                    border = BorderStroke(1.dp, colors.scoreGold.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = "DEBUG BUILD",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = colors.scoreGold,
+                            fontSize = 10.sp
+                        ),
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Telemetry Panel
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = colors.slotBackground,
+                border = BorderStroke(1.dp, colors.slotBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(
+                        text = "Seed Bank & Solver Telemetry",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = colors.scoreGold
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    TelemetryItem(
+                        label = "Seed Bank Pools",
+                        value = "Easy [${debugStats.easyBankCount}/100] • Medium [${debugStats.mediumBankCount}/100]"
+                    )
+                    TelemetryItem(
+                        label = "Replenishment Workers",
+                        value = if (debugStats.activeWorkersCount > 0) {
+                            "Refilling (${debugStats.activeWorkersCount} active)"
+                        } else {
+                            "Idle (0% CPU)"
+                        }
+                    )
+                    TelemetryItem(
+                        label = "Candidate Solvability",
+                        value = "${debugStats.totalSolvableFound} / ${debugStats.totalCandidatesEvaluated} checked (${(debugStats.rejectionRate * 100).toInt()}% rejected)"
+                    )
+                    TelemetryItem(
+                        label = "Last Solve Duration",
+                        value = "${debugStats.lastSolveDurationMs} ms"
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    HorizontalDivider(color = colors.slotBorder.copy(alpha = 0.5f))
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "Active Session Diagnostics",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = colors.scoreGold
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    TelemetryItem(
+                        label = "Session Info",
+                        value = "#$gameSessionId • $movesCount moves • $score pts • ${elapsedTimeSeconds}s"
+                    )
+                    TelemetryItem(
+                        label = "Game State Flags",
+                        value = "Won: $isGameWon • Deadlocked: $isDeadlocked • AutoComplete: $isAutoCompleteAvailable"
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Worker Discovery Log Panel
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = colors.slotBackground,
+                border = BorderStroke(1.dp, colors.slotBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Worker Discovery Log",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = colors.scoreGold
+                            )
+                        )
+                        if (debugStats.recentWorkerLogs.isNotEmpty()) {
+                            Text(
+                                text = "${debugStats.recentWorkerLogs.size} recent",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = colors.onFeltSubtle,
+                                    fontSize = 11.sp
+                                )
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (debugStats.recentWorkerLogs.isEmpty()) {
+                        Text(
+                            text = "No worker discoveries recorded yet (Bank idle)",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = colors.onFeltSubtle,
+                                fontStyle = FontStyle.Italic,
+                                fontSize = 11.sp
+                            ),
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    } else {
+                        debugStats.recentWorkerLogs.take(10).forEach { entry ->
+                            WorkerLogRow(entry = entry, colors = colors)
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Action: Instant Win
+            Surface(
+                onClick = onDevInstantWin,
+                shape = RoundedCornerShape(10.dp),
+                color = colors.scoreGold.copy(alpha = 0.15f),
+                border = BorderStroke(1.dp, colors.scoreGold.copy(alpha = 0.5f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Text(
+                        text = "⚡ Force Instant Win (Foundation Complete)",
+                        color = colors.scoreGold,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Action: Stress Refill / Flush 90%
+            Surface(
+                onClick = onDevStressRefill,
+                shape = RoundedCornerShape(10.dp),
+                color = colors.cardRed.copy(alpha = 0.15f),
+                border = BorderStroke(1.dp, colors.cardRed.copy(alpha = 0.5f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Text(
+                        text = "🔥 Flush 90% Seeds (Trigger Deep Refill)",
+                        color = colors.cardRed,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Action: View / Export Seeds
+            Surface(
+                onClick = onDevExportSeeds,
+                shape = RoundedCornerShape(10.dp),
+                color = colors.tableSurface,
+                border = BorderStroke(1.dp, colors.slotBorder),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Text(
+                        text = "📋 Export Seed Bank to Clipboard",
+                        color = colors.onFeltText,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(28.dp))
+    }
+}
+
+@Composable
+private fun WorkerLogRow(
+    entry: WorkerLogEntry,
+    colors: SolitaireColors
+) {
+    val timeFormatted = remember(entry.timestampMs) {
+        if (entry.timestampMs > 0L) {
+            val date = java.util.Date(entry.timestampMs)
+            val format = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+            format.format(date)
+        } else {
+            "--:--:--"
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(6.dp))
+            .background(colors.tableBackground.copy(alpha = 0.4f))
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "[$timeFormatted]",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 10.sp,
+                    color = colors.onFeltSubtle
+                )
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "W#${entry.workerId}",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    color = colors.scoreGold
+                )
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "➔",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                    color = colors.onFeltSubtle
+                )
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = if (entry.difficulty == DealDifficulty.EASY) "Easy" else "Medium",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 11.sp,
+                    color = if (entry.difficulty == DealDifficulty.EASY) Color(0xFF81C784) else Color(0xFFFFB74D)
+                )
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "#${entry.seed}",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.sp,
+                    color = colors.onFeltText
+                )
+            )
+        }
+        Text(
+            text = "${entry.durationMs}ms",
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontFamily = FontFamily.Monospace,
+                fontSize = 10.sp,
+                color = colors.onFeltSubtle
+            )
+        )
+    }
+}
+
+@Composable
+private fun TelemetryItem(label: String, value: String) {
+    val colors = SolitaireTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = colors.onFeltSubtle,
+                fontSize = 11.sp
+            )
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = colors.onFeltText,
+                fontWeight = FontWeight.Medium,
+                fontSize = 11.sp
+            )
+        )
     }
 }
 

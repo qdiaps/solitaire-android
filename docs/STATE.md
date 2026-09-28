@@ -3,13 +3,13 @@
 ## Project Overview
 - **App:** Solitaire (Klondike)
 - **Package:** `io.github.qdiaps.solitaire`
-- **Current Milestone:** Phase 5 - Game Loop, Scoring, Auto-Complete & Persistence
-- **Active Branch:** `feature/phase-5-game-loop-and-customization`
+- **Current Milestone:** Phase 6 - Victory Screen & Polish
+- **Active Branch:** `feature/phase-6-victory-screen-and-polish`
 
 ---
 
 ## Current Focus & Status
-- **Phase:** 5 / 7 (Game Loop, Scoring, Auto-Complete & Persistence) — Complete.
+- **Phase:** 6 / 7 (Victory Screen & Polish) — Complete.
 - **Completed Milestones Summary:**
   - **Phase 1: Pure Domain Engine** — 159 unit tests (100% pass), models, rules, scoring, smart tap, undo. (Complete)
   - **Phase 2: Solvability Engine & Background Generator** — 80 unit tests (100% pass), A* solver, deadlock detector, buffered deal generator. (Complete)
@@ -17,178 +17,163 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-5.12` (`Phase 5 Review, State Synchronization & Comprehensive Polish`). All tasks of Phase 5 are complete. Ready for milestone transition to Phase 6 (`feature/phase-6-victory-screen-and-polish`).
+- **Current Focus:** Phase 6 Complete (Victory Screen & Polish). Ready to proceed to Phase 7 (Packaging, Optimization & Release Preparation).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
-- **2026-09-26 (T-5.12: Phase 5 Review, State Synchronization & Comprehensive Polish):**
-  - Performed comprehensive architectural review across `domain/`, `data/`, and `ui/` layers:
-    - Pure domain separation verified: 0 dependencies on Android SDK (`android.*`, `androidx.*`) in `domain/` layer.
-    - Clean unidirectional data flow (MVI) verified: `GameViewModel` cleanly exposes immutable `StateFlow<GameUiState>`, consumes `GameIntent`, and emits single-shot `GameEvent`.
-    - DataStore persistence resilience verified: all preferences and session serializers protected with `NonCancellable` persistence scopes, error boundaries, and safe fallbacks.
-    - Lifecycle hygiene verified: `MainActivity` and `SolitaireGameScreen` cleanly coordinate `ON_PAUSE` autosave and background tasks.
-  - Documented ADR 009 in `docs/ARCHITECTURE.md` covering multi-layer session persistence and deferred game activation.
-  - Verified entire project test suite: 555 unit tests passing (100% pass), 0 Android lint errors (`./gradlew test check`).
-  - Synchronized project state across `docs/STATE.md`, `docs/TASKS.md`, and `docs/ARCHITECTURE.md`.
-  - Marked all Phase 5 sprint backlog tasks complete.
-- **2026-09-26 (T-5.11: Game Session Persistence & Lifecycle Restoration):**
-  - Implemented `@Serializable` data model `SavedGameSession` in `io.github.qdiaps.solitaire.data.model` capturing `boardState`, `elapsedTimeSeconds`, `drawMode`, `undoHistory`, `savedAtTimestamp`, and `hasMoved`.
-  - Implemented `GamePersistenceRepository` interface and `DataStoreGamePersistenceRepository` in `io.github.qdiaps.solitaire.data.repository` utilizing Jetpack DataStore Preferences and JSON serialization with error resilience.
-  - Connected background session persistence to `GameViewModel`: autosaves on every board move, on undo, and on `ON_PAUSE` lifecycle events in `MainActivity` and `SolitaireGameScreen` with non-cancellable `persistenceScope`.
-  - Implemented session restoration on app startup with proper `initialDealState` reconstruction from `savedSession.undoHistory.firstOrNull() ?: boardState`.
-  - Enforced first-move game activation rule: stopwatch timer remains strictly at `00:00` and game is not counted in lifetime statistics until the player makes their first card move (`hasMoved = true`).
-  - Added session clearing on victory, restart, and fresh deal generation.
-  - Added comprehensive test suites: `GamePersistenceRepositoryTest` (9 tests) and `GameViewModelTest` (`PersistenceIntegrationTests` and timer lifecycle integration).
-  - Total test suite: 555 tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
-- **2026-09-26 (T-5.10: Statistics Dialog UI):**
-  - Implemented modal `StatsDialog.kt` in `io.github.qdiaps.solitaire.ui.game.components` displaying formatted gameplay metrics:
-    - Overview: Played, Won, Win Rate Percentage.
-    - Streaks: Current Streak, Best Streak.
-    - Records: Best Time (formatted mm:ss), Fewest Moves, High Score (gold accent).
-    - Confirmation alert dialog for resetting statistics (`onResetStats()`).
-  - Added `ActionIconType.STATS` vector Canvas icon in `BottomActionBarView.kt` and wired the "Stats" button.
-  - Made `TopStatusBarView.kt` clickable to allow inspecting statistics directly from the score/time bar.
-  - Wired `GameIntent.OpenStats`, `CloseStats`, and `ResetStats` in `GameViewModel.kt`, `GameContract.kt`, and `SolitaireGameScreen.kt`.
-  - Added `StatsDialogPreview.kt` with empty, populated (Classic Green & Deep Navy), and compact screen previews.
-  - Added unit tests in `GameContractTest` and `GameViewModelTest` verifying dialog opening, timer pause/resume, and reset interactions.
-  - Total test suite: 541 tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
-- **2026-09-26 (T-5.9: Statistics Repository):**
-  - Implemented immutable `GameStats` data model in `io.github.qdiaps.solitaire.data.model` tracking lifetime player records: `gamesPlayed`, `gamesWon`, `currentStreak`, `bestStreak`, `bestTimeSeconds`, `fewestMoves`, `highScore`, `hasGameInProgress`, with computed `winPercentage` and `winRatePercent`.
-  - Implemented `StatsRepository` interface and `DataStoreStatsRepository` in `io.github.qdiaps.solitaire.data.repository`:
-    - Reactive `statsFlow: Flow<GameStats>` with `distinctUntilChanged()`.
-    - `recordGameStarted()` tracking game start and resetting streak if previous game was abandoned.
-    - `recordGameWon(timeSeconds, moves, score)` atomically updating wins, streaks, minimum time, minimum moves, and high score.
-    - `recordGameAbandoned()` marking game as forfeited without win.
-    - `resetStats()` clearing all preferences.
-  - Wired `StatsRepository` into `GameViewModel` (constructor injection, `provideFactory(context)` wiring, game start recording in `init`, `applyNewDeal`, and `restartGame`, and win recording in `updateBoardStateAfterMove` and `autoComplete`).
-  - Added unit test suites: `StatsRepositoryTest` (11 tests) and `GameViewModelTest` (4 integration tests).
-  - Total test suite: 537 tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
-- **2026-09-26 (Bug Fixes & Polish):**
-  - **Fix 1 (Audio & Haptics Muting):** Added `isEnabled: Boolean` to `SolitaireHaptics` and `AndroidSolitaireHaptics`, passed `enabled` through `rememberSolitaireHaptics` and `rememberSolitaireAudio` in `SolitaireGameScreen` to strictly mute all sound and haptic feedback when disabled. (`356c98c`)
-  - **Fix 2 (Settings Timer Pause):** Paused elapsed timer upon `openSettings()` and resumed on `closeSettings()` if `autoStartTimer` is enabled and game is not won. Added unit test in `GameViewModelTest`. (`fc2d789`)
-  - **Fix 3 (Auto-Hint Inactivity Timer):** Implemented 10-second idle timer in `GameViewModel` triggering `requestHint()` on player inactivity when `autoHintEnabled` is true. Any player action, settings sheet opening, or game victory resets or cancels the timer cleanly. Added comprehensive unit tests in `GameViewModelTest`. (`47bb0fc`)
-  - **Fix 4 (Draw 3 Waste Horizontal Fan):** Implemented horizontal 3-card fanning for the waste pile in `WastePileView` and `TopRowView` with left-handed mode mirroring. Updated card flight animations (`animatedStockClick` and `animatedWasteClick`) to correctly target the fanned position. Added `WastePileOffsetTest` with 8 unit tests and `TopRowDrawThreePreview`. (`d4342ba`)
-  - Full suite verified: 522 unit tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
-- **2026-09-26 (T-5.8: Settings Bottom Sheet UI):**
-  - Implemented `SettingsBottomSheet.kt` and `SettingsSheetContent` in `io.github.qdiaps.solitaire.ui.game.components`:
-    - **Gameplay section:** Segmented choice row for Draw Mode (`Draw 1 Card` vs `Draw 3 Cards`), toggle switch for Left-Handed Mode (mirrored layout), toggle switch for Auto-Hints.
-    - **Appearance section:** 4 selectable felt cloth swatches (`Classic Green`, `Deep Navy`, `Dark Charcoal`, `Wine Red`) with active checkmark indicators; 4 card back style miniature vector previews (`Classic Lattice`, `Crimson Vintage`, `Emerald Art Deco`, `Obsidian Minimal`); card face style selector (`Modern Clean`).
-    - **Feedback section:** Toggle switches for Sound Effects (`soundEnabled`) and Haptic Feedback (`hapticsEnabled`).
-    - **Reset section:** Styled "Reset Settings to Defaults" action button.
-  - Implemented live immediate application: setting changes update `GameUiState` synchronously for instant feedback and persist asynchronously to `SettingsRepository` in DataStore without restarting games.
-  - Connected `drawStockCard()`, `requestHint()`, and `undoMove()` in `GameViewModel` to reactive `_uiState.value.drawMode` for live draw mode changes.
-  - Gated audio and haptics in `SolitaireGameScreen` with `uiState.soundEnabled` and `uiState.hapticsEnabled`.
-  - Added `GameViewModel.provideFactory(context)` and updated `MainActivity` to instantiate `GameViewModel` with it.
-  - Added unit test coverage: `GameContractTest` and `GameViewModelTest` (`SettingsIntentsTests` covering all 8 settings intents, state toggles, and DataStore synchronization).
-  - Added Compose Previews in `SettingsBottomSheetPreview.kt` across felt themes and device heights (compact 600dp, standard Pixel 7, and full in-game modal preview).
-  - Full suite verified: 506 unit tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
-- **2026-09-26 (T-5.7: DataStore Manager & Settings Repository):**
-  - Implemented `DataStoreManager` in `io.github.qdiaps.solitaire.data.local`: thread-safe and resilient wrapper around Jetpack `DataStore<Preferences>` with `IOException` error boundary, type-safe getters/setters, preference removal, and clear helpers.
-  - Implemented `@Immutable` `GameSettings` in `io.github.qdiaps.solitaire.data.model` covering all game customization options and toggles: `drawMode`, `isLeftHanded`, `feltTheme`, `cardBackStyle`, `cardFaceStyle`, `soundEnabled`, `hapticsEnabled`, and `autoHintEnabled`.
-  - Implemented `SettingsRepository` interface and `DataStoreSettingsRepository` in `io.github.qdiaps.solitaire.data.repository`:
-    - Reactive `settingsFlow: Flow<GameSettings>` with `distinctUntilChanged()`.
-    - Granular type-safe mutators (`setDrawMode`, `setLeftHanded`, `setFeltTheme`, `setCardBackStyle`, `setCardFaceStyle`, `setSoundEnabled`, `setHapticsEnabled`, `setAutoHintEnabled`).
-    - Atomic batch updating (`updateSettings`).
-    - Resilient fallback handling for corrupted/unknown enum values.
-    - Non-destructive `resetToDefaults()` preserving stats and game persistence.
-  - Added comprehensive test suites: `DataStoreManagerTest` (4 unit tests) and `SettingsRepositoryTest` (13 unit tests).
-  - Verified test suite: 498 unit tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
-- **2026-09-26 (Fix: Auto-Complete Stock/Waste Promotion & UI Hang Resolution):**
-  - Identified and resolved the bug where auto-completing with remaining stock cards caused the cascade to stall after tableau moves, locking the UI with an active timer and unresponsive touch barrier.
-  - **Root Cause 1 (Stock evaluation ignored):** In `AutoCompleteResolver.kt`, `KlondikeRules.findTargetFoundationIndex(state, stockCard)` checked `if (!card.isFaceUp) return null`. Because all stock cards have `isFaceUp = false`, it returned `null` for every stock card, causing `nextMove` to report no available moves while cards remained in stock.
-  - **Root Cause 2 (UI lock in un-reset auto-complete state):** When `nextMove` returned `null` or when the animation loop terminated, `animatedAutoCompleteClick` broke out of its coroutine loop without resetting `isAutoCompleting = false`, leaving the transparent full-screen touch interceptor permanently blocking touches while the timer continued to run.
-  - **Root Cause 3 (Competing concurrent loops):** `SolitaireGameScreen` was triggering `onAutoCompleteClick()` (launching headless `viewModel.autoComplete()` in parallel) while simultaneously running its own flight animation loop via `applyAutoCompleteMove(move)`.
-  - **Resolution:**
-    - Updated `AutoCompleteResolver.kt` to evaluate stock cards with `stockCard.copy(isFaceUp = true)` and check all accessible cards in waste and stock, properly cascading them to foundations with rank-first ordering.
-    - Added `GameIntent.StartAutoComplete` and `GameIntent.FinishAutoComplete` to `GameContract` and `GameViewModel`.
-    - Updated `SolitaireGameScreen.kt` to decouple the UI animation loop from the headless ViewModel loop, wrapping flight execution in `try { ... } finally { latestOnAutoCompleteFinished() }` ensuring `isAutoCompleting` is guaranteed to reset to `false` on any exit.
-  - Verified suite: 481 unit tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
-- **2026-09-26 (Fix: Highlight Stock Recycle Placeholder instead of Waste Card on Stock Recycle Hint):**
-  - Identified and fixed bug where requesting a hint when stock is empty and recycling is recommended erroneously highlighted the top face-up waste card instead of the empty stock recycle placeholder (`CardSlotPlaceholder`).
-  - Root cause: `HintResolver` emitted recycle move with `source = CardLocation.Waste`, causing `SolitaireGameScreen` to treat the top waste card as `highlightedCard`. The user saw a glowing card in waste with nowhere legal to move it, while the recycle slot remained unhighlighted.
-  - In `HintResolver.kt`: set recycle move `source = CardLocation.Stock` (matching user tap interaction on the stock slot to trigger recycle).
-  - In `GameContract.kt`: ensured `highlightedCard = null` and `highlightedCards = emptyList()` whenever `hintSourceLocation is CardLocation.Stock`.
-  - In `SolitaireGameScreen.kt`: updated `isWasteHighlighted = isHintActive && (hintSourceLocation is CardLocation.Waste)` and guarded `TableauAreaView` source card highlights so only tableau hints highlight tableau cards.
-  - Result: when recycling is recommended, only the empty stock placeholder with the circular recycle icon pulses in radiant amber-gold, clearly prompting the user to tap the placeholder to recycle the deck.
-  - Verified suite: 479 unit tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
-- **2026-09-26 (Fix: Refine Auto-Complete Conditions, Flight Animations, and Touch Interception):**
-  - **Condition (Point 1):** Updated `AutoCompleteResolver.isAutoCompleteReady(state)` to require only that all tableau cards are face-up (`state.tableau.all { col -> col.all { it.isFaceUp } } && !KlondikeRules.isGameWon(state)`). Auto-complete activates regardless of remaining stock or waste cards. Updated `nextMove` and `resolveAllMoves` to sequentially promote cards from stock and waste in addition to tableau without deadlock.
-  - **Haptics/Audio Muting (Point 2):** Removed per-card `GameEvent.PlayHapticSnap` emissions during the auto-complete cascade loop in `GameViewModel`. The cascade runs smoothly and quietly without vibrations on every step, emitting only the final `TriggerWinCelebration` upon victory.
-  - **Animated Card Flight (Point 3):** Replaced instantaneous board teleportation with smooth flight animations (`cardFlightState.startFlight` with 130ms duration) in `SolitaireGameScreen`. Cards fly smoothly from Tableau, Waste, or Stock directly to their target foundation pile, with 3D flip for stock cards, matching the smart tap flight experience.
-  - **Touch & Drag Interception (Point 4):** Added `isAutoCompleting` flag to `GameUiState`. When auto-complete starts, `SolitaireGameScreen` immediately resets `dragDropState` (returning any held cards), displays a full-screen transparent touch barrier intercepting all pointer events (`PointerEventPass.Initial`), and guards all click handlers against interaction during the cascade.
-  - Full suite verified: 478 unit tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
-- **2026-09-26 (T-5.6: Auto-Complete Cascade Execution in ViewModel & UI):**
-  - Updated `GameUiState.isAutoCompleteAvailable` to reactively flag when auto-complete conditions are met (`AutoCompleteResolver.isAutoCompleteReady(state)`).
-  - Implemented `GameIntent.AutoComplete` coroutine loop in `GameViewModel`: sequentially applies foundation promotions with 120ms delay (configurable via `autoCompleteDelayMs`), updating moves/score, and emitting `GameEvent.TriggerWinCelebration` upon victory.
-  - Guarded user interactions (`onCardTapped`, `drawStockCard`, `recycleStock`, `onCardDropped`) by ignoring user input while cascade job is active.
-  - Automatically cancels auto-complete loop on user interrupt actions (`undoMove`, `startNewGame`, `restartGame`, `onCleared`).
-  - Implemented `AutoCompleteBannerView.kt` in `io.github.qdiaps.solitaire.ui.game.components` with animated slide/fade entry, gold border styling, and vector fast-forward chevrons.
-  - Integrated auto-complete banner into `SolitaireGameScreen` layout right above `BottomActionBarView`, delegating clicks to `GameIntent.AutoComplete`.
-  - Added unit test suite in `GameViewModelTest` and end-to-end wiring tests in `SolitaireGameScreenTest` verifying cascade loop execution, state updates, cancellation on restart, and win event trigger.
-  - Full suite verified: 478 unit tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
-- **2026-09-26 (T-5.5: Pure Domain Auto-Complete Resolver):**
-  - Implemented pure Kotlin `AutoCompleteResolver` (`io.github.qdiaps.solitaire.domain.rules`) detecting when all tableau columns contain zero face-down cards, stock is exhausted, and all remaining cards across tableau and waste can be safely cascaded to foundations without deadlock.
-  - Implemented `AutoCompleteMove` model (`card`, `from`, `to`, `resultingState`, with aliases `source` and `destination`).
-  - Implemented `nextMove(state: BoardState)` generating the next immediate foundation promotion, prioritized strictly by rank (lowest rank first: Aces before 2s, 2s before 3s) and deterministic location/suit ordering for a balanced victory cascade.
-  - Implemented `resolveAllMoves(state: BoardState)` performing end-to-end non-destructive simulation of foundation promotions from tableau and waste until all cards are cleared, returning the complete sequential move list.
-  - Implemented `isAutoCompleteReady(state: BoardState)` / `canAutoComplete(state: BoardState)` validating readiness conditions and verifying that full clearance is mathematically achievable.
-  - Added comprehensive unit test suite `AutoCompleteResolverTest` (17 tests) covering readiness conditions, waste/tableau step generation, rank-first ordering, partial deals, 52-card victory cascade, and property aliases.
-  - Full suite verified: 472 unit tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
-- **2026-09-26 (T-5.4c: Fix Stock Draw Flying Card Morphing / Desync Bug):**
-  - Identified and fixed bug where clicking on the stock pile displayed one card during the 3D flight animation, but upon landing in the waste pile, the card became a different card.
-  - Root cause: `KlondikeRules.draw()` extracts cards from the beginning of the stock list (`state.stock.take(count)`), whereas `SolitaireGameScreen.kt` took `boardState.stock.last()` (the 24th/bottom card of the stock pile) as the animated `movingCard`.
-  - Added `drawMode: DrawMode = DrawMode.DRAW_ONE` to `GameUiState` and `SolitaireGameScreen`.
-  - Updated `SolitaireGameScreen.kt` to compute `movingCard = boardState.stock.take(drawCount).last()`, perfectly matching the domain rules for both Draw 1 and Draw 3 modes.
-  - Guarded `isFlipping = animateFlip && flipAnimatable.value < 1f && card.isFaceUp` in `CardView.kt` to eliminate 1-frame face-down flashes when `animateFlip = false`.
-  - Added `key(card.id)` to `AnimatedMoveOverlay.kt` to prevent composable slot reuse glitches across flights.
-  - Verified suite: 457 unit tests pass (100%), 0 Android lint errors.
-- **2026-09-26 (T-5.4b: Fix Ghost Card Flip Turnover Animation on New Game / Deal Reset):**
-  - Identified and fixed intermittent 3D card flip turnover animation and audio playing on face-up tableau cards when dealing a new game or restarting.
-  - Root cause: Compose node slot reuse across deals preserved stale `previousFaceUp = false` state for static card IDs (`card.id`), causing `LaunchedEffect(card.isFaceUp)` to erroneously interpret freshly dealt face-up cards as having just been uncovered.
-  - Added `gameSessionId: Long` to `GameUiState`, automatically incremented by `GameViewModel` on each `StartNewGame` and `RestartGame`.
-  - Exposed `LocalGameSessionId` composition local and keyed tableau column cards with `"${gameSessionId}_${card.id}"`, resetting all remembered flip states on every deal.
-  - Added `animateFlip: Boolean = true` parameter to `CardView`, explicitly disabling turnover animations in `AnimatedMoveOverlay`, `StockPileView`, `WastePileView`, `FoundationRowView`, and `DragOverlay`.
-  - Fixed `StockPileView` static card ID from colliding with the real King of Spades by assigning dedicated ID `"STOCK_PILE_TOP"`.
-  - Cancelled any active card flights or drag gestures on deal reset.
-  - Suite verification: 457 unit tests passing (100%), 0 Android lint errors.
-- **2026-09-26 (T-5.4: Hint Pulsing UI Highlighting & ViewModel Integration):**
-  - Integrated `HintResolver` with `GameViewModel`: implemented `requestHint()` and `dismissHint()`, connected `GameIntent.RequestHint` and `GameIntent.DismissHint`.
-  - Updated `GameContract`: `GameUiState.activeHint` is now `Hint?`, exposing `highlightedCard`, `hintSourceLocation`, `hintTargetLocation`, and `isHintActive`.
-  - Implemented high-contrast, radiant amber-gold hint highlighting (`HintHighlight = Color(0xFFFFB300)`):
-    - Replaced low-contrast emerald green with vibrant amber-gold, delivering crisp visibility across all felt themes (especially Classic Green).
-    - `CardView`: 3.dp gold pulsing border, 3D elevation shadow lift (6..10dp), gentle breathing scale (1.00x..1.035x), and luminous warm gold surface wash (14%..30% alpha) illuminating the entire card.
-    - `CardSlotPlaceholder`: 3.dp gold pulsing border, glowing amber background fill (16%..32% alpha), and luminous golden watermark symbols.
-    - Multi-card stack highlighting: all cards in a moving cascade sequence (e.g. 6-5-4 moving onto 7) now simultaneously highlight and pulse in unison with the warm golden aura, clearly indicating the whole sub-stack move.
-    - Fixed Compose Preview rendering in `SolitaireGameScreenPreview` by guarding `rememberSolitaireAudio` and `rememberSolitaireHaptics` with `LocalInspectionMode.current` and adding safe width calculation fallback in `SolitaireGameScreen`.
-  - Wired hint source and destination coordinates to `SolitaireGameScreen`, `TopRowView`, `StockPileView`, `FoundationRowView`, `TableauAreaView`, and `TableauColumnView`.
-  - Added auto-dismiss of active hint upon any player touch: tapping card, drawing/recycling stock, dropping card, or undoing move.
-  - Added unit test coverage in `GameViewModelTest.kt` (7 tests) and `GameContractTest.kt` (all 455 suite tests passing 100%).
-  - Updated Compose preview in `CardViewPreview.kt` showcasing empty slot hint destination highlighting.
-- **2026-09-26 (T-5.3: Pure Domain Hint Resolver Engine):**
-  - Implemented pure Kotlin `HintResolver` (`io.github.qdiaps.solitaire.domain.rules`) evaluating valid productive moves in strict accordance with SPEC priorities:
-    1. `UNCOVER_FACE_DOWN` (level 1): Tableau moves or foundation promotions uncovering hidden cards underneath.
-    2. `FOUNDATION_PROMOTION` (level 2): Direct promotions from tableau or waste to foundation.
-    3. `TABLEAU_PROGRESS` (level 3): Waste-to-tableau placements and non-lateral sequence reorganizations.
-    4. `STOCK_DRAW` (level 4): Drawing from stock or recycling waste when accessible playable cards exist in the cycle.
-  - Implemented `HintPriority` enum and structured `Hint` model (`move`, `priority`, `description`, `from`, `to`, `cards`).
-  - Added comprehensive unit test suite `HintResolverTest` (10 tests) covering all 4 priority tiers, tie-breaker columns, Draw 1 / Draw 3 modes, cycle lookahead, and terminal/deadlock states.
-  - Full suite verified: 444 unit tests passing (100%), 0 Android lint errors (`./gradlew check`).
-- **2026-09-26 (T-5.2: Card Face Typography Architecture):**
-  - Implemented extensible `CardFaceStyle` enum with canonical `MODERN_CLEAN` style (SansSerif Bold), designed to easily accommodate future face themes without breaking API contracts.
-  - Added `createCardTypography(faceStyle)` helper in `Type.kt`.
-  - Updated `SolitaireTheme` with `LocalCardFaceStyle`, `SolitaireTheme.cardFaceStyle`, and reactive typography generation.
-  - Updated `CardView.kt` (`FaceUpCardContent`) to accept `cardFaceStyle: CardFaceStyle`.
-  - Added unit test suite `CardFaceStyleTest` (6 tests) and Compose preview suite `CardThemesGalleryPreview.kt`.
-  - Verified test suite: all 434 unit tests pass (100% pass), 0 Android lint errors (`./gradlew check`).
-- **2026-09-26 (T-5.1: Card Visual Styles & Custom Back Designs):**
-  - Implemented `CardBackStyle` enum with 4 distinct visual styles: `CLASSIC_LATTICE`, `CRIMSON_VINTAGE`, `EMERALD_ART_DECO`, and `OBSIDIAN_MINIMAL`.
-  - Implemented vector Canvas renderer `CardBackView.kt` in `ui/game/components/`.
-  - Added unit test suite `CardBackStyleTest` (5 tests) and Compose preview suite `CardBackPreview.kt` (3 previews).
-  - Verified test suite: all 428 unit tests pass (100% pass), 0 Android lint errors (`./gradlew check`).
+- **2026-09-28 (T-6.8: Performance Profiling, Memory Leak Audit, ADR 010 & Final Polish):**
+  - Audited and refactored hot animation loop for zero heap object allocations:
+    - Retained reusable `CanvasDrawScope` and viewport `Size` cache in `ClassicBounceRenderer`, eliminating repeated drawing scope and size object creations.
+    - Optimized `CascadeSequencer` particle lifecycle using pre-allocated `ArrayList(52)` and `ArrayDeque(52)` with in-place indexed mutations, eliminating list copies and iterator allocations per frame.
+  - Audited memory leak resilience: verified that `VictoryOverlay` cleans up offscreen trail buffers via `DisposableEffect(renderer)` and reclaims all 52 card face bitmaps via `rememberCardSpriteCache` disposal upon navigation or backgrounding.
+  - Documented ADR 010 in `docs/ARCHITECTURE.md` covering the extensible victory celebration architecture, particle physics, hardware-backed sprite cache, offscreen motion trails, and zero-allocation frame loop.
+  - Verified full test suite and quality checks: `./gradlew check` and `./gradlew test` (657 unit tests, 100% pass, 0 lint warnings/errors). Phase 6 is fully complete!
+- **2026-09-28 (T-6.7: ViewModel & Screen Integration):**
+  - Connected win detection in `GameViewModel` across moves, auto-complete cascades, and dev tools to trigger `StartVictoryAnimation`, compute `VictorySummary` against historical stats, and persist game records to `StatsRepository`.
+  - Added overload `VictoryOverlay` accepting `DropTargetRegistry` and foundations to automatically resolve foundation positions, manage hardware-backed sprite cache, and run the canvas loop.
+  - Wired `VictoryOverlay` and `VictorySummaryDialog` into `SolitaireGameScreen` layout hierarchy above board components.
+  - Connected `GameEvent.TriggerWinCelebration` to dispatch low-latency celebratory fanfare audio (`solitaireAudio.playWinFanfare()`) and celebratory haptic pulses (`solitaireHaptics.playWinCelebration()`).
+  - Wired screen tap-to-skip via `SkipWinAnimation` immediately halting the canvas loop and transitioning to `VictorySummaryDialog`. Handled "New Game", "Play Again", and "View Board" actions.
+  - Added `VictorySequenceTests` in `GameViewModelTest` and full integration test in `SolitaireGameScreenTest`. Full suite: 657 unit tests passing (100% pass), 0 Android lint errors (`./gradlew test`, `./gradlew lintDebug`).
+- **2026-09-28 (T-6.6: Victory Summary Dialog UI):**
+  - Implemented celebratory modal dialog `VictorySummaryDialog.kt` displaying custom vector golden trophy iconography, victory title, congratulatory subtitle, and glowing golden badges for new personal records.
+  - Implemented metrics grid for Time (with "BEST" badge), Moves (with "FEWEST" badge), Score (with "RECORD" badge), and celebratory winning streak breakthrough banner ("NEW BEST WIN STREAK ACHIEVED!").
+  - Provided prominent primary CTA "New Game" and secondary action buttons "Play Again" (replays same deal) and "View Board" (dismisses dialog to inspect completed board).
+  - Created Compose preview `VictorySummaryDialogPreview` showcasing standard win, new record break, and dark felt themes. Full suite: 651 unit tests passing (100% pass), 0 Android lint errors (`./gradlew test`, `./gradlew lintDebug`).
+- **2026-09-28 (T-6.5: Victory Summary Data Model & Records Calculation):**
+  - Defined `@Immutable` `VictorySummary` data model encapsulating `timeSeconds`, `movesCount`, `score`, breakthrough flags (`isNewBestTime`, `isNewFewestMoves`, `isNewHighScore`, `isNewBestStreak`), and composite `hasAnyNewRecord`.
+  - Implemented `VictorySummary.calculate()` calculating personal records against baseline `GameStats`.
+  - Extended `GameUiState` with `isVictoryAnimationActive: Boolean`, `victorySummary: VictorySummary?`, and `selectedVictoryAnimation: VictoryAnimationType`.
+  - Added MVI intents `StartVictoryAnimation`, `SkipWinAnimation`, and `DismissVictorySummary` in `GameIntent` and wired exhaustive branches in `GameViewModel`.
+  - Added unit test suite `VictorySummaryTest` and updated `GameContractTest`. Full suite: 651 unit tests passing (100% pass), 0 Android lint errors (`./gradlew test`, `./gradlew lintDebug`).
+- **2026-09-28 (T-6.4: Victory Audio Fanfare & Celebration Haptics):**
+  - Synthesized crisp 16-bit 44.1kHz mono PCM WAV audio asset `victory_fanfare.wav` in `app/src/main/res/raw/` (bright C Major ascending arpeggio and triumphant brass/chime chord).
+  - Extended `SolitaireAudio` and `AndroidSolitaireAudio` with `playWinFanfare()`, loaded into low-latency `SoundPool` with `USAGE_GAME` sonification and muted when audio is disabled.
+  - Extended `SolitaireHaptics` and `AndroidSolitaireHaptics` with `playWinCelebration()`, driving a multi-pulse celebratory waveform (`0, 70, 60, 70, 60, 140` ms) on supported vibrators with graceful Compose fallback.
+  - Added unit tests in `SolitaireAudioTest` and `SolitaireHapticsTest` validating invocation tracking, muting guards when disabled, and no-op contract compliance. Full suite: 644 unit tests passing (100% pass), 0 Android lint errors (`./gradlew test`, `./gradlew lintDebug`).
+- **2026-09-28 (T-6.3: Hardware-Accelerated Victory Canvas Overlay):**
+  - Implemented pluggable `VictoryRenderer` interface and `ClassicBounceRenderer` drawing to hardware-accelerated Compose `Canvas`.
+  - Implemented authentic persistent motion trails (Windows Solitaire classic card ghosting trail) via offscreen hardware-backed trail buffer without full canvas clears or excessive allocations.
+  - Implemented high-performance frame loop driving ticks via `withFrameNanos` and draw-phase invalidation skipping Composable recomposition overhead for 60/120 FPS rendering.
+  - Implemented full-screen touch barrier with tap-to-skip gesture handling (`Modifier.pointerInput` and `detectTapGestures`).
+  - Added unit test suite `ClassicBounceRendererTest` validating type mapping, offscreen buffer allocation, particle stamping, and lifecycle memory eviction. Full suite: 644 unit tests passing (100% pass), 0 Android lint errors (`./gradlew test`, `./gradlew lintDebug`).
+  - Created Compose preview `VictoryOverlayPreview` (`VictoryOverlayBouncingCascadePreview`) showcasing active bouncing cascade and motion trails.
+- **2026-09-28 (T-6.2: High-Performance Card Sprite Cache):**
+  - Designed `CardSpriteRenderer` interface and `DefaultCardSpriteRenderer` utilizing Compose `CanvasDrawScope`, vector `drawSuitEmblem`, and typography `TextMeasurer` / `drawText`.
+  - Implemented `CardSpriteCache` managing hardware-backed `ImageBitmap` sprites for all 52 card faces: provides instant retrieval by `Card` or `(Suit, Rank)`, idempotent population, and forced re-rendering upon style or dimension updates.
+  - Implemented `@Composable fun rememberCardSpriteCache(...)` with `LaunchedEffect` for automatic population and `DisposableEffect` for lifecycle-safe memory eviction when animation finishes or leaves composition.
+  - Added unit test suite `CardSpriteCacheTest` validating initial empty state, 52-sprite population, dimension verification, idempotence, and clean cache eviction. Full suite: 642 unit tests passing (100% pass), 0 Android lint errors (`./gradlew test`, `./gradlew lintDebug`).
+- **2026-09-28 (T-6.1: Victory Animation Extensible Architecture & Bouncing Physics Engine):**
+  - Designed extensible `VictoryAnimationType` enum (`CLASSIC_BOUNCE`) and `VictoryAnimator` abstraction with `VictoryAnimatorFactory` in `io.github.qdiaps.solitaire.ui.game.animation.victory`.
+  - Implemented immutable `BouncingCardParticle` and pure math simulation engine `BouncingCardsPhysics`: models particle coordinates, velocities ($v_x, v_y$), gravitational acceleration ($1800\\,\\text{px/s}^2$), floor restitution ($e \\approx 0.85$), minimum velocity clamping to avoid floor jitter, and classic screen boundary exit (plus optional wall bouncing).
+  - Implemented deterministic `CascadeSequencer`: orders foundation cards from top to bottom (King to Ace) cycling across foundations (3 down to 0), releases the first card immediately at $t = 0$, and sequences subsequent cards at configurable intervals (`releaseIntervalMs = 150L`), tracking queued, active, and completed/terminated particles.
+  - Implemented `ClassicBounceAnimator` with sub-stepping for numerical stability under variable frame rates.
+  - Added unit test suites `BouncingCardsPhysicsTest`, `CascadeSequencerTest`, and `VictoryAnimatorTest` (17 tests). Full suite: 638 unit tests passing (100% pass), 0 Android lint errors (`./gradlew test`, `./gradlew lintDebug`).
+- **2026-09-28 (T-6.FIX8: Guard Against Duplicate Victory Recording on Undo & Re-Win):**
+  - Resolved duplicate victory and win streak recording bug when undoing after a win and re-completing the winning move: `GameViewModel` previously invoked `recordVictoryInStats()` unconditionally on any move resulting in `isGameWon == true`.
+  - Introduced session-scoped `isVictoryRecorded: Boolean` guard flag in `GameViewModel`: initialized to `initialIsWon`, guarded in `recordVictoryInStats()` (`if (isVictoryRecorded) return; isVictoryRecorded = true`), and reset on `applyNewDeal`, `restartGame`, and `restoreGameSession`.
+  - In `undoMove()`, added conditional session saving (`if (!isWonNow && hasMoved) saveCurrentSession()`) ensuring that if an undone game in progress is paused/backgrounded, the restored board is not lost.
+  - Verified with TDD: added unit tests in `GameViewModelTest` verifying that undoing from a won state and re-winning preserves `fakeStats.gameWonCount == 1`, while restarting the game properly resets the guard and increments to 2 upon subsequent win.
+  - Verified complete test suite: 621 total unit tests passing (100% pass), 0 Android lint errors (`./gradlew test`, `./gradlew lintDebug`).
+- **2026-09-28 (T-6.FIX7: Real-Time Worker Discovery Log in Generator Telemetry & Debug Tools):**
+  - Defined `@Serializable` data model `WorkerLogEntry` capturing timestamp, assigned worker ID, discovered seed, classified difficulty (`EASY` or `MEDIUM`), and solving duration (ms).
+  - Extended `GeneratorDebugStats` with a ring-buffered list `recentWorkerLogs: List<WorkerLogEntry>` (retaining the most recent 20 events).
+  - Updated `DealGenerator` replenishment worker loops to assign unique incremental worker IDs and log every discovered solvable seed upon banking.
+  - Implemented `Worker Discovery Log` UI in `SettingsBottomSheet` under `BuildConfig.DEBUG`: styled monospace activity feed card showing timestamp, worker tag (`W#1`, `W#2`, etc.), target difficulty badge (green for Easy, orange for Medium), seed identifier (`#seed`), and solve time (`ms`).
+  - Updated Compose preview `SettingsSheetDeveloperDebugPreview` in `SettingsBottomSheetPreview.kt` with realistic sample worker discovery logs.
+  - Comprehensive verification: unit tests passed in `DealGeneratorDynamicScalingTest`, 619 total unit tests passing (100% pass), 0 Android lint errors (`./gradlew testDebugUnitTest`, `./gradlew lintDebug`).
+- **2026-09-28 (T-6.FIX6: Smart Cross-Difficulty Deal Harvesting & Eager Cold-Start Replenishment):**
+  - Implemented eager cold-start replenishment in `DealGenerator`: observing `seedBank.state` automatically evaluates worker requirements on application launch, waking replenishment threads when either Easy or Medium has `< 90` seeds without requiring the player to deal a game first.
+  - Implemented cross-difficulty deal harvesting in replenishment workers: when a worker checks candidate seeds, discovered solvable deals are deposited into the appropriate difficulty bank (`DealDifficulty.EASY` or `DealDifficulty.MEDIUM`) if it has `< 100` seeds, eliminating discarded CPU effort and doubling background generation throughput.
+  - Implemented full-capacity top-up logic in `calculateDesiredWorkers`: workers that wake up when `< 90` continue topping up the bank all the way to 100 (`TARGET_CAPACITY`), and gracefully scale down when capacity reaches 100 or when crossing from deep depletion (< 50 seeds) to routine mode (>= 50 seeds).
+  - Added unit test suite in `DealGeneratorDynamicScalingTest` verifying cold-start eager replenishment, cross-difficulty harvesting, capacity bounding, and worker count calculations. 619 total unit tests passing (100% pass), 0 Android lint errors (`./gradlew testDebugUnitTest`).
+- **2026-09-28 (T-6.FIX5.4: Developer Debug Tools in SettingsBottomSheet):**
+  - Added dedicated developer debug section in `SettingsBottomSheet` conditionally rendered only in debug builds (`isDebug: Boolean = BuildConfig.DEBUG`, zero release footprint).
+  - Telemetry HUD display: live seed bank counts (`Easy [X/100]`, `Medium [Y/100]`), active generator workers status (`Idle (0% CPU)` or `Refilling (N active)`), candidate solvability & rejection rate (%), last solve duration (ms), and active session diagnostics (session ID, moves count, score, timer, deadlock and auto-complete state flags).
+  - Implemented dev actions:
+    - `DevInstantWin`: immediately fills foundations with all 52 cards, resets tableau/stock/waste, stops timer, awards victory, and triggers win celebrations.
+    - `DevStressRefill`: flushes 90% of buffered seeds via `seedBank.flush(0.9f)` and triggers immediate multi-worker dynamic replenishment; guarded by safety floor (< 20 total or < 10 per difficulty).
+    - `DevExportSeeds`: generates clipboard-ready export of available Easy, Medium, and played seed lists, emitting `GameEvent.CopyToClipboard`.
+  - Added clipboard handling and Toast messages in `SolitaireGameScreen` for `GameEvent.CopyToClipboard`.
+  - Added Compose preview `SettingsSheetDeveloperDebugPreview` in `SettingsBottomSheetPreview.kt`.
+  - Unit tests: comprehensive test suite in `GameViewModelTest` for all dev intents and `GameContractTest` for contract completeness. 615 total unit tests passing (100% pass), 0 Android lint errors (`./gradlew testDebugUnitTest`, `./gradlew lintDebug`).
+- **2026-09-28 (T-6.FIX5.3: Persistent Rotating Seed Bank & Dynamic Worker Scaling):**
+  - Implemented `PersistentSeedBank` in `domain.solver`: thread-safe rotating seed bank managing available pre-verified solvable seeds with `SeedBankStorage` abstraction and `InMemorySeedBankStorage`.
+  - Added consumption semantics: `consumeSeed(difficulty)` picks random seeds without replacement, maintains a bounded ring buffer of played history (`playedSeeds`), and triggers asynchronous persistence.
+  - Implemented `DataStoreSeedBankStorage` in `data.repository`: persists and restores JSON-encoded `SeedBankState` via Jetpack `DataStoreManager`.
+  - Implemented dynamic worker scaling in `DealGenerator`: 0 workers active when bank capacity is healthy (>= 90 seeds, 0% CPU), 1 background worker for routine replenishment (50..89 seeds), scaling up to parallel workers (`max(2, min(cores - 1, 4))`) during deep depletion (< 50 seeds).
+  - Implemented live telemetry via `GeneratorDebugStats` and `StateFlow<GeneratorDebugStats>` exposing live bank counts, active worker counts, total candidates evaluated, total solvable found, rejection rate, and last solve duration.
+  - Added unit test suites `PersistentSeedBankTest`, `DealGeneratorDynamicScalingTest`, and `DataStoreSeedBankStorageTest`: 604 total unit tests passing (100% pass), 0 Android lint errors (`./gradlew testDebugUnitTest`, `./gradlew lintDebug`).
+- **2026-09-28 (T-6.FIX5.2: Seed Pre-Generation Script & Initial Assets Catalog):**
+  - Created `SeedBankCatalog` and `SeedBankParser` in `domain.solver`: JSON serialization and deserialization via `kotlinx.serialization` with schema versioning and segmented difficulty lookups.
+  - Implemented `KlondikeDealer.dealFromSeed(seed: Long)` providing reproducible deterministic board construction from integer seeds.
+  - Developed `SeedBankGenerator` engine with parallel batch evaluation using `SolvabilityChecker` and `DealDifficultyClassifier` to rapidly discover verified solvable seeds.
+  - Created CLI/Gradle generator script `scripts/generate_seed_bank.kts` and bundled initial 200 pre-verified solvable seeds (100 Easy, 100 Medium) into `app/src/main/assets/deals/seed_bank.json`.
+  - Added comprehensive test suite `SeedBankAssetTest`: verified JSON parsing, zero duplicate seeds across banks, card completeness (52 distinct cards per board with standard Klondike layout), determinism, and solvability classification.
+  - Full test suite verified: 592 unit tests passing (100% pass), 0 Android lint errors (`./gradlew testDebugUnitTest`, `./gradlew lintDebug`).
+- **2026-09-28 (T-6.FIX5.1: A* Solver Fast-Fail & Realistic Difficulty Thresholds):**
+  - Relaxed `DEFAULT_MAX_EASY_STATES_EVALUATED` in `DealDifficultyClassifier` from 250 to 1000 states (deals requiring `> 1000` states classified as `MEDIUM`), dramatically improving Easy yield on solvable candidate deals.
+  - Implemented fast-fail solver thresholds in `SolvabilityChecker` and `SolverConfig`: added `FAST_FAIL_TIMEOUT_MS = 150L`, `FAST_FAIL_MAX_STATES = 2000`, `SolverConfig.fastFail()`, and `SolvabilityChecker.checkSolvabilityFastFail(...)` for high-throughput background screening without 1.5s search stalls.
+  - Verified with TDD: updated `DealDifficultyClassifierTest` with 1000-state boundary assertions and added `SolvabilityCheckerFastFailTest` verifying fast-fail constants, timeout cut-off, and quick win resolution.
+  - Full test suite verified: 585 unit tests passing (100% pass), 0 Android lint errors (`./gradlew testDebugUnitTest`, `./gradlew lintDebug`).
+- **2026-09-28 (T-6.FIX5 Planning: Solver Fast-Fail, Pre-Seeded Bank & Debug Panel):**
+  - Profiled A* solver latency on candidate deals: empirical testing identified that Easy threshold `states <= 250` occurred in < 0.5% of random deals with 1.5s search timeouts, leading to 5+ minute buffering delays on mobile devices.
+  - Architected hybrid Pre-Seeded Replenishing Pool: 200 initial guaranteed solvable seeds (100 Easy, 100 Medium) bundled in assets, loaded instantly on cold start (0 ms latency).
+  - Designed rotation semantics: playing or skipping a deal permanently consumes and removes its seed from local storage, while background coroutines dynamically replenish the bank to maintain 100 Easy and 100 Medium deals.
+  - Designed dynamic worker scaling: 0 workers at 100% capacity (0% CPU/battery), 1 worker on mild dip, scaling to 3-4 parallel workers on heavy depletion (< 50%).
+  - Designed developer panel for `SettingsBottomSheet` under `BuildConfig.DEBUG` featuring live generator telemetry, system diagnostics, Instant Win action, View/Export Seeds, and a "Stress Refill / Flush 90%" trigger with a safety floor (< 20 total or < 10 per difficulty).
+  - Decomposed into 4 atomic subtasks (`T-6.FIX5.1` through `T-6.FIX5.4`) in `docs/TASKS.md`.
+- **2026-09-28 (T-6.FIX4: Record Victory Stats and Clear Session on Auto-Complete Win):**
+  - Resolved missing victory stats recording bug in `GameViewModel.applyAutoCompleteMove`: previously, winning via animated auto-complete did not call `recordVictoryInStats()` or `cancelIdleHintTimer()`, leaving DataStore statistics (games won, win streak, best score, best time) un-updated and the saved session in DataStore un-cleared.
+  - Added `recordVictoryInStats()` and `cancelIdleHintTimer()` when `isWon` is detected in `applyAutoCompleteMove`.
+  - Added unit test `recordGameWon is invoked when winning via ApplyAutoCompleteMove` in `GameViewModelTest`.
+  - Verified full test suite and static analysis: 580 unit tests passing (100% pass), 0 Android lint errors (`./gradlew testDebugUnitTest`, `./gradlew lintDebug`).
+- **2026-09-28 (T-6.FIX3: Fix Duplicate Card Flight Animation during Auto-Complete Cascade):**
+  - Resolved double flight animation bug in `SolitaireGameScreen.animatedAutoCompleteClick`: previously, `val current = currentBoardState` inside `while (isActive)` re-read stale board state before Compose recomposed on the next frame, causing each flying card to be triggered twice.
+  - Initialized `var current = currentBoardState` outside the loop and updated `current = move.resultingState` sequentially for each move, guaranteeing each card flies exactly once with zero ghosting or animation repeats.
+  - Added unit test in `SolitaireGameScreenTest` verifying sequential unique card movements during auto-complete cascade.
+  - Verified full test suite and static analysis: 578 unit tests passing (100% pass), 0 Android lint errors (`./gradlew testDebugUnitTest`, `./gradlew lintDebug`).
+- **2026-09-28 (T-6.FIX2.3: UI & Settings Sheet Integration for Deal Difficulty):**
+  - Integrated Deal Difficulty selector (`SegmentedChoiceRow`: Easy / Medium / Random) into `SettingsBottomSheet` under Gameplay section with dynamic explanatory subtitle.
+  - Wired `dealDifficulty` and `onDealDifficultyChange` through `SolitaireGameScreen` and its ViewModel-connected overload to `GameIntent.SetDealDifficulty`.
+  - Updated all previews in `SettingsBottomSheetPreview` across multiple themes and configurations.
+  - Verified full test suite and static analysis: 577 unit tests passing (100% pass), 0 Android lint errors (`./gradlew testDebugUnitTest`, `./gradlew lintDebug`).
+- **2026-09-28 (T-6.FIX2.2: DataStore Settings Persistence, GameViewModel Deal Difficulty Integration & MainActivity Wiring):**
+  - Added `dealDifficulty: DealDifficulty = DealDifficulty.EASY` to `GameSettings` and wired persistence in `SettingsRepository` / `DataStoreSettingsRepository`.
+  - Added `dealDifficulty` to `GameUiState` and `GameIntent.SetDealDifficulty(difficulty)` to `GameContract`.
+  - Updated `GameViewModel` to observe deal difficulty, handle `SetDealDifficulty`, fetch solvable deals per difficulty on cold start (when no saved session exists) and on `startNewGame()`, and bypass solver for `RANDOM`.
+  - Wired `DealGenerator` default lifecycle in `GameViewModel.provideFactory` and `onCleared()`.
+  - Added unit test suite `GameViewModelDealDifficultyTest` covering deal difficulty intents, DataStore persistence, new game dispatching, and cold start async initialization. All 577 unit tests passing (100% pass), 0 lint errors (`./gradlew lintDebug`).
+- **2026-09-28 (T-6.FIX2.1: Domain DealDifficulty Enum, DealDifficultyClassifier & Multi-Difficulty DealGenerator):**
+  - Implemented `@Serializable` `DealDifficulty` enum (`EASY`, `MEDIUM`, `RANDOM`) in `io.github.qdiaps.solitaire.domain.rules`.
+  - Implemented pure Kotlin heuristic classifier `DealDifficultyClassifier` in `io.github.qdiaps.solitaire.domain.solver` (filtering out unsolvable/timeout deals, classifying deals with $\ge 2$ opening tableau moves and $\le 250$ A* states as `EASY`, other solvable boards as `MEDIUM`).
+  - Extended `DealGenerator` with multi-difficulty channels (`easyChannel`, `mediumChannel`), independent non-blocking producers with channel backpressure, and `getSolvableDeal(difficulty: DealDifficulty = DealDifficulty.EASY)` with instant `RANDOM` bypass.
+  - Verified with TDD: created `DealDifficultyClassifierTest` and `DealGeneratorDifficultyTest`. All 572 unit tests passing (100% pass).
+- **2026-09-28 (T-6.FIX2 Planning & Deal Difficulty Decomposition):**
+  - Diagnosed root causes for high deal difficulty / frequent deadlocks: `DealGenerator` was omitted from runtime factory injection in `MainActivity`, causing reliance on raw random shuffles (`KlondikeDealer.dealShuffled()`), and raw solvable deals lacked human-playability filtering.
+  - Formulated architecture for configurable deal difficulties: `EASY` (default, 100% winnable, high opening mobility $\ge 2$, A* states $\le 250$), `MEDIUM` (100% winnable, standard A* search), and `RANDOM` (classic unverified shuffle).
+  - Decomposed fix into 3 atomic subtasks in `docs/TASKS.md` (`T-6.FIX2.1` through `T-6.FIX2.3`) covering domain engine heuristics, DataStore/ViewModel wiring, and settings UI controls.
+- **2026-09-27 (T-6.FIX: SplashScreen API & Zero-Flicker Cold Start Initialization):**
+  - Integrated `androidx.core:core-splashscreen` API with starting theme `Theme.App.Starting` and gold animated vector spinner loader (`ic_splash_spinner.xml`).
+  - Added `splashScreen.setKeepOnScreenCondition { gameViewModel.uiState.value.isLoading }` in `MainActivity`.
+  - Implemented atomic async initialization in `GameViewModel`: sets `isLoading = true` while preloading preferences from `SettingsRepository` and saved session from `GamePersistenceRepository`, eliminating initial theme blinking.
+  - Added loading guard with centered `CircularProgressIndicator(color = ScoreGold)` in `SolitaireGameScreen` guaranteeing zero visual flash on cold start.
+  - Added unit tests in `GameViewModelTest` (`ZeroFlickerAsyncInitTests`) verifying `isLoading` state lifecycle. Total 558 unit tests passing (100% pass).
+- **2026-09-26 (Phase 6 Sprint Backlog Decomposition):**
+  - Formulated architectural plan and decomposed Phase 6 into 8 atomic tasks (`T-6.1` through `T-6.8`) in `docs/TASKS.md`.
+  - Established extensible architecture for victory effects (`VictoryAnimationType`, `VictoryAnimator`, `VictoryRenderer`), supporting classic bouncing cards and future animation styles.
+  - Planned high-performance card sprite caching (`CardSpriteCache`), canvas motion trails, celebration audio/haptics, and victory summary dialog with personal records.
+- **2026-09-26 (Phase 6 Initialization & Phase 5 Archiving):** Transitioned project to Phase 6 (Victory Screen & Polish):
+  - Completed and merged Phase 5 (PR #5) into `master`.
+  - Created and switched to working branch `feature/phase-6-victory-screen-and-polish`.
+  - Archived Phase 5 completed sprint tasks to `docs/archive/TASKS_HISTORY.md`.
+  - Archived Phase 5 detailed task breakdown and progress logs to `docs/archive/STATE_HISTORY.md`.
+  - Updated active milestone and branch in `docs/STATE.md` and prepared `docs/TASKS.md` for Phase 6 backlog decomposition.
+  - Verified full test suite: 555 unit tests passing (100% pass), 0 Android lint errors (`./gradlew check`).
 
 ---
 
 ## Next Immediate Step
-- **Target Task:** Phase 6 Transition — User confirmation to create and switch to branch `feature/phase-6-victory-screen-and-polish` and initiate Phase 6: Victory Screen & Polish (`T-6.1`).
+- **Target Task:** `T-6.FIX5.3: Persistent Rotating Seed Bank & Dynamic Worker Scaling (PersistentSeedBank, DealGenerator dynamic scaling)`.

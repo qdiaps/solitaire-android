@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import io.github.qdiaps.solitaire.data.local.DataStoreManager
 import io.github.qdiaps.solitaire.data.model.GameSettings
+import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
 import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
@@ -58,6 +59,7 @@ class SettingsRepositoryTest {
             val settings = repository.getSettings()
 
             assertEquals(DrawMode.DRAW_ONE, settings.drawMode)
+            assertEquals(DealDifficulty.EASY, settings.dealDifficulty)
             assertFalse(settings.isLeftHanded)
             assertEquals(FeltTheme.CLASSIC_GREEN, settings.feltTheme)
             assertEquals(CardBackStyle.CLASSIC_LATTICE, settings.cardBackStyle)
@@ -85,6 +87,19 @@ class SettingsRepositoryTest {
             repository.setDrawMode(DrawMode.DRAW_THREE)
             val updated = repository.getSettings()
             assertEquals(DrawMode.DRAW_THREE, updated.drawMode)
+        }
+
+        @Test
+        @DisplayName("setDealDifficulty updates deal difficulty")
+        fun `setDealDifficulty updates deal difficulty`() = testScope.runTest {
+            repository.setDealDifficulty(DealDifficulty.MEDIUM)
+            assertEquals(DealDifficulty.MEDIUM, repository.getSettings().dealDifficulty)
+
+            repository.setDealDifficulty(DealDifficulty.RANDOM)
+            assertEquals(DealDifficulty.RANDOM, repository.getSettings().dealDifficulty)
+
+            repository.setDealDifficulty(DealDifficulty.EASY)
+            assertEquals(DealDifficulty.EASY, repository.getSettings().dealDifficulty)
         }
 
         @Test
@@ -160,6 +175,7 @@ class SettingsRepositoryTest {
             repository.updateSettings { current ->
                 current.copy(
                     drawMode = DrawMode.DRAW_THREE,
+                    dealDifficulty = DealDifficulty.MEDIUM,
                     isLeftHanded = true,
                     feltTheme = FeltTheme.DARK_CHARCOAL,
                     cardBackStyle = CardBackStyle.EMERALD_ART_DECO,
@@ -171,6 +187,7 @@ class SettingsRepositoryTest {
 
             val settings = repository.getSettings()
             assertEquals(DrawMode.DRAW_THREE, settings.drawMode)
+            assertEquals(DealDifficulty.MEDIUM, settings.dealDifficulty)
             assertTrue(settings.isLeftHanded)
             assertEquals(FeltTheme.DARK_CHARCOAL, settings.feltTheme)
             assertEquals(CardBackStyle.EMERALD_ART_DECO, settings.cardBackStyle)
@@ -188,6 +205,7 @@ class SettingsRepositoryTest {
         @DisplayName("resetToDefaults restores all preferences back to default values")
         fun `resetToDefaults restores all preferences back to default values`() = testScope.runTest {
             repository.setDrawMode(DrawMode.DRAW_THREE)
+            repository.setDealDifficulty(DealDifficulty.MEDIUM)
             repository.setLeftHanded(true)
             repository.setFeltTheme(FeltTheme.WINE_RED)
             repository.setSoundEnabled(false)
@@ -204,12 +222,14 @@ class SettingsRepositoryTest {
         fun `corrupted or invalid enum values fall back gracefully to defaults`() = testScope.runTest {
             // Write invalid/corrupt values directly to DataStore
             dataStoreManager.setPreference(stringPreferencesKey("draw_mode"), "INVALID_DRAW_MODE")
+            dataStoreManager.setPreference(stringPreferencesKey("deal_difficulty"), "INVALID_DIFFICULTY")
             dataStoreManager.setPreference(stringPreferencesKey("felt_theme"), "unknown_felt_theme")
             dataStoreManager.setPreference(stringPreferencesKey("card_back_style"), "non_existent_back")
             dataStoreManager.setPreference(stringPreferencesKey("card_face_style"), "non_existent_face")
 
             val settings = repository.getSettings()
             assertEquals(DrawMode.DRAW_ONE, settings.drawMode)
+            assertEquals(DealDifficulty.EASY, settings.dealDifficulty)
             assertEquals(FeltTheme.CLASSIC_GREEN, settings.feltTheme)
             assertEquals(CardBackStyle.CLASSIC_LATTICE, settings.cardBackStyle)
             assertEquals(CardFaceStyle.MODERN_CLEAN, settings.cardFaceStyle)

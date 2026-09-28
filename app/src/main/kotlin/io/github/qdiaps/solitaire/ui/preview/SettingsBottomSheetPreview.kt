@@ -9,7 +9,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.qdiaps.solitaire.domain.deck.KlondikeDealer
+import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
+import io.github.qdiaps.solitaire.domain.solver.GeneratorDebugStats
+import io.github.qdiaps.solitaire.domain.solver.WorkerLogEntry
 import io.github.qdiaps.solitaire.ui.game.SolitaireGameScreen
 import io.github.qdiaps.solitaire.ui.game.components.SettingsSheetContent
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
@@ -29,6 +32,7 @@ fun SettingsSheetClassicGreenPreview() {
         ) {
             SettingsSheetContent(
                 drawMode = DrawMode.DRAW_ONE,
+                dealDifficulty = DealDifficulty.EASY,
                 isLeftHanded = false,
                 autoHintEnabled = false,
                 feltTheme = FeltTheme.CLASSIC_GREEN,
@@ -62,6 +66,7 @@ fun SettingsSheetCompactHeightPreview() {
         ) {
             SettingsSheetContent(
                 drawMode = DrawMode.DRAW_ONE,
+                dealDifficulty = DealDifficulty.MEDIUM,
                 isLeftHanded = false,
                 autoHintEnabled = true,
                 feltTheme = FeltTheme.CLASSIC_GREEN,
@@ -95,6 +100,7 @@ fun SettingsSheetDeepNavyPreview() {
         ) {
             SettingsSheetContent(
                 drawMode = DrawMode.DRAW_THREE,
+                dealDifficulty = DealDifficulty.RANDOM,
                 isLeftHanded = true,
                 autoHintEnabled = false,
                 feltTheme = FeltTheme.DEEP_NAVY,
@@ -128,6 +134,7 @@ fun SettingsSheetDarkCharcoalPreview() {
         ) {
             SettingsSheetContent(
                 drawMode = DrawMode.DRAW_ONE,
+                dealDifficulty = DealDifficulty.EASY,
                 isLeftHanded = false,
                 autoHintEnabled = false,
                 feltTheme = FeltTheme.DARK_CHARCOAL,
@@ -161,6 +168,7 @@ fun SettingsSheetWineRedPreview() {
         ) {
             SettingsSheetContent(
                 drawMode = DrawMode.DRAW_THREE,
+                dealDifficulty = DealDifficulty.MEDIUM,
                 isLeftHanded = true,
                 autoHintEnabled = true,
                 feltTheme = FeltTheme.WINE_RED,
@@ -195,4 +203,78 @@ fun SolitaireScreenWithSettingsOpenPreview() {
         feltTheme = FeltTheme.CLASSIC_GREEN,
         cardBackStyle = CardBackStyle.CLASSIC_LATTICE
     )
+}
+
+@Preview(name = "7. Settings Sheet - Developer Debug Tools (Debug Build)", device = "id:pixel_7", showBackground = true)
+@Composable
+fun SettingsSheetDeveloperDebugPreview() {
+    SolitaireTheme(feltTheme = FeltTheme.CLASSIC_GREEN) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(SolitaireTheme.colors.tableSurface)
+        ) {
+            SettingsSheetContent(
+                drawMode = DrawMode.DRAW_ONE,
+                dealDifficulty = DealDifficulty.EASY,
+                isLeftHanded = false,
+                autoHintEnabled = false,
+                feltTheme = FeltTheme.CLASSIC_GREEN,
+                cardBackStyle = CardBackStyle.CLASSIC_LATTICE,
+                cardFaceStyle = CardFaceStyle.MODERN_CLEAN,
+                soundEnabled = true,
+                hapticsEnabled = true,
+                onDrawModeChange = {},
+                onLeftHandedChange = {},
+                onAutoHintChange = {},
+                onFeltThemeChange = {},
+                onCardBackStyleChange = {},
+                onCardFaceStyleChange = {},
+                onSoundChange = {},
+                onHapticsChange = {},
+                onResetToDefaults = {},
+                onDismiss = {},
+                isDebug = true,
+                debugStats = GeneratorDebugStats(
+                    easyBankCount = 88,
+                    mediumBankCount = 92,
+                    activeWorkersCount = 2,
+                    totalCandidatesEvaluated = 120,
+                    totalSolvableFound = 95,
+                    rejectionRate = 0.208f,
+                    lastSolveDurationMs = 28L,
+                    recentWorkerLogs = listOf(
+                        WorkerLogEntry(
+                            timestampMs = 1727520000000L,
+                            workerId = 2,
+                            seed = 14285L,
+                            difficulty = DealDifficulty.EASY,
+                            durationMs = 18L
+                        ),
+                        WorkerLogEntry(
+                            timestampMs = 1727519995000L,
+                            workerId = 1,
+                            seed = 14281L,
+                            difficulty = DealDifficulty.MEDIUM,
+                            durationMs = 32L
+                        ),
+                        WorkerLogEntry(
+                            timestampMs = 1727519990000L,
+                            workerId = 4,
+                            seed = 14270L,
+                            difficulty = DealDifficulty.EASY,
+                            durationMs = 14L
+                        )
+                    )
+                ),
+                gameSessionId = 42L,
+                movesCount = 18,
+                score = 145,
+                elapsedTimeSeconds = 85L,
+                isGameWon = false,
+                isDeadlocked = false,
+                isAutoCompleteAvailable = false
+            )
+        }
+    }
 }

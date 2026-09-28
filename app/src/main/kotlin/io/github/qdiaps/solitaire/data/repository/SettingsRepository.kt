@@ -4,6 +4,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import io.github.qdiaps.solitaire.data.local.DataStoreManager
 import io.github.qdiaps.solitaire.data.model.GameSettings
+import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
 import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
@@ -21,6 +22,7 @@ interface SettingsRepository {
     suspend fun getSettings(): GameSettings
     suspend fun updateSettings(transform: (GameSettings) -> GameSettings)
     suspend fun setDrawMode(drawMode: DrawMode)
+    suspend fun setDealDifficulty(dealDifficulty: DealDifficulty)
     suspend fun setLeftHanded(isLeftHanded: Boolean)
     suspend fun setFeltTheme(feltTheme: FeltTheme)
     suspend fun setCardBackStyle(cardBackStyle: CardBackStyle)
@@ -43,6 +45,9 @@ class DataStoreSettingsRepository(
             drawMode = preferences[KEY_DRAW_MODE]?.let { modeName ->
                 DrawMode.entries.find { it.name == modeName } ?: DrawMode.DRAW_ONE
             } ?: DrawMode.DRAW_ONE,
+            dealDifficulty = preferences[KEY_DEAL_DIFFICULTY]?.let { diffName ->
+                DealDifficulty.entries.find { it.name == diffName } ?: DealDifficulty.EASY
+            } ?: DealDifficulty.EASY,
             isLeftHanded = preferences[KEY_IS_LEFT_HANDED] ?: false,
             feltTheme = FeltTheme.fromId(preferences[KEY_FELT_THEME]),
             cardBackStyle = CardBackStyle.fromId(preferences[KEY_CARD_BACK_STYLE]),
@@ -60,6 +65,7 @@ class DataStoreSettingsRepository(
         val updated = transform(current)
         dataStoreManager.edit { preferences ->
             preferences[KEY_DRAW_MODE] = updated.drawMode.name
+            preferences[KEY_DEAL_DIFFICULTY] = updated.dealDifficulty.name
             preferences[KEY_IS_LEFT_HANDED] = updated.isLeftHanded
             preferences[KEY_FELT_THEME] = updated.feltTheme.id
             preferences[KEY_CARD_BACK_STYLE] = updated.cardBackStyle.id
@@ -72,6 +78,10 @@ class DataStoreSettingsRepository(
 
     override suspend fun setDrawMode(drawMode: DrawMode) {
         dataStoreManager.setPreference(KEY_DRAW_MODE, drawMode.name)
+    }
+
+    override suspend fun setDealDifficulty(dealDifficulty: DealDifficulty) {
+        dataStoreManager.setPreference(KEY_DEAL_DIFFICULTY, dealDifficulty.name)
     }
 
     override suspend fun setLeftHanded(isLeftHanded: Boolean) {
@@ -105,6 +115,7 @@ class DataStoreSettingsRepository(
     override suspend fun resetToDefaults() {
         dataStoreManager.edit { preferences ->
             preferences.remove(KEY_DRAW_MODE)
+            preferences.remove(KEY_DEAL_DIFFICULTY)
             preferences.remove(KEY_IS_LEFT_HANDED)
             preferences.remove(KEY_FELT_THEME)
             preferences.remove(KEY_CARD_BACK_STYLE)
@@ -117,6 +128,7 @@ class DataStoreSettingsRepository(
 
     companion object {
         val KEY_DRAW_MODE = stringPreferencesKey("draw_mode")
+        val KEY_DEAL_DIFFICULTY = stringPreferencesKey("deal_difficulty")
         val KEY_IS_LEFT_HANDED = booleanPreferencesKey("is_left_handed")
         val KEY_FELT_THEME = stringPreferencesKey("felt_theme")
         val KEY_CARD_BACK_STYLE = stringPreferencesKey("card_back_style")

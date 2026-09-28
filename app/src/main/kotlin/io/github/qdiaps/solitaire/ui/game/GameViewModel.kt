@@ -17,8 +17,15 @@ import io.github.qdiaps.solitaire.domain.engine.UndoManager
 import io.github.qdiaps.solitaire.domain.model.BoardState
 import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
+import io.github.qdiaps.solitaire.domain.model.Rank
+import io.github.qdiaps.solitaire.domain.model.Suit
+import io.github.qdiaps.solitaire.data.repository.DataStoreSeedBankStorage
+import io.github.qdiaps.solitaire.domain.solver.PersistentSeedBank
+import io.github.qdiaps.solitaire.domain.solver.SeedBankCatalog
+import io.github.qdiaps.solitaire.domain.solver.SeedBankParser
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteMove
 import io.github.qdiaps.solitaire.domain.rules.AutoCompleteResolver
+import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.HintResolver
 import io.github.qdiaps.solitaire.domain.rules.KlondikeRules
@@ -40,6 +47,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -84,13 +93,16 @@ class GameViewModel(
     private val initialIsWon = KlondikeRules.isGameWon(initialDealState)
     var hasMoved: Boolean = (initialBoardState != null && initialBoardState.movesCount > 0)
         private set
+    private var isVictoryRecorded: Boolean = initialIsWon
+    private val hasAsyncInit = (settingsRepository != null || (persistenceRepository != null && initialBoardState == null) || (dealGenerator != null && initialBoardState == null))
     private val _uiState = MutableStateFlow(
         GameUiState(
             boardState = initialDealState,
             isGameWon = initialIsWon,
             isAutoCompleteAvailable = if (initialIsWon) false else AutoCompleteResolver.isAutoCompleteReady(initialDealState),
             drawMode = drawMode,
-            autoHintEnabled = initialAutoHintEnabled
+            autoHintEnabled = initialAutoHintEnabled,
+            isLoading = hasAsyncInit
         )
     )
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
@@ -101,6 +113,7 @@ class GameViewModel(
     private var timerJob: Job? = null
     private var autoCompleteJob: Job? = null
     private var idleHintJob: Job? = null
+    private var debugStatsJob: Job? = null
 
     /**
      * Indicates whether the idle auto-hint timer coroutine is currently active.
@@ -128,29 +141,10 @@ class GameViewModel(
             resetIdleHintTimer()
         }
 
-        if (settingsRepository != null) {
-            scope.launch {
-                settingsRepository.settingsFlow.collect { settings ->
-                    val wasAutoHint = _uiState.value.autoHintEnabled
-                    _uiState.update { current ->
-                        current.copy(
-                            drawMode = settings.drawMode,
-                            isLeftHanded = settings.isLeftHanded,
-                            feltTheme = settings.feltTheme,
-                            cardBackStyle = settings.cardBackStyle,
-                            cardFaceStyle = settings.cardFaceStyle,
-                            soundEnabled = settings.soundEnabled,
-                            hapticsEnabled = settings.hapticsEnabled,
-                            autoHintEnabled = settings.autoHintEnabled
-                        )
-                    }
-                    if (settings.autoHintEnabled != wasAutoHint) {
-                        if (settings.autoHintEnabled) {
-                            resetIdleHintTimer()
-                        } else {
-                            cancelIdleHintTimer()
-                        }
-                    }
+        if (dealGenerator != null) {
+            debugStatsJob = scope.launch {
+                dealGenerator.debugStats.collect { stats ->
+                    _uiState.update { it.copy(debugStats = stats) }
                 }
             }
         }
@@ -163,11 +157,77 @@ class GameViewModel(
             }
         }
 
-        if (persistenceRepository != null && initialBoardState == null) {
+        if (hasAsyncInit) {
             scope.launch {
-                val savedSession = persistenceRepository.getSavedSession()
-                if (savedSession != null && !KlondikeRules.isGameWon(savedSession.boardState)) {
-                    restoreGameSession(savedSession)
+                println("DEBUG: enter hasAsyncInit")
+                val initialSettings = settingsRepository?.settingsFlow?.first()
+                if (initialSettings != null) {
+                    _uiState.update { current ->
+                        current.copy(
+                            drawMode = initialSettings.drawMode,
+                            dealDifficulty = initialSettings.dealDifficulty,
+                            isLeftHanded = initialSettings.isLeftHanded,
+                            feltTheme = initialSettings.feltTheme,
+                            cardBackStyle = initialSettings.cardBackStyle,
+                            cardFaceStyle = initialSettings.cardFaceStyle,
+                            soundEnabled = initialSettings.soundEnabled,
+                            hapticsEnabled = initialSettings.hapticsEnabled,
+                            autoHintEnabled = initialSettings.autoHintEnabled
+                        )
+                    }
+                }
+
+                var hasRestoredSession = false
+                if (persistenceRepository != null && initialBoardState == null) {
+                    val savedSession = persistenceRepository.getSavedSession()
+                    if (savedSession != null && !KlondikeRules.isGameWon(savedSession.boardState)) {
+                        restoreGameSession(savedSession)
+                        hasRestoredSession = true
+                    }
+                }
+
+                if (!hasRestoredSession && initialBoardState == null && dealGenerator != null) {
+                    val diff = initialSettings?.dealDifficulty ?: _uiState.value.dealDifficulty
+                    if (diff != DealDifficulty.RANDOM) {
+                        try {
+                            val solvableBoard = dealGenerator.getSolvableDeal(diff)
+                            applyNewDeal(solvableBoard)
+                        } catch (e: Exception) {
+                            println("DEBUG: init exc: " + e)
+                        }
+                    }
+                }
+
+                _uiState.update { it.copy(isLoading = false) }
+
+                if (_uiState.value.autoHintEnabled && !_uiState.value.isGameWon) {
+                    resetIdleHintTimer()
+                }
+
+                if (settingsRepository != null) {
+                    settingsRepository.settingsFlow.drop(1).collect { settings ->
+                        val wasAutoHint = _uiState.value.autoHintEnabled
+                        _uiState.update { current ->
+                            current.copy(
+                                drawMode = settings.drawMode,
+                                dealDifficulty = settings.dealDifficulty,
+                                isLeftHanded = settings.isLeftHanded,
+                                feltTheme = settings.feltTheme,
+                                cardBackStyle = settings.cardBackStyle,
+                                cardFaceStyle = settings.cardFaceStyle,
+                                soundEnabled = settings.soundEnabled,
+                                hapticsEnabled = settings.hapticsEnabled,
+                                autoHintEnabled = settings.autoHintEnabled
+                            )
+                        }
+                        if (settings.autoHintEnabled != wasAutoHint) {
+                            if (settings.autoHintEnabled) {
+                                resetIdleHintTimer()
+                            } else {
+                                cancelIdleHintTimer()
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -197,10 +257,19 @@ class GameViewModel(
             is GameIntent.FinishAutoComplete -> finishAutoComplete()
             is GameIntent.ApplyAutoCompleteMove -> applyAutoCompleteMove(intent.move)
             is GameIntent.SaveSession -> saveCurrentSession()
-            is GameIntent.SkipWinAnimation -> { /* Handled in T-6 */ }
+            is GameIntent.StartVictoryAnimation -> {
+                _uiState.update { it.copy(isVictoryAnimationActive = true) }
+            }
+            is GameIntent.SkipWinAnimation -> {
+                _uiState.update { it.copy(isVictoryAnimationActive = false) }
+            }
+            is GameIntent.DismissVictorySummary -> {
+                _uiState.update { it.copy(victorySummary = null) }
+            }
             is GameIntent.OpenSettings -> openSettings()
             is GameIntent.CloseSettings -> closeSettings()
             is GameIntent.SetDrawMode -> setDrawMode(intent.drawMode)
+            is GameIntent.SetDealDifficulty -> setDealDifficulty(intent.difficulty)
             is GameIntent.SetLeftHanded -> setLeftHanded(intent.isLeftHanded)
             is GameIntent.SetCardBackStyle -> setCardBackStyle(intent.cardBackStyle)
             is GameIntent.SetCardFaceStyle -> setCardFaceStyle(intent.cardFaceStyle)
@@ -211,6 +280,9 @@ class GameViewModel(
             is GameIntent.OpenStats -> openStats()
             is GameIntent.CloseStats -> closeStats()
             is GameIntent.ResetStats -> resetStats()
+            is GameIntent.DevInstantWin -> handleDevInstantWin()
+            is GameIntent.DevStressRefill -> handleDevStressRefill()
+            is GameIntent.DevExportSeeds -> handleDevExportSeeds()
         }
     }
 
@@ -325,6 +397,7 @@ class GameViewModel(
         initialDealState = savedSession.undoHistory.firstOrNull() ?: board
         undoManager.restoreHistory(savedSession.undoHistory)
         hasMoved = savedSession.hasMoved
+        isVictoryRecorded = false
         _uiState.update { current ->
             current.copy(
                 boardState = board,
@@ -342,6 +415,16 @@ class GameViewModel(
         }
         if (_uiState.value.autoHintEnabled && !isWon && !_uiState.value.isSettingsOpen && !_uiState.value.isStatsDialogOpen) {
             resetIdleHintTimer()
+        }
+    }
+
+    /**
+     * Updates deal difficulty mode live and persists change to settings repository.
+     */
+    fun setDealDifficulty(difficulty: DealDifficulty) {
+        _uiState.update { it.copy(dealDifficulty = difficulty) }
+        settingsRepository?.let { repo ->
+            scope.launch { repo.setDealDifficulty(difficulty) }
         }
     }
 
@@ -431,6 +514,7 @@ class GameViewModel(
             _uiState.update {
                 it.copy(
                     drawMode = DrawMode.DRAW_ONE,
+                    dealDifficulty = DealDifficulty.EASY,
                     isLeftHanded = false,
                     feltTheme = FeltTheme.CLASSIC_GREEN,
                     cardBackStyle = CardBackStyle.CLASSIC_LATTICE,
@@ -551,6 +635,8 @@ class GameViewModel(
                 isGameWon = isWonNow,
                 isDeadlocked = isDeadlocked,
                 isAutoCompleteAvailable = isAutoComplete,
+                isVictoryAnimationActive = if (isWonNow) current.isVictoryAnimationActive else false,
+                victorySummary = if (isWonNow) current.victorySummary else null,
                 activeHint = null
             )
         }
@@ -558,6 +644,9 @@ class GameViewModel(
             startTimer()
         }
         _events.tryEmit(GameEvent.PlayHapticTick)
+        if (!isWonNow && hasMoved) {
+            saveCurrentSession()
+        }
     }
 
     /**
@@ -569,12 +658,15 @@ class GameViewModel(
     fun startNewGame() {
         cancelAutoComplete()
         stopTimer()
-        if (dealGenerator != null) {
+        val difficulty = _uiState.value.dealDifficulty
+        if (dealGenerator != null && difficulty != DealDifficulty.RANDOM) {
             _uiState.update { it.copy(isLoading = true) }
             scope.launch {
                 val newBoard = try {
-                    dealGenerator.getSolvableDeal()
-                } catch (_: Exception) {
+                    dealGenerator.getSolvableDeal(difficulty)
+                } catch (e: Throwable) {
+                    println("DEBUG: startNewGame catch: " + e)
+                    e.printStackTrace()
                     dealProvider()
                 }
                 applyNewDeal(newBoard)
@@ -595,6 +687,7 @@ class GameViewModel(
         stopTimer()
         cancelIdleHintTimer()
         hasMoved = false
+        isVictoryRecorded = false
         undoManager.clear()
         val isWon = KlondikeRules.isGameWon(initialDealState)
         val isAutoComplete = if (isWon) false else AutoCompleteResolver.isAutoCompleteReady(initialDealState)
@@ -608,6 +701,8 @@ class GameViewModel(
                 activeHint = null,
                 isLoading = false,
                 isAutoCompleteAvailable = isAutoComplete,
+                isVictoryAnimationActive = false,
+                victorySummary = null,
                 gameSessionId = current.gameSessionId + 1L
             )
         }
@@ -728,7 +823,9 @@ class GameViewModel(
 
         if (isWon) {
             stopTimer()
+            cancelIdleHintTimer()
             _events.tryEmit(GameEvent.TriggerWinCelebration)
+            recordVictoryInStats()
         }
     }
 
@@ -789,11 +886,18 @@ class GameViewModel(
         cancelIdleHintTimer()
     }
 
+    fun stopDebugStatsCollector() {
+        debugStatsJob?.cancel()
+        debugStatsJob = null
+    }
+
     override fun onCleared() {
         super.onCleared()
         stopTimer()
         cancelAutoComplete()
         cancelIdleHintTimer()
+        stopDebugStatsCollector()
+        dealGenerator?.stop()
     }
 
     /**
@@ -865,6 +969,7 @@ class GameViewModel(
         stopTimer()
         cancelIdleHintTimer()
         hasMoved = false
+        isVictoryRecorded = false
         initialDealState = board
         undoManager.clear()
         val isWon = KlondikeRules.isGameWon(board)
@@ -879,6 +984,8 @@ class GameViewModel(
                 activeHint = null,
                 isLoading = false,
                 isAutoCompleteAvailable = isAutoComplete,
+                isVictoryAnimationActive = false,
+                victorySummary = null,
                 gameSessionId = current.gameSessionId + 1L
             )
         }
@@ -898,8 +1005,30 @@ class GameViewModel(
                 val settingsRepo = DataStoreSettingsRepository(dataStoreManager)
                 val statsRepo = DataStoreStatsRepository(dataStoreManager)
                 val persistenceRepo = DataStoreGamePersistenceRepository(dataStoreManager)
+                val seedBankStorage = DataStoreSeedBankStorage(dataStoreManager)
+                val seedBankScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+                val seedBank = PersistentSeedBank(
+                    storage = seedBankStorage,
+                    defaultCatalogProvider = {
+                        try {
+                            val jsonString = context.assets.open("deals/seed_bank.json").bufferedReader().use { it.readText() }
+                            SeedBankParser.parse(jsonString)
+                        } catch (e: Exception) {
+                            SeedBankCatalog()
+                        }
+                    },
+                    scope = seedBankScope
+                )
+                seedBankScope.launch {
+                    seedBank.initialize()
+                }
+                val generator = dealGenerator ?: DealGenerator(
+                    scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+                    drawMode = DrawMode.DRAW_ONE,
+                    seedBank = seedBank
+                )
                 return GameViewModel(
-                    dealGenerator = dealGenerator,
+                    dealGenerator = generator,
                     settingsRepository = settingsRepo,
                     statsRepository = statsRepo,
                     persistenceRepository = persistenceRepo
@@ -908,11 +1037,27 @@ class GameViewModel(
         }
     }
     private fun recordVictoryInStats() {
+        if (isVictoryRecorded) return
+        isVictoryRecorded = true
+
+        val currentState = _uiState.value
+        val summary = VictorySummary.calculate(
+            timeSeconds = currentState.elapsedTimeSeconds.toInt(),
+            movesCount = currentState.boardState.movesCount,
+            score = currentState.boardState.score,
+            previousStats = currentState.stats
+        )
+        _uiState.update { current ->
+            current.copy(
+                isVictoryAnimationActive = true,
+                victorySummary = summary
+            )
+        }
+
         if (persistenceRepository != null) {
             persistenceScope.launch { persistenceRepository.clearSavedSession() }
         }
         statsRepository?.let { repo ->
-            val currentState = _uiState.value
             scope.launch {
                 repo.recordGameWon(
                     timeSeconds = currentState.elapsedTimeSeconds.toInt(),
@@ -921,5 +1066,78 @@ class GameViewModel(
                 )
             }
         }
+    }
+
+    private fun handleDevInstantWin() {
+        if (_uiState.value.isGameWon) return
+
+        val suits = listOf(Suit.HEARTS, Suit.DIAMONDS, Suit.CLUBS, Suit.SPADES)
+        val completeFoundations = suits.map { suit ->
+            Rank.entries.map { rank -> Card(suit = suit, rank = rank, isFaceUp = true) }
+        }
+
+        val wonBoard = _uiState.value.boardState.copy(
+            foundations = completeFoundations,
+            tableau = List(7) { emptyList() },
+            stock = emptyList(),
+            waste = emptyList(),
+            score = _uiState.value.boardState.score.coerceAtLeast(500)
+        )
+
+        _uiState.update { current ->
+            current.copy(
+                boardState = wonBoard,
+                isGameWon = true,
+                isAutoCompleteAvailable = false,
+                activeHint = null
+            )
+        }
+
+        stopTimer()
+        cancelIdleHintTimer()
+        recordVictoryInStats()
+        _events.tryEmit(GameEvent.PlayHapticSnap)
+        _events.tryEmit(GameEvent.TriggerWinCelebration)
+    }
+
+    private fun handleDevStressRefill() {
+        val bank = dealGenerator?.seedBank
+        if (bank == null) {
+            _events.tryEmit(GameEvent.ShowMessage("Seed bank is not initialized"))
+            return
+        }
+
+        val easyCount = bank.getAvailableCount(DealDifficulty.EASY)
+        val mediumCount = bank.getAvailableCount(DealDifficulty.MEDIUM)
+        val total = easyCount + mediumCount
+
+        if (total < 20 || easyCount < 10 || mediumCount < 10) {
+            _events.tryEmit(GameEvent.ShowMessage("Cannot flush: bank has fewer than 20 seeds (safety floor)"))
+            return
+        }
+
+        val removed = bank.flush(0.9f)
+        dealGenerator.checkAndReplenish(DealDifficulty.EASY)
+        dealGenerator.checkAndReplenish(DealDifficulty.MEDIUM)
+        _events.tryEmit(GameEvent.ShowMessage("Flushed $removed seeds (90%). Deep refill triggered!"))
+    }
+
+    private fun handleDevExportSeeds() {
+        val bank = dealGenerator?.seedBank
+        if (bank == null) {
+            _events.tryEmit(GameEvent.ShowMessage("Seed bank is not initialized"))
+            return
+        }
+
+        val state = bank.state.value
+        val text = buildString {
+            appendLine("=== SOLITAIRE SEED BANK EXPORT ===")
+            appendLine("Easy Available (${state.easySeeds.size}): ${state.easySeeds.joinToString(", ")}")
+            appendLine("Medium Available (${state.mediumSeeds.size}): ${state.mediumSeeds.joinToString(", ")}")
+            appendLine("Played History (${state.playedSeeds.size}): ${state.playedSeeds.joinToString(", ")}")
+        }
+
+        _events.tryEmit(GameEvent.CopyToClipboard(label = "Solitaire Seeds", text = text))
+        _events.tryEmit(GameEvent.ShowMessage("Exported ${state.easySeeds.size + state.mediumSeeds.size} seeds to clipboard"))
     }
 }

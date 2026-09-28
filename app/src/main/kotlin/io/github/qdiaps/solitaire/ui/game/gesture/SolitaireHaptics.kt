@@ -32,6 +32,7 @@ interface SolitaireHaptics {
     fun playPickup()
     fun playSnap()
     fun playTick()
+    fun playWinCelebration()
 }
 
 /**
@@ -104,6 +105,42 @@ class AndroidSolitaireHaptics(
         }
     }
 
+    override fun playWinCelebration() {
+        if (!isEnabled) return
+        val vib = vibrator
+        if (vib != null && vib.hasVibrator()) {
+            try {
+                val timings = longArrayOf(0L, 70L, 60L, 70L, 60L, 140L)
+                val effect = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    if (vib.hasAmplitudeControl()) {
+                        val amplitudes = intArrayOf(0, 160, 0, 200, 0, 255)
+                        VibrationEffect.createWaveform(timings, amplitudes, -1)
+                    } else {
+                        VibrationEffect.createWaveform(timings, -1)
+                    }
+                } else {
+                    null
+                }
+
+                if (effect != null) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        vib.vibrate(
+                            effect,
+                            VibrationAttributes.createForUsage(VibrationAttributes.USAGE_HARDWARE_FEEDBACK)
+                        )
+                    } else {
+                        @Suppress("DEPRECATION")
+                        vib.vibrate(effect, legacyAudioAttributes)
+                    }
+                    return
+                }
+            } catch (_: Throwable) {
+                // Fallback to compose haptic below
+            }
+        }
+        composeHaptic.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
+
     private fun tryVibrate(
         predefinedEffect: Int,
         durationMs: Long,
@@ -162,6 +199,7 @@ val LocalSolitaireHaptics: ProvidableCompositionLocal<SolitaireHaptics> =
             override fun playPickup() {}
             override fun playSnap() {}
             override fun playTick() {}
+            override fun playWinCelebration() {}
         }
     }
 
@@ -177,6 +215,7 @@ fun rememberSolitaireHaptics(enabled: Boolean = true): SolitaireHaptics {
                 override fun playPickup() {}
                 override fun playSnap() {}
                 override fun playTick() {}
+                override fun playWinCelebration() {}
             }
         }
     }

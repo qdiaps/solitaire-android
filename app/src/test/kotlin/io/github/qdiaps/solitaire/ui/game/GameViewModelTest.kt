@@ -6,10 +6,14 @@ import io.github.qdiaps.solitaire.domain.model.Card
 import io.github.qdiaps.solitaire.domain.model.CardLocation
 import io.github.qdiaps.solitaire.domain.model.Rank
 import io.github.qdiaps.solitaire.domain.model.Suit
+import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.rules.KlondikeRules
 import io.github.qdiaps.solitaire.domain.solver.DealGenerator
 import io.github.qdiaps.solitaire.domain.solver.SolvabilityResult
+import io.github.qdiaps.solitaire.domain.solver.PersistentSeedBank
+import io.github.qdiaps.solitaire.domain.solver.InMemorySeedBankStorage
+import io.github.qdiaps.solitaire.domain.solver.SeedBankCatalog
 import io.github.qdiaps.solitaire.data.model.GameSettings
 import io.github.qdiaps.solitaire.data.model.GameStats
 import io.github.qdiaps.solitaire.data.repository.SettingsRepository
@@ -38,6 +42,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -65,8 +70,8 @@ class GameViewModelTest {
         return BoardState(stock = listOf(card))
     }
 
-    private class FakeStatsRepository : StatsRepository {
-        private val _flow = MutableStateFlow(GameStats())
+    private class FakeStatsRepository(initialStats: GameStats = GameStats()) : StatsRepository {
+        private val _flow = MutableStateFlow(initialStats)
         override val statsFlow: StateFlow<GameStats> = _flow.asStateFlow()
 
         var gameStartedCount = 0
@@ -122,6 +127,7 @@ class GameViewModelTest {
             _flow.update(transform)
         }
         override suspend fun setDrawMode(drawMode: DrawMode) { _flow.update { it.copy(drawMode = drawMode) } }
+        override suspend fun setDealDifficulty(dealDifficulty: DealDifficulty) { _flow.update { it.copy(dealDifficulty = dealDifficulty) } }
         override suspend fun setLeftHanded(isLeftHanded: Boolean) { _flow.update { it.copy(isLeftHanded = isLeftHanded) } }
         override suspend fun setFeltTheme(feltTheme: FeltTheme) { _flow.update { it.copy(feltTheme = feltTheme) } }
         override suspend fun setCardBackStyle(cardBackStyle: CardBackStyle) { _flow.update { it.copy(cardBackStyle = cardBackStyle) } }
@@ -633,6 +639,7 @@ class GameViewModelTest {
             assertFalse(viewModel.uiState.value.isLoading)
 
             viewModel.stopTimer()
+            viewModel.stopDebugStatsCollector()
             generator.stop()
         }
     }
@@ -1880,6 +1887,154 @@ class GameViewModelTest {
         }
 
         @Test
+        @DisplayName("recordGameWon is invoked when winning via ApplyAutoCompleteMove")
+        fun `recordGameWon is invoked when winning via ApplyAutoCompleteMove`() = runTest(testDispatcher) {
+            val fakeStats = FakeStatsRepository()
+            val suits = Suit.entries
+            val foundations = suits.map { suit ->
+                if (suit == Suit.HEARTS) {
+                    Rank.entries.filter { it != Rank.KING }.map { Card(suit, it, isFaceUp = true) }
+                } else {
+                    Rank.entries.map { Card(suit, it, isFaceUp = true) }
+                }
+            }
+            val kingOfHearts = Card(Suit.HEARTS, Rank.KING, isFaceUp = true)
+            val tableau = List(7) { col ->
+                if (col == 0) listOf(kingOfHearts) else emptyList()
+            }
+            val almostWonBoard = BoardState(
+                foundations = foundations,
+                tableau = tableau,
+                score = 650,
+                movesCount = 40
+            )
+
+            val viewModel = GameViewModel(
+                initialBoardState = almostWonBoard,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                statsRepository = fakeStats
+            )
+            testScheduler.runCurrent()
+
+            val move = io.github.qdiaps.solitaire.domain.rules.AutoCompleteResolver.nextMove(almostWonBoard)
+            assertNotNull(move)
+
+            viewModel.onIntent(GameIntent.ApplyAutoCompleteMove(move!!))
+            testScheduler.runCurrent()
+
+            assertTrue(viewModel.uiState.value.isGameWon)
+            assertEquals(1, fakeStats.gameWonCount)
+            assertEquals(almostWonBoard.score + 10, fakeStats.lastWonScore)
+            assertEquals(41, fakeStats.lastWonMoves)
+        }
+
+        @Test
+        @DisplayName("recordGameWon is not invoked second time when undoing win and completing winning move again")
+        fun `recordGameWon is not invoked second time when undoing win and completing winning move again`() = runTest(testDispatcher) {
+            val fakeStats = FakeStatsRepository()
+            val fakePersistence = FakeGamePersistenceRepository(initialSession = null)
+            val presqueWonFoundations = Suit.entries.map { suit ->
+                if (suit == Suit.HEARTS) {
+                    Rank.entries.filter { it != Rank.KING }.map { Card(suit, it, isFaceUp = true) }
+                } else {
+                    Rank.entries.map { Card(suit, it, isFaceUp = true) }
+                }
+            }
+            val kingOfHearts = Card(Suit.HEARTS, Rank.KING, isFaceUp = true)
+            val tableau = List(7) { col ->
+                if (col == 0) listOf(kingOfHearts) else emptyList()
+            }
+            val almostWonBoard = BoardState(
+                foundations = presqueWonFoundations,
+                tableau = tableau,
+                score = 680,
+                movesCount = 92
+            )
+
+            val viewModel = GameViewModel(
+                initialBoardState = almostWonBoard,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                statsRepository = fakeStats,
+                persistenceRepository = fakePersistence
+            )
+            testScheduler.runCurrent()
+
+            // 1. Initial winning move
+            viewModel.onIntent(GameIntent.OnCardTapped(kingOfHearts, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+
+            assertTrue(viewModel.uiState.value.isGameWon)
+            assertEquals(1, fakeStats.gameWonCount)
+
+            // 2. Undo the winning move
+            viewModel.onIntent(GameIntent.UndoMove)
+            testScheduler.runCurrent()
+
+            assertFalse(viewModel.uiState.value.isGameWon)
+            assertEquals(1, fakeStats.gameWonCount)
+
+            // 3. Make winning move again
+            viewModel.onIntent(GameIntent.OnCardTapped(kingOfHearts, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+
+            assertTrue(viewModel.uiState.value.isGameWon)
+            // MUST remain 1, guarding against duplicate stats recording on undo-redo win
+            assertEquals(1, fakeStats.gameWonCount)
+        }
+
+        @Test
+        @DisplayName("recordGameWon is invoked for a new game after restarting won game")
+        fun `recordGameWon is invoked for a new game after restarting won game`() = runTest(testDispatcher) {
+            val fakeStats = FakeStatsRepository()
+            val presqueWonFoundations = Suit.entries.map { suit ->
+                if (suit == Suit.HEARTS) {
+                    Rank.entries.filter { it != Rank.KING }.map { Card(suit, it, isFaceUp = true) }
+                } else {
+                    Rank.entries.map { Card(suit, it, isFaceUp = true) }
+                }
+            }
+            val kingOfHearts = Card(Suit.HEARTS, Rank.KING, isFaceUp = true)
+            val tableau = List(7) { col ->
+                if (col == 0) listOf(kingOfHearts) else emptyList()
+            }
+            val almostWonBoard = BoardState(
+                foundations = presqueWonFoundations,
+                tableau = tableau,
+                score = 680,
+                movesCount = 92
+            )
+
+            val viewModel = GameViewModel(
+                initialBoardState = almostWonBoard,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                statsRepository = fakeStats
+            )
+            testScheduler.runCurrent()
+
+            // Win game
+            viewModel.onIntent(GameIntent.OnCardTapped(kingOfHearts, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+            assertEquals(1, fakeStats.gameWonCount)
+
+            // Restart game
+            viewModel.onIntent(GameIntent.RestartGame)
+            testScheduler.runCurrent()
+            assertFalse(viewModel.uiState.value.isGameWon)
+
+            // Win again in restarted session
+            viewModel.onIntent(GameIntent.OnCardTapped(kingOfHearts, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+            assertTrue(viewModel.uiState.value.isGameWon)
+            assertEquals(2, fakeStats.gameWonCount)
+        }
+
+        @Test
         @DisplayName("restartGame resets session and triggers recordGameStarted on first move")
         fun `restartGame resets session and triggers recordGameStarted on first move`() = runTest(testDispatcher) {
             val fakeStats = FakeStatsRepository()
@@ -2239,6 +2394,434 @@ class GameViewModelTest {
             viewModel.onIntent(GameIntent.RestartGame)
             testScheduler.runCurrent()
             assertEquals(2, fakePersistence.clearCount)
+        }
+    }
+
+    @Nested
+    @DisplayName("Zero-Flicker Async Initialization Tests")
+    inner class ZeroFlickerAsyncInitTests {
+
+        @Test
+        @DisplayName("GameViewModel starts with isLoading = true when settings repo provided, then flips to false after preloading theme")
+        fun `GameViewModel starts with isLoading = true when settings repo provided, then flips to false after preloading theme`() = runTest(testDispatcher) {
+            val customSettings = GameSettings(
+                feltTheme = FeltTheme.DARK_CHARCOAL,
+                isLeftHanded = true
+            )
+            val fakeSettings = FakeSettingsRepository(initialSettings = customSettings)
+
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                settingsRepository = fakeSettings
+            )
+
+            assertTrue(viewModel.uiState.value.isLoading)
+
+            testScheduler.runCurrent()
+
+            assertFalse(viewModel.uiState.value.isLoading)
+            assertEquals(FeltTheme.DARK_CHARCOAL, viewModel.uiState.value.feltTheme)
+            assertTrue(viewModel.uiState.value.isLeftHanded)
+        }
+
+        @Test
+        @DisplayName("GameViewModel starts with isLoading = false when no async repositories are provided")
+        fun `GameViewModel starts with isLoading = false when no async repositories are provided`() {
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard()
+            )
+            assertFalse(viewModel.uiState.value.isLoading)
+        }
+
+        @Test
+        @DisplayName("GameViewModel restores saved session atomically before unveiling isLoading = false")
+        fun `GameViewModel restores saved session atomically before unveiling isLoading = false`() = runTest(testDispatcher) {
+            val customBoard = createCustomBoard()
+            val savedSession = SavedGameSession(
+                boardState = customBoard,
+                elapsedTimeSeconds = 120L,
+                drawMode = DrawMode.DRAW_THREE,
+                hasMoved = true
+            )
+            val fakePersistence = FakeGamePersistenceRepository(initialSession = savedSession)
+            val fakeSettings = FakeSettingsRepository(initialSettings = GameSettings(feltTheme = FeltTheme.WINE_RED))
+
+            val viewModel = GameViewModel(
+                initialBoardState = null,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                persistenceRepository = fakePersistence,
+                settingsRepository = fakeSettings
+            )
+
+            assertTrue(viewModel.uiState.value.isLoading)
+
+            testScheduler.runCurrent()
+
+            assertFalse(viewModel.uiState.value.isLoading)
+            assertEquals(customBoard, viewModel.uiState.value.boardState)
+            assertEquals(120L, viewModel.uiState.value.elapsedTimeSeconds)
+            assertEquals(FeltTheme.WINE_RED, viewModel.uiState.value.feltTheme)
+        }
+    }
+    @Nested
+    @DisplayName("Developer Debug Tools Tests")
+    inner class DeveloperDebugToolsTests {
+
+        @Test
+        @DisplayName("DevInstantWin sets isGameWon to true, completes foundations, stops timer and records victory")
+        fun `DevInstantWin sets isGameWon to true, completes foundations, stops timer and records victory`() = runTest(testDispatcher) {
+            val fakeStats = FakeStatsRepository()
+            val viewModel = GameViewModel(
+                initialBoardState = createCustomBoard(),
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                timerDelayMs = 1000L,
+                autoStartTimer = true,
+                statsRepository = fakeStats
+            )
+
+            viewModel.drawStockCard()
+            testScheduler.runCurrent()
+            assertTrue(viewModel.isTimerRunning)
+
+            viewModel.onIntent(GameIntent.DevInstantWin)
+            testScheduler.runCurrent()
+
+            val state = viewModel.uiState.value
+            assertTrue(state.isGameWon)
+            assertTrue(state.isVictoryAnimationActive)
+            assertNotNull(state.victorySummary)
+            assertFalse(viewModel.isTimerRunning)
+            assertFalse(state.isAutoCompleteAvailable)
+            assertEquals(52, state.boardState.foundations.sumOf { it.size })
+            assertTrue(state.boardState.tableau.all { it.isEmpty() })
+            assertEquals(1, fakeStats.gameWonCount)
+        }
+
+        @Test
+        @DisplayName("DevStressRefill flushes 90 percent of seeds when bank capacity is healthy")
+        fun `DevStressRefill flushes 90 percent of seeds when bank capacity is healthy`() = runTest(testDispatcher) {
+            val bank = PersistentSeedBank(
+                storage = InMemorySeedBankStorage(),
+                defaultCatalogProvider = {
+                    SeedBankCatalog(
+                        easySeeds = (1001L..1100L).toList(),
+                        mediumSeeds = (2001L..2100L).toList()
+                    )
+                },
+                scope = backgroundScope
+            )
+            bank.initialize()
+
+            val generator = DealGenerator(
+                scope = backgroundScope,
+                dispatcher = Dispatchers.Default,
+                seedBank = bank,
+                coreCountProvider = { 4 },
+                solvabilityChecker = { _, _ -> SolvabilityResult.Unsolvable(statesEvaluated = 1, durationMs = 1L) }
+            )
+
+            try {
+                val viewModel = GameViewModel(
+                    initialBoardState = createCustomBoard("stress_test"),
+                    dealGenerator = generator,
+                    coroutineScope = backgroundScope,
+                    timerDispatcher = testDispatcher,
+                    autoStartTimer = false
+                )
+                testScheduler.runCurrent()
+
+                val messages = mutableListOf<String>()
+                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                    viewModel.events.collect { event ->
+                        if (event is GameEvent.ShowMessage) {
+                            messages.add(event.message)
+                        }
+                    }
+                }
+
+                viewModel.onIntent(GameIntent.DevStressRefill)
+                testScheduler.runCurrent()
+
+                assertEquals(10, bank.getAvailableCount(DealDifficulty.EASY))
+                assertEquals(10, bank.getAvailableCount(DealDifficulty.MEDIUM))
+                assertTrue(messages.any { it.contains("Flushed 180 seeds") })
+            } finally {
+                generator.stop()
+            }
+        }
+
+        @Test
+        @DisplayName("DevStressRefill respects safety floor when bank has fewer than 20 seeds")
+        fun `DevStressRefill respects safety floor when bank has fewer than 20 seeds`() = runTest(testDispatcher) {
+            val bank = PersistentSeedBank(
+                storage = InMemorySeedBankStorage(),
+                defaultCatalogProvider = {
+                    SeedBankCatalog(
+                        easySeeds = (1001L..1005L).toList(),
+                        mediumSeeds = (2001L..2005L).toList()
+                    )
+                },
+                scope = backgroundScope
+            )
+            bank.initialize()
+
+            val generator = DealGenerator(
+                scope = backgroundScope,
+                dispatcher = Dispatchers.Default,
+                seedBank = bank,
+                solvabilityChecker = { _, _ -> SolvabilityResult.Unsolvable(statesEvaluated = 1, durationMs = 1L) }
+            )
+
+            try {
+                val viewModel = GameViewModel(
+                    initialBoardState = createCustomBoard("safety_test"),
+                    dealGenerator = generator,
+                    coroutineScope = backgroundScope,
+                    timerDispatcher = testDispatcher,
+                    autoStartTimer = false
+                )
+                testScheduler.runCurrent()
+
+                val messages = mutableListOf<String>()
+                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                    viewModel.events.collect { event ->
+                        if (event is GameEvent.ShowMessage) {
+                            messages.add(event.message)
+                        }
+                    }
+                }
+
+                viewModel.onIntent(GameIntent.DevStressRefill)
+                testScheduler.runCurrent()
+
+                assertEquals(5, bank.getAvailableCount(DealDifficulty.EASY))
+                assertEquals(5, bank.getAvailableCount(DealDifficulty.MEDIUM))
+                assertTrue(messages.any { it.contains("safety floor") })
+            } finally {
+                generator.stop()
+            }
+        }
+
+        @Test
+        @DisplayName("DevExportSeeds emits CopyToClipboard event with seed bank contents")
+        fun `DevExportSeeds emits CopyToClipboard event with seed bank contents`() = runTest(testDispatcher) {
+            val bank = PersistentSeedBank(
+                storage = InMemorySeedBankStorage(),
+                defaultCatalogProvider = {
+                    SeedBankCatalog(
+                        easySeeds = listOf(111L, 222L),
+                        mediumSeeds = listOf(333L, 444L)
+                    )
+                },
+                scope = backgroundScope
+            )
+            bank.initialize()
+
+            val generator = DealGenerator(
+                scope = backgroundScope,
+                dispatcher = Dispatchers.Default,
+                seedBank = bank,
+                solvabilityChecker = { _, _ -> SolvabilityResult.Unsolvable(statesEvaluated = 1, durationMs = 1L) }
+            )
+
+            try {
+                val viewModel = GameViewModel(
+                    initialBoardState = createCustomBoard("export_test"),
+                    dealGenerator = generator,
+                    coroutineScope = backgroundScope,
+                    timerDispatcher = testDispatcher,
+                    autoStartTimer = false
+                )
+                testScheduler.runCurrent()
+
+                val clipboardEvents = mutableListOf<GameEvent.CopyToClipboard>()
+                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                    viewModel.events.collect { event ->
+                        if (event is GameEvent.CopyToClipboard) {
+                            clipboardEvents.add(event)
+                        }
+                    }
+                }
+
+                viewModel.onIntent(GameIntent.DevExportSeeds)
+                testScheduler.runCurrent()
+
+                assertEquals(1, clipboardEvents.size)
+                val event = clipboardEvents.first()
+                assertTrue(event.text.contains("111"))
+                assertTrue(event.text.contains("333"))
+            } finally {
+                generator.stop()
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Victory Sequence & Summary Integration Tests")
+    inner class VictorySequenceTests {
+
+        private fun createAlmostWonBoard(): Pair<BoardState, Card> {
+            val presqueWonFoundations = Suit.entries.map { suit ->
+                if (suit == Suit.HEARTS) {
+                    Rank.entries.filter { it != Rank.KING }.map { Card(suit, it, isFaceUp = true) }
+                } else {
+                    Rank.entries.map { Card(suit, it, isFaceUp = true) }
+                }
+            }
+            val kingOfHearts = Card(Suit.HEARTS, Rank.KING, isFaceUp = true)
+            val tableau = List(7) { col ->
+                if (col == 0) listOf(kingOfHearts) else emptyList()
+            }
+            val board = BoardState(
+                foundations = presqueWonFoundations,
+                tableau = tableau,
+                score = 680,
+                movesCount = 92
+            )
+            return board to kingOfHearts
+        }
+
+        @Test
+        @DisplayName("Winning move triggers celebration event, activates victory animation and computes victory summary")
+        fun `winning move activates victory animation and computes summary`() = runTest(testDispatcher) {
+            val fakeStats = FakeStatsRepository(
+                initialStats = GameStats(
+                    gamesPlayed = 5,
+                    gamesWon = 3,
+                    bestTimeSeconds = 300,
+                    fewestMoves = 100,
+                    highScore = 500
+                )
+            )
+            val (board, winningCard) = createAlmostWonBoard()
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false,
+                statsRepository = fakeStats
+            )
+            testScheduler.runCurrent()
+
+            val events = mutableListOf<GameEvent>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.events.collect { events.add(it) }
+            }
+
+            viewModel.onIntent(GameIntent.OnCardTapped(winningCard, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+
+            val state = viewModel.uiState.value
+            assertTrue(state.isGameWon)
+            assertTrue(state.isVictoryAnimationActive)
+            assertNotNull(state.victorySummary)
+            val summary = state.victorySummary!!
+            assertEquals(93, summary.movesCount)
+            assertTrue(summary.score > 500)
+            assertTrue(summary.isNewHighScore)
+            assertTrue(events.any { it is GameEvent.TriggerWinCelebration })
+        }
+
+        @Test
+        @DisplayName("SkipWinAnimation deactivates victory animation while preserving victorySummary for dialog")
+        fun `skip win animation stops animation and retains summary`() = runTest(testDispatcher) {
+            val (board, winningCard) = createAlmostWonBoard()
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+            testScheduler.runCurrent()
+
+            viewModel.onIntent(GameIntent.OnCardTapped(winningCard, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+
+            assertTrue(viewModel.uiState.value.isVictoryAnimationActive)
+            assertNotNull(viewModel.uiState.value.victorySummary)
+
+            viewModel.onIntent(GameIntent.SkipWinAnimation)
+            testScheduler.runCurrent()
+
+            assertFalse(viewModel.uiState.value.isVictoryAnimationActive)
+            assertNotNull(viewModel.uiState.value.victorySummary)
+        }
+
+        @Test
+        @DisplayName("DismissVictorySummary clears victorySummary")
+        fun `dismiss victory summary clears summary state`() = runTest(testDispatcher) {
+            val (board, winningCard) = createAlmostWonBoard()
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+            testScheduler.runCurrent()
+
+            viewModel.onIntent(GameIntent.OnCardTapped(winningCard, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+
+            viewModel.onIntent(GameIntent.DismissVictorySummary)
+            testScheduler.runCurrent()
+
+            assertNull(viewModel.uiState.value.victorySummary)
+        }
+
+        @Test
+        @DisplayName("Undo after win resets victory animation and victory summary")
+        fun `undo after win deactivates victory animation and clears summary`() = runTest(testDispatcher) {
+            val (board, winningCard) = createAlmostWonBoard()
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+            testScheduler.runCurrent()
+
+            viewModel.onIntent(GameIntent.OnCardTapped(winningCard, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+
+            assertTrue(viewModel.uiState.value.isGameWon)
+            assertTrue(viewModel.uiState.value.isVictoryAnimationActive)
+            assertNotNull(viewModel.uiState.value.victorySummary)
+
+            viewModel.onIntent(GameIntent.UndoMove)
+            testScheduler.runCurrent()
+
+            assertFalse(viewModel.uiState.value.isGameWon)
+            assertFalse(viewModel.uiState.value.isVictoryAnimationActive)
+            assertNull(viewModel.uiState.value.victorySummary)
+        }
+
+        @Test
+        @DisplayName("StartNewGame resets victory animation and summary")
+        fun `start new game resets victory animation and summary`() = runTest(testDispatcher) {
+            val (board, winningCard) = createAlmostWonBoard()
+            val viewModel = GameViewModel(
+                initialBoardState = board,
+                coroutineScope = backgroundScope,
+                timerDispatcher = testDispatcher,
+                autoStartTimer = false
+            )
+            testScheduler.runCurrent()
+
+            viewModel.onIntent(GameIntent.OnCardTapped(winningCard, CardLocation.Tableau(0, 0)))
+            testScheduler.runCurrent()
+
+            viewModel.onIntent(GameIntent.StartNewGame)
+            testScheduler.runCurrent()
+
+            assertFalse(viewModel.uiState.value.isGameWon)
+            assertFalse(viewModel.uiState.value.isVictoryAnimationActive)
+            assertNull(viewModel.uiState.value.victorySummary)
         }
     }
 }
