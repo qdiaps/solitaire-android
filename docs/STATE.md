@@ -17,12 +17,17 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-6.1` (Victory Animation Extensible Architecture & Bouncing Physics Engine). Ready to proceed to `T-6.2` (High-Performance Card Sprite Cache).
+- **Current Focus:** Completed `T-6.2` (High-Performance Card Sprite Cache). Ready to proceed to `T-6.3` (Hardware-Accelerated Victory Canvas Overlay).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-28 (T-6.2: High-Performance Card Sprite Cache):**
+  - Designed `CardSpriteRenderer` interface and `DefaultCardSpriteRenderer` utilizing Compose `CanvasDrawScope`, vector `drawSuitEmblem`, and typography `TextMeasurer` / `drawText`.
+  - Implemented `CardSpriteCache` managing hardware-backed `ImageBitmap` sprites for all 52 card faces: provides instant retrieval by `Card` or `(Suit, Rank)`, idempotent population, and forced re-rendering upon style or dimension updates.
+  - Implemented `@Composable fun rememberCardSpriteCache(...)` with `LaunchedEffect` for automatic population and `DisposableEffect` for lifecycle-safe memory eviction when animation finishes or leaves composition.
+  - Added unit test suite `CardSpriteCacheTest` validating initial empty state, 52-sprite population, dimension verification, idempotence, and clean cache eviction. Full suite: 642 unit tests passing (100% pass), 0 Android lint errors (`./gradlew test`, `./gradlew lintDebug`).
 - **2026-09-28 (T-6.1: Victory Animation Extensible Architecture & Bouncing Physics Engine):**
   - Designed extensible `VictoryAnimationType` enum (`CLASSIC_BOUNCE`) and `VictoryAnimator` abstraction with `VictoryAnimatorFactory` in `io.github.qdiaps.solitaire.ui.game.animation.victory`.
   - Implemented immutable `BouncingCardParticle` and pure math simulation engine `BouncingCardsPhysics`: models particle coordinates, velocities ($v_x, v_y$), gravitational acceleration ($1800\\,\\text{px/s}^2$), floor restitution ($e \\approx 0.85$), minimum velocity clamping to avoid floor jitter, and classic screen boundary exit (plus optional wall bouncing).

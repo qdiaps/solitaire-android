@@ -74,11 +74,11 @@
   - Implemented `ClassicBounceAnimator` wrapping `CascadeSequencer` and `BouncingCardsPhysics` with sub-stepping for numerical stability under variable frame delta times.
   - *TDD/Unit Tests:* Added 17 unit tests in `BouncingCardsPhysicsTest`, `CascadeSequencerTest`, and `VictoryAnimatorTest` (100% pass, 638 total suite tests).
 
-- [ ] **T-6.2: High-Performance Card Sprite Cache (`CardSpriteCache`)**
-  - Implement `CardSpriteCache` pre-rendering or capturing all 52 card faces (styled with active `CardFaceStyle`) into reusable hardware-backed `ImageBitmap` / `Picture` instances.
-  - Eliminate vector `Path` and typography recalculations during the 60/120 FPS animation loop.
-  - Provide lifecycle-safe memory reclamation when animation completes or is dismissed.
-  - *TDD/Unit Tests:* `CardSpriteCacheTest` validating cache population, dimensions matching `CardDimensions`, and clean memory eviction.
+- [x] **T-6.2: High-Performance Card Sprite Cache (`CardSpriteCache`)**
+  - Designed `CardSpriteRenderer` interface and `DefaultCardSpriteRenderer` utilizing Compose `CanvasDrawScope`, vector `drawSuitEmblem`, and typography `TextMeasurer` / `drawText`.
+  - Implemented `CardSpriteCache` managing hardware-backed `ImageBitmap` sprites for all 52 card faces: supports instant retrieval by `Card` or `(Suit, Rank)`, idempotent population, and forced re-rendering upon style or dimension updates.
+  - Implemented `@Composable fun rememberCardSpriteCache(...)` with `LaunchedEffect` for automatic population and `DisposableEffect` for lifecycle-safe memory eviction when animation finishes or leaves composition.
+  - *TDD/Unit Tests:* Added `CardSpriteCacheTest` validating initial empty state, 52-sprite population, dimension verification, idempotence, and clean cache eviction (100% pass, 642 total suite tests).
 
 - [ ] **T-6.3: Hardware-Accelerated Victory Canvas Overlay (`VictoryOverlay`, `ClassicBounceRenderer`)**
   - Implement pluggable `VictoryRenderer` interface and `ClassicBounceRenderer` drawing to hardware-accelerated Compose `Canvas`.
