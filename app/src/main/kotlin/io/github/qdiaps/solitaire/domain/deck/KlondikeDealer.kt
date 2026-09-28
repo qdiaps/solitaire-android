@@ -74,4 +74,13 @@ object KlondikeDealer {
      */
     fun dealShuffled(random: Random = Random.Default): BoardState =
         deal(Deck.shuffle(random = random))
+
+    /**
+     * Deals a deterministic Klondike Solitaire [BoardState] from a numeric [seed].
+     *
+     * @param seed Random seed used for reproducible shuffling.
+     * @return Deterministic initial [BoardState].
+     */
+    fun dealFromSeed(seed: Long): BoardState =
+        dealShuffled(Random(seed))
 }

@@ -17,12 +17,19 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-6.FIX5.1` (A* solver fast-fail thresholds and realistic difficulty classification). Ready to start `T-6.FIX5.2` (Seed pre-generation script & initial assets catalog).
+- **Current Focus:** Completed `T-6.FIX5.2` (Seed pre-generation script & initial assets catalog). Ready to start `T-6.FIX5.3` (Persistent rotating seed bank & dynamic worker scaling).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-28 (T-6.FIX5.2: Seed Pre-Generation Script & Initial Assets Catalog):**
+  - Created `SeedBankCatalog` and `SeedBankParser` in `domain.solver`: JSON serialization and deserialization via `kotlinx.serialization` with schema versioning and segmented difficulty lookups.
+  - Implemented `KlondikeDealer.dealFromSeed(seed: Long)` providing reproducible deterministic board construction from integer seeds.
+  - Developed `SeedBankGenerator` engine with parallel batch evaluation using `SolvabilityChecker` and `DealDifficultyClassifier` to rapidly discover verified solvable seeds.
+  - Created CLI/Gradle generator script `scripts/generate_seed_bank.kts` and bundled initial 200 pre-verified solvable seeds (100 Easy, 100 Medium) into `app/src/main/assets/deals/seed_bank.json`.
+  - Added comprehensive test suite `SeedBankAssetTest`: verified JSON parsing, zero duplicate seeds across banks, card completeness (52 distinct cards per board with standard Klondike layout), determinism, and solvability classification.
+  - Full test suite verified: 592 unit tests passing (100% pass), 0 Android lint errors (`./gradlew testDebugUnitTest`, `./gradlew lintDebug`).
 - **2026-09-28 (T-6.FIX5.1: A* Solver Fast-Fail & Realistic Difficulty Thresholds):**
   - Relaxed `DEFAULT_MAX_EASY_STATES_EVALUATED` in `DealDifficultyClassifier` from 250 to 1000 states (deals requiring `> 1000` states classified as `MEDIUM`), dramatically improving Easy yield on solvable candidate deals.
   - Implemented fast-fail solver thresholds in `SolvabilityChecker` and `SolverConfig`: added `FAST_FAIL_TIMEOUT_MS = 150L`, `FAST_FAIL_MAX_STATES = 2000`, `SolverConfig.fastFail()`, and `SolvabilityChecker.checkSolvabilityFastFail(...)` for high-throughput background screening without 1.5s search stalls.
@@ -86,4 +93,4 @@
 ---
 
 ## Next Immediate Step
-- **Target Task:** `T-6.FIX5.2: Seed Pre-Generation Script & Initial Assets Catalog (scripts/generate_seed_bank.kts, app/src/main/assets/deals/seed_bank.json)`.
+- **Target Task:** `T-6.FIX5.3: Persistent Rotating Seed Bank & Dynamic Worker Scaling (PersistentSeedBank, DealGenerator dynamic scaling)`.

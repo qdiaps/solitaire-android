@@ -30,7 +30,7 @@
     - Relax `maxEasyStates` from 250 to 1000 in `DealDifficultyClassifier` for `DealDifficulty.EASY`; classify `> 1000` states as `DealDifficulty.MEDIUM`.
     - Implement aggressive Fast-Fail in `SolvabilityChecker`: introduce `fastFailTimeoutMs = 150L` and `fastFailMaxStates = 2000` for background deal screening, eliminating 1.5s stalls on unpromising or deadlocked deals.
     - *TDD/Unit Tests:* Update `DealDifficultyClassifierTest` and add `SolvabilityCheckerFastFailTest`.
-  - [ ] **T-6.FIX5.2 (Seed Pre-Generation Script & Initial Assets Catalog):**
+  - [x] **T-6.FIX5.2 (Seed Pre-Generation Script & Initial Assets Catalog):**
     - Create CLI/Gradle script `scripts/generate_seed_bank.kts` generating 200 guaranteed solvable seeds (100 Easy, 100 Medium) verified by `SolvabilityChecker` and `DealDifficultyClassifier`.
     - Bundle the pre-verified seeds into an initial asset catalog (`app/src/main/assets/deals/seed_bank.json`).
     - *TDD/Unit Tests:* `SeedBankAssetTest` verifying JSON parsing, card completeness (52 distinct cards per deal), and determinism.
