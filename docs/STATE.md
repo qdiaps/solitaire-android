@@ -17,12 +17,19 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-6.FIX5.2` (Seed pre-generation script & initial assets catalog). Ready to start `T-6.FIX5.3` (Persistent rotating seed bank & dynamic worker scaling).
+- **Current Focus:** Completed `T-6.FIX5.3` (Persistent rotating seed bank & dynamic worker scaling). Ready to start `T-6.FIX5.4` (Developer Debug Menu & Real-Time Deal Telemetry HUD).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-28 (T-6.FIX5.3: Persistent Rotating Seed Bank & Dynamic Worker Scaling):**
+  - Implemented `PersistentSeedBank` in `domain.solver`: thread-safe rotating seed bank managing available pre-verified solvable seeds with `SeedBankStorage` abstraction and `InMemorySeedBankStorage`.
+  - Added consumption semantics: `consumeSeed(difficulty)` picks random seeds without replacement, maintains a bounded ring buffer of played history (`playedSeeds`), and triggers asynchronous persistence.
+  - Implemented `DataStoreSeedBankStorage` in `data.repository`: persists and restores JSON-encoded `SeedBankState` via Jetpack `DataStoreManager`.
+  - Implemented dynamic worker scaling in `DealGenerator`: 0 workers active when bank capacity is healthy (>= 90 seeds, 0% CPU), 1 background worker for routine replenishment (50..89 seeds), scaling up to parallel workers (`max(2, min(cores - 1, 4))`) during deep depletion (< 50 seeds).
+  - Implemented live telemetry via `GeneratorDebugStats` and `StateFlow<GeneratorDebugStats>` exposing live bank counts, active worker counts, total candidates evaluated, total solvable found, rejection rate, and last solve duration.
+  - Added unit test suites `PersistentSeedBankTest`, `DealGeneratorDynamicScalingTest`, and `DataStoreSeedBankStorageTest`: 604 total unit tests passing (100% pass), 0 Android lint errors (`./gradlew testDebugUnitTest`, `./gradlew lintDebug`).
 - **2026-09-28 (T-6.FIX5.2: Seed Pre-Generation Script & Initial Assets Catalog):**
   - Created `SeedBankCatalog` and `SeedBankParser` in `domain.solver`: JSON serialization and deserialization via `kotlinx.serialization` with schema versioning and segmented difficulty lookups.
   - Implemented `KlondikeDealer.dealFromSeed(seed: Long)` providing reproducible deterministic board construction from integer seeds.

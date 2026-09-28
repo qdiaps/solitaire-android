@@ -34,7 +34,7 @@
     - Create CLI/Gradle script `scripts/generate_seed_bank.kts` generating 200 guaranteed solvable seeds (100 Easy, 100 Medium) verified by `SolvabilityChecker` and `DealDifficultyClassifier`.
     - Bundle the pre-verified seeds into an initial asset catalog (`app/src/main/assets/deals/seed_bank.json`).
     - *TDD/Unit Tests:* `SeedBankAssetTest` verifying JSON parsing, card completeness (52 distinct cards per deal), and determinism.
-  - [ ] **T-6.FIX5.3 (Persistent Rotating Seed Bank & Dynamic Worker Scaling):**
+  - [x] **T-6.FIX5.3 (Persistent Rotating Seed Bank & Dynamic Worker Scaling):**
     - Implement `PersistentSeedBank`: initialize from assets on cold start, persist active seeds in local app storage (`DataStore`/files).
     - Implement rotation semantics: whenever a deal is started or skipped, its seed is consumed and removed from the bank to ensure each game is fresh and non-repeating.
     - Implement dynamic coroutine replenishment in `DealGenerator`: 0 workers active when buffer is full (100/100, 0% CPU), 1 background worker on mild dip (>= 70%), scaling up to 3-4 parallel workers on heavy depletion (< 50%).

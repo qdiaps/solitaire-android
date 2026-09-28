@@ -15,8 +15,8 @@ import kotlinx.serialization.json.Json
 @Serializable
 data class SeedBankCatalog(
     val version: Int = 1,
-    val easySeeds: List<Long>,
-    val mediumSeeds: List<Long>
+    val easySeeds: List<Long> = emptyList(),
+    val mediumSeeds: List<Long> = emptyList()
 ) {
     /**
      * Returns seeds for the specified [difficulty].
@@ -29,31 +29,26 @@ data class SeedBankCatalog(
     }
 
     /**
-     * Total number of pre-seeded deals contained in the catalog.
+     * Total number of pre-verified seeds across all difficulty segments.
      */
     val totalSeedsCount: Int
         get() = easySeeds.size + mediumSeeds.size
 }
 
 /**
- * JSON serialization and parsing utility for [SeedBankCatalog].
+ * JSON serialization helper for [SeedBankCatalog].
  */
 object SeedBankParser {
+
     private val json = Json {
+        prettyPrint = true
         ignoreUnknownKeys = true
         isLenient = true
-        prettyPrint = true
     }
 
-    /**
-     * Parses a JSON string into a [SeedBankCatalog].
-     */
-    fun parse(jsonString: String): SeedBankCatalog =
-        json.decodeFromString(jsonString)
-
-    /**
-     * Serializes a [SeedBankCatalog] into a formatted JSON string.
-     */
     fun serialize(catalog: SeedBankCatalog): String =
         json.encodeToString(catalog)
+
+    fun parse(jsonString: String): SeedBankCatalog =
+        json.decodeFromString(jsonString)
 }
