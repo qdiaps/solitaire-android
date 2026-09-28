@@ -67,11 +67,12 @@
   - Added session persistence update in `undoMove()` (`if (!isWonNow && hasMoved) saveCurrentSession()`) guaranteeing undone active games are safely persisted if backgrounded.
   - *TDD/Unit Tests:* Added test cases in `GameViewModelTest` asserting that undoing a won game and completing the winning move again maintains `gameWonCount == 1`, and restarting the game allows subsequent victory recording.
 
-- [ ] **T-6.1: Victory Animation Extensible Architecture & Bouncing Physics Engine (`VictoryAnimator`, `BouncingCardsPhysics`)**
-  - Design extensible `VictoryAnimationType` enum (`CLASSIC_BOUNCE`, expandable to future effects like `FIREWORKS`, `CARD_SPIRAL`, etc.) and `VictoryAnimator` abstraction.
-  - Implement pure math `BouncingCardsPhysics` engine: particles with position, velocity ($v_x, v_y$), gravity, restitution coefficient ($e \approx -0.85$), and screen boundary bouncing.
-  - Implement deterministic `CascadeSequencer` queuing and releasing all 52 foundation cards in sequence with configurable intervals.
-  - *TDD/Unit Tests:* `BouncingCardsPhysicsTest` and `CascadeSequencerTest` validating step calculus, gravity, floor bounces, lateral momentum, and termination.
+- [x] **T-6.1: Victory Animation Extensible Architecture & Bouncing Physics Engine (`VictoryAnimator`, `BouncingCardsPhysics`)**
+  - Designed extensible `VictoryAnimationType` enum (`CLASSIC_BOUNCE`) and `VictoryAnimator` abstraction with `VictoryAnimatorFactory`.
+  - Implemented pure math `BouncingCardsPhysics` simulation engine: models card particles with position, velocity ($v_x, v_y$), gravity ($1800\\,\\text{px/s}^2$), floor restitution coefficient ($e \\approx -0.85$), minimal bounce clamping to prevent floor jitter, and classic screen exit termination (as well as optional wall bouncing).
+  - Implemented deterministic `CascadeSequencer`: orders foundation cards from top to bottom (King to Ace) cycling across foundations (3 down to 0), releases the first card immediately at $t = 0$, and sequences subsequent cards at configurable intervals (`releaseIntervalMs = 150L`), tracking queued, active, and completed/terminated particles.
+  - Implemented `ClassicBounceAnimator` wrapping `CascadeSequencer` and `BouncingCardsPhysics` with sub-stepping for numerical stability under variable frame delta times.
+  - *TDD/Unit Tests:* Added 17 unit tests in `BouncingCardsPhysicsTest`, `CascadeSequencerTest`, and `VictoryAnimatorTest` (100% pass, 638 total suite tests).
 
 - [ ] **T-6.2: High-Performance Card Sprite Cache (`CardSpriteCache`)**
   - Implement `CardSpriteCache` pre-rendering or capturing all 52 card faces (styled with active `CardFaceStyle`) into reusable hardware-backed `ImageBitmap` / `Picture` instances.

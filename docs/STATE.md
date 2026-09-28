@@ -17,12 +17,18 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-6.FIX8` (Guard Against Duplicate Victory Recording on Undo & Re-Win). Ready to proceed to `T-6.1` (Victory Animation Extensible Architecture & Bouncing Physics Engine).
+- **Current Focus:** Completed `T-6.1` (Victory Animation Extensible Architecture & Bouncing Physics Engine). Ready to proceed to `T-6.2` (High-Performance Card Sprite Cache).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-28 (T-6.1: Victory Animation Extensible Architecture & Bouncing Physics Engine):**
+  - Designed extensible `VictoryAnimationType` enum (`CLASSIC_BOUNCE`) and `VictoryAnimator` abstraction with `VictoryAnimatorFactory` in `io.github.qdiaps.solitaire.ui.game.animation.victory`.
+  - Implemented immutable `BouncingCardParticle` and pure math simulation engine `BouncingCardsPhysics`: models particle coordinates, velocities ($v_x, v_y$), gravitational acceleration ($1800\\,\\text{px/s}^2$), floor restitution ($e \\approx 0.85$), minimum velocity clamping to avoid floor jitter, and classic screen boundary exit (plus optional wall bouncing).
+  - Implemented deterministic `CascadeSequencer`: orders foundation cards from top to bottom (King to Ace) cycling across foundations (3 down to 0), releases the first card immediately at $t = 0$, and sequences subsequent cards at configurable intervals (`releaseIntervalMs = 150L`), tracking queued, active, and completed/terminated particles.
+  - Implemented `ClassicBounceAnimator` with sub-stepping for numerical stability under variable frame rates.
+  - Added unit test suites `BouncingCardsPhysicsTest`, `CascadeSequencerTest`, and `VictoryAnimatorTest` (17 tests). Full suite: 638 unit tests passing (100% pass), 0 Android lint errors (`./gradlew test`, `./gradlew lintDebug`).
 - **2026-09-28 (T-6.FIX8: Guard Against Duplicate Victory Recording on Undo & Re-Win):**
   - Resolved duplicate victory and win streak recording bug when undoing after a win and re-completing the winning move: `GameViewModel` previously invoked `recordVictoryInStats()` unconditionally on any move resulting in `isGameWon == true`.
   - Introduced session-scoped `isVictoryRecorded: Boolean` guard flag in `GameViewModel`: initialized to `initialIsWon`, guarded in `recordVictoryInStats()` (`if (isVictoryRecorded) return; isVictoryRecorded = true`), and reset on `applyNewDeal`, `restartGame`, and `restoreGameSession`.
