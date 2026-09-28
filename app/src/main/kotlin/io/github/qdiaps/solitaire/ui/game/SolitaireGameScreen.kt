@@ -39,6 +39,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import io.github.qdiaps.solitaire.domain.solver.GeneratorDebugStats
+import io.github.qdiaps.solitaire.BuildConfig
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -173,6 +174,7 @@ fun SolitaireGameScreen(
     onDealDifficultyChange: (DealDifficulty) -> Unit = {},
     isDeadlocked: Boolean = false,
     debugStats: GeneratorDebugStats = GeneratorDebugStats(),
+    isDebug: Boolean = BuildConfig.DEBUG,
     onDevInstantWin: () -> Unit = {},
     onDevStressRefill: () -> Unit = {},
     onDevExportSeeds: () -> Unit = {}
@@ -541,6 +543,7 @@ fun SolitaireGameScreen(
                             onDismiss = onDismissSettings,
                             dealDifficulty = dealDifficulty,
                             onDealDifficultyChange = onDealDifficultyChange,
+                            isDebug = isDebug,
                             debugStats = debugStats,
                             gameSessionId = gameSessionId,
                             movesCount = boardState.movesCount,
@@ -865,6 +868,7 @@ fun GameScreen(
     onDealDifficultyChange: (DealDifficulty) -> Unit = {},
     isDeadlocked: Boolean = false,
     debugStats: GeneratorDebugStats = GeneratorDebugStats(),
+    isDebug: Boolean = BuildConfig.DEBUG,
     onDevInstantWin: () -> Unit = {},
     onDevStressRefill: () -> Unit = {},
     onDevExportSeeds: () -> Unit = {}
@@ -924,6 +928,7 @@ fun GameScreen(
         onDealDifficultyChange = onDealDifficultyChange,
         isDeadlocked = isDeadlocked,
         debugStats = debugStats,
+        isDebug = isDebug,
         onDevInstantWin = onDevInstantWin,
         onDevStressRefill = onDevStressRefill,
         onDevExportSeeds = onDevExportSeeds
