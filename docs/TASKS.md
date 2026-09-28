@@ -10,6 +10,11 @@
   - Added loading guard with `CircularProgressIndicator` in `SolitaireGameScreen` rendering centered spinner while `isLoading == true` to guarantee zero visual flash or theme blinking on cold start.
   - *TDD/Unit Tests:* Added `ZeroFlickerAsyncInitTests` in `GameViewModelTest` verifying `isLoading` lifecycle during asynchronous initialization.
 
+- [ ] **T-6.FIX2: Configurable Deal Difficulty & Guaranteed Solvable Deal Pre-Generation (`DealDifficulty`, `DealGenerator`, `SettingsBottomSheet`)**
+  - [ ] **T-6.FIX2.1 (Domain Engine):** Implement `DealDifficulty` enum (`EASY`, `MEDIUM`, `RANDOM`), `DealDifficultyClassifier` heuristics (open mobility $\ge 2$ initial moves, A* states threshold $\le 250$ for Easy, standard solvable for Medium), and update `DealGenerator` to maintain buffered deals per difficulty with instant retrieval. *TDD/Unit Tests:* `DealDifficultyClassifierTest` and `DealGeneratorDifficultyTest`.
+  - [ ] **T-6.FIX2.2 (Data & ViewModel):** Extend `GameSettings` and `SettingsRepository` with `dealDifficulty: DealDifficulty` (persisted in DataStore, default `EASY`), update `GameViewModel` to observe difficulty, wire `DealGenerator` in `MainActivity.provideFactory`, and handle `RANDOM` bypass or `EASY`/`MEDIUM` buffered deals on cold start and new game. *TDD/Unit Tests:* `SettingsRepositoryTest` and `GameViewModelDealDifficultyTest`.
+  - [ ] **T-6.FIX2.3 (UI & Verification):** Add Deal Difficulty selector (`SegmentedChoiceRow`: Easy / Medium / Random) to `SettingsBottomSheet` under Gameplay section, update `SettingsBottomSheetPreview`, verify full test suite (`./gradlew test`), and validate zero-regression integration.
+
 - [ ] **T-6.1: Victory Animation Extensible Architecture & Bouncing Physics Engine (`VictoryAnimator`, `BouncingCardsPhysics`)**
   - Design extensible `VictoryAnimationType` enum (`CLASSIC_BOUNCE`, expandable to future effects like `FIREWORKS`, `CARD_SPIRAL`, etc.) and `VictoryAnimator` abstraction.
   - Implement pure math `BouncingCardsPhysics` engine: particles with position, velocity ($v_x, v_y$), gravity, restitution coefficient ($e \approx -0.85$), and screen boundary bouncing.
