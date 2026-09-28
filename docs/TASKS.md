@@ -80,12 +80,13 @@
   - Implemented `@Composable fun rememberCardSpriteCache(...)` with `LaunchedEffect` for automatic population and `DisposableEffect` for lifecycle-safe memory eviction when animation finishes or leaves composition.
   - *TDD/Unit Tests:* Added `CardSpriteCacheTest` validating initial empty state, 52-sprite population, dimension verification, idempotence, and clean cache eviction (100% pass, 642 total suite tests).
 
-- [ ] **T-6.3: Hardware-Accelerated Victory Canvas Overlay (`VictoryOverlay`, `ClassicBounceRenderer`)**
-  - Implement pluggable `VictoryRenderer` interface and `ClassicBounceRenderer` drawing to hardware-accelerated Compose `Canvas`.
-  - Implement persistent motion trails (Windows Solitaire classic card ghosting trail) without full canvas clears or excessive allocations.
-  - Implement game loop driving frame ticks via `withFrameNanos` ensuring smooth 60/120 FPS rendering.
-  - Implement full-screen touch barrier with tap-to-skip gesture handling (`Modifier.pointerInput`).
-  - *Compose Previews:* `VictoryOverlayPreview` demonstrating active particle cascade and motion trails.
+- [x] **T-6.3: Hardware-Accelerated Victory Canvas Overlay (`VictoryOverlay`, `ClassicBounceRenderer`)**
+  - Implemented pluggable `VictoryRenderer` interface and `ClassicBounceRenderer` drawing to hardware-accelerated Compose `Canvas`.
+  - Implemented authentic persistent motion trails (Windows Solitaire classic card ghosting trail) via offscreen hardware-backed trail buffer without full canvas clears or excessive allocations.
+  - Implemented high-performance frame loop driving ticks via `withFrameNanos` and draw-phase invalidation skipping Composable recomposition overhead for 60/120 FPS rendering.
+  - Implemented full-screen touch barrier with tap-to-skip gesture handling (`Modifier.pointerInput` and `detectTapGestures`).
+  - *TDD/Unit Tests:* Added `ClassicBounceRendererTest` validating type mapping, offscreen buffer allocation, particle stamping, and lifecycle memory eviction (100% pass, 644 total suite tests).
+  - *Compose Previews:* Created `VictoryOverlayPreview` (`VictoryOverlayBouncingCascadePreview`) demonstrating active particle cascade and motion trails.
 
 - [ ] **T-6.4: Victory Audio Fanfare & Celebration Haptics (`SolitaireAudio`, `SolitaireHaptics`)**
   - Create and bundle crisp uncompressed 16-bit 44.1kHz PCM WAV audio asset `victory_fanfare.wav` in `app/src/main/res/raw/`.

@@ -17,12 +17,19 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-6.2` (High-Performance Card Sprite Cache). Ready to proceed to `T-6.3` (Hardware-Accelerated Victory Canvas Overlay).
+- **Current Focus:** Completed `T-6.3` (Hardware-Accelerated Victory Canvas Overlay). Ready to proceed to `T-6.4` (Victory Audio Fanfare & Celebration Haptics).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-28 (T-6.3: Hardware-Accelerated Victory Canvas Overlay):**
+  - Implemented pluggable `VictoryRenderer` interface and `ClassicBounceRenderer` drawing to hardware-accelerated Compose `Canvas`.
+  - Implemented authentic persistent motion trails (Windows Solitaire classic card ghosting trail) via offscreen hardware-backed trail buffer without full canvas clears or excessive allocations.
+  - Implemented high-performance frame loop driving ticks via `withFrameNanos` and draw-phase invalidation skipping Composable recomposition overhead for 60/120 FPS rendering.
+  - Implemented full-screen touch barrier with tap-to-skip gesture handling (`Modifier.pointerInput` and `detectTapGestures`).
+  - Added unit test suite `ClassicBounceRendererTest` validating type mapping, offscreen buffer allocation, particle stamping, and lifecycle memory eviction. Full suite: 644 unit tests passing (100% pass), 0 Android lint errors (`./gradlew test`, `./gradlew lintDebug`).
+  - Created Compose preview `VictoryOverlayPreview` (`VictoryOverlayBouncingCascadePreview`) showcasing active bouncing cascade and motion trails.
 - **2026-09-28 (T-6.2: High-Performance Card Sprite Cache):**
   - Designed `CardSpriteRenderer` interface and `DefaultCardSpriteRenderer` utilizing Compose `CanvasDrawScope`, vector `drawSuitEmblem`, and typography `TextMeasurer` / `drawText`.
   - Implemented `CardSpriteCache` managing hardware-backed `ImageBitmap` sprites for all 52 card faces: provides instant retrieval by `Card` or `(Suit, Rank)`, idempotent population, and forced re-rendering upon style or dimension updates.
