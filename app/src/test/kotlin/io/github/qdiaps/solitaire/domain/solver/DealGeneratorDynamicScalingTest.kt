@@ -307,5 +307,54 @@ class DealGeneratorDynamicScalingTest {
                 generator.stop()
             }
         }
+
+        @Test
+        @DisplayName("Workers record discovery log entries with workerId, seed, difficulty, and duration")
+        fun `workers record discovery log entries with workerId seed difficulty and duration`() = testScope.runTest {
+            val bank = PersistentSeedBank(
+                storage = InMemorySeedBankStorage(),
+                defaultCatalogProvider = {
+                    SeedBankCatalog(
+                        easySeeds = (1001L..1085L).toList(),
+                        mediumSeeds = (2001L..2100L).toList()
+                    )
+                },
+                scope = testScope
+            )
+            bank.initialize()
+
+            var seedCounter = 7700L
+            val generator = DealGenerator(
+                scope = testScope,
+                dispatcher = testDispatcher,
+                seedBank = bank,
+                coreCountProvider = { 8 },
+                candidateSeedProvider = { seedCounter++ },
+                solvabilityChecker = { _, _ ->
+                    SolvabilityResult.Solvable(
+                        moves = emptyList(),
+                        path = emptyList(),
+                        statesEvaluated = 50,
+                        durationMs = 25L
+                    )
+                },
+                difficultyClassifier = { _, _ -> DealDifficulty.EASY }
+            )
+
+            try {
+                testScope.advanceUntilIdle()
+
+                val logs = generator.debugStats.value.recentWorkerLogs
+                assertTrue(logs.isNotEmpty())
+                val firstLog = logs.first()
+                assertTrue(firstLog.workerId >= 1)
+                assertEquals(DealDifficulty.EASY, firstLog.difficulty)
+                assertTrue(firstLog.seed >= 7700L)
+                assertTrue(firstLog.durationMs >= 0L)
+                assertTrue(firstLog.timestampMs > 0L)
+            } finally {
+                generator.stop()
+            }
+        }
     }
 }

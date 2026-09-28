@@ -55,6 +55,12 @@
   - **Dynamic Worker Contraction:** When seed count crosses from `< 50` (4 workers) back to `>= 50` (1 worker), cancel excess running workers cleanly.
   - *TDD/Unit Tests:* Update `DealGeneratorDynamicScalingTest` to verify cold-start eager replenishment and cross-difficulty harvesting.
 
+- [x] **T-6.FIX7: Real-Time Worker Discovery Log in Generator Telemetry & Debug Tools**
+  - **Worker Discovery Event Model:** Define `@Serializable` `WorkerLogEntry(timestampMs, workerId, seed, difficulty, durationMs)` and add ring-buffered `recentWorkerLogs: List<WorkerLogEntry>` to `GeneratorDebugStats`.
+  - **Telemetry Logging in DealGenerator:** Assign incremental/thread IDs to spawned background workers, logging every discovered solvable seed with worker ID, classified difficulty, seed number, and solve duration into `recentWorkerLogs` (max 20 entries).
+  - **Worker Discovery Log UI in SettingsBottomSheet:** Render a styled monospace activity feed card in the Developer Tools section displaying `[HH:mm:ss] W#id ➔ Difficulty #seed (ms)`, providing real-time visibility into worker contributions and parallel harvesting.
+  - *TDD/Unit Tests:* Add unit tests in `DealGeneratorDynamicScalingTest` asserting worker log creation and ring buffer capping; verify Compose preview.
+
 - [ ] **T-6.1: Victory Animation Extensible Architecture & Bouncing Physics Engine (`VictoryAnimator`, `BouncingCardsPhysics`)**
   - Design extensible `VictoryAnimationType` enum (`CLASSIC_BOUNCE`, expandable to future effects like `FIREWORKS`, `CARD_SPIRAL`, etc.) and `VictoryAnimator` abstraction.
   - Implement pure math `BouncingCardsPhysics` engine: particles with position, velocity ($v_x, v_y$), gravity, restitution coefficient ($e \approx -0.85$), and screen boundary bouncing.

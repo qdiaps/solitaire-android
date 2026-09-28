@@ -17,12 +17,19 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-6.FIX6` (Smart Cross-Difficulty Deal Harvesting & Eager Cold-Start Replenishment). Ready to proceed to `T-6.1` (Victory Animation Extensible Architecture & Bouncing Physics Engine).
+- **Current Focus:** Completed `T-6.FIX7` (Real-Time Worker Discovery Log in Generator Telemetry & Debug Tools). Ready to proceed to `T-6.1` (Victory Animation Extensible Architecture & Bouncing Physics Engine).
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-28 (T-6.FIX7: Real-Time Worker Discovery Log in Generator Telemetry & Debug Tools):**
+  - Defined `@Serializable` data model `WorkerLogEntry` capturing timestamp, assigned worker ID, discovered seed, classified difficulty (`EASY` or `MEDIUM`), and solving duration (ms).
+  - Extended `GeneratorDebugStats` with a ring-buffered list `recentWorkerLogs: List<WorkerLogEntry>` (retaining the most recent 20 events).
+  - Updated `DealGenerator` replenishment worker loops to assign unique incremental worker IDs and log every discovered solvable seed upon banking.
+  - Implemented `Worker Discovery Log` UI in `SettingsBottomSheet` under `BuildConfig.DEBUG`: styled monospace activity feed card showing timestamp, worker tag (`W#1`, `W#2`, etc.), target difficulty badge (green for Easy, orange for Medium), seed identifier (`#seed`), and solve time (`ms`).
+  - Updated Compose preview `SettingsSheetDeveloperDebugPreview` in `SettingsBottomSheetPreview.kt` with realistic sample worker discovery logs.
+  - Comprehensive verification: unit tests passed in `DealGeneratorDynamicScalingTest`, 619 total unit tests passing (100% pass), 0 Android lint errors (`./gradlew testDebugUnitTest`, `./gradlew lintDebug`).
 - **2026-09-28 (T-6.FIX6: Smart Cross-Difficulty Deal Harvesting & Eager Cold-Start Replenishment):**
   - Implemented eager cold-start replenishment in `DealGenerator`: observing `seedBank.state` automatically evaluates worker requirements on application launch, waking replenishment threads when either Easy or Medium has `< 90` seeds without requiring the player to deal a game first.
   - Implemented cross-difficulty deal harvesting in replenishment workers: when a worker checks candidate seeds, discovered solvable deals are deposited into the appropriate difficulty bank (`DealDifficulty.EASY` or `DealDifficulty.MEDIUM`) if it has `< 100` seeds, eliminating discarded CPU effort and doubling background generation throughput.

@@ -12,6 +12,7 @@ import io.github.qdiaps.solitaire.domain.deck.KlondikeDealer
 import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.solver.GeneratorDebugStats
+import io.github.qdiaps.solitaire.domain.solver.WorkerLogEntry
 import io.github.qdiaps.solitaire.ui.game.SolitaireGameScreen
 import io.github.qdiaps.solitaire.ui.game.components.SettingsSheetContent
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
@@ -241,7 +242,30 @@ fun SettingsSheetDeveloperDebugPreview() {
                     totalCandidatesEvaluated = 120,
                     totalSolvableFound = 95,
                     rejectionRate = 0.208f,
-                    lastSolveDurationMs = 28L
+                    lastSolveDurationMs = 28L,
+                    recentWorkerLogs = listOf(
+                        WorkerLogEntry(
+                            timestampMs = 1727520000000L,
+                            workerId = 2,
+                            seed = 14285L,
+                            difficulty = DealDifficulty.EASY,
+                            durationMs = 18L
+                        ),
+                        WorkerLogEntry(
+                            timestampMs = 1727519995000L,
+                            workerId = 1,
+                            seed = 14281L,
+                            difficulty = DealDifficulty.MEDIUM,
+                            durationMs = 32L
+                        ),
+                        WorkerLogEntry(
+                            timestampMs = 1727519990000L,
+                            workerId = 4,
+                            seed = 14270L,
+                            difficulty = DealDifficulty.EASY,
+                            durationMs = 14L
+                        )
+                    )
                 ),
                 gameSessionId = 42L,
                 movesCount = 18,

@@ -59,6 +59,7 @@ class DealGenerator(
 ) {
     companion object {
         const val DEFAULT_BUFFER_CAPACITY: Int = 3
+        const val MAX_RECENT_WORKER_LOGS: Int = 20
 
         /**
          * Calculates the desired background worker count based on current bank count and available CPU cores:
@@ -101,6 +102,7 @@ class DealGenerator(
     private var seedBankCollectorJob: Job? = null
 
     private val activeWorkers = AtomicInteger(0)
+    private val workerIdCounter = AtomicInteger(1)
     private val replenishmentJobs = ConcurrentHashMap<DealDifficulty, MutableList<Job>>()
     private val totalEvaluated = AtomicLong(0L)
     private val totalSolvable = AtomicLong(0L)
@@ -230,6 +232,7 @@ class DealGenerator(
             val needed = desiredWorkers - runningCount
             if (needed > 0 && scope.isActive) {
                 repeat(needed) {
+                    val workerId = workerIdCounter.getAndIncrement()
                     val job = scope.launch(dispatcher) {
                         updateActiveWorkers(1)
                         try {
@@ -248,6 +251,15 @@ class DealGenerator(
                                         if (bank.getAvailableCount(classified) < PersistentSeedBank.TARGET_CAPACITY) {
                                             if (bank.addSeed(classified, candidateSeed)) {
                                                 foundSolvable = true
+                                                recordWorkerLog(
+                                                    WorkerLogEntry(
+                                                        timestampMs = System.currentTimeMillis(),
+                                                        workerId = workerId,
+                                                        seed = candidateSeed,
+                                                        difficulty = classified,
+                                                        durationMs = duration
+                                                    )
+                                                )
                                             }
                                         }
                                     }
@@ -277,6 +289,13 @@ class DealGenerator(
         val count = activeWorkers.addAndGet(delta).coerceAtLeast(0)
         synchronized(statsLock) {
             _debugStats.value = _debugStats.value.copy(activeWorkersCount = count)
+        }
+    }
+
+    private fun recordWorkerLog(entry: WorkerLogEntry) {
+        synchronized(statsLock) {
+            val updated = (listOf(entry) + _debugStats.value.recentWorkerLogs).take(MAX_RECENT_WORKER_LOGS)
+            _debugStats.value = _debugStats.value.copy(recentWorkerLogs = updated)
         }
     }
 

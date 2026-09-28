@@ -48,6 +48,12 @@ import io.github.qdiaps.solitaire.domain.rules.DealDifficulty
 import io.github.qdiaps.solitaire.BuildConfig
 import io.github.qdiaps.solitaire.domain.rules.DrawMode
 import io.github.qdiaps.solitaire.domain.solver.GeneratorDebugStats
+import io.github.qdiaps.solitaire.domain.solver.WorkerLogEntry
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.remember
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import io.github.qdiaps.solitaire.ui.theme.SolitaireColors
 import io.github.qdiaps.solitaire.ui.theme.CardBackStyle
 import io.github.qdiaps.solitaire.ui.theme.CardFaceStyle
 import io.github.qdiaps.solitaire.ui.theme.FeltTheme
@@ -509,6 +515,60 @@ fun SettingsSheetContent(
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            // Worker Discovery Log Panel
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = colors.slotBackground,
+                border = BorderStroke(1.dp, colors.slotBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Worker Discovery Log",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = colors.scoreGold
+                            )
+                        )
+                        if (debugStats.recentWorkerLogs.isNotEmpty()) {
+                            Text(
+                                text = "${debugStats.recentWorkerLogs.size} recent",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = colors.onFeltSubtle,
+                                    fontSize = 11.sp
+                                )
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (debugStats.recentWorkerLogs.isEmpty()) {
+                        Text(
+                            text = "No worker discoveries recorded yet (Bank idle)",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = colors.onFeltSubtle,
+                                fontStyle = FontStyle.Italic,
+                                fontSize = 11.sp
+                            ),
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    } else {
+                        debugStats.recentWorkerLogs.take(10).forEach { entry ->
+                            WorkerLogRow(entry = entry, colors = colors)
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
             // Action: Instant Win
             Surface(
                 onClick = onDevInstantWin,
@@ -587,6 +647,85 @@ fun SettingsSheetContent(
         }
 
         Spacer(modifier = Modifier.height(28.dp))
+    }
+}
+
+@Composable
+private fun WorkerLogRow(
+    entry: WorkerLogEntry,
+    colors: SolitaireColors
+) {
+    val timeFormatted = remember(entry.timestampMs) {
+        if (entry.timestampMs > 0L) {
+            val date = java.util.Date(entry.timestampMs)
+            val format = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+            format.format(date)
+        } else {
+            "--:--:--"
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(6.dp))
+            .background(colors.tableBackground.copy(alpha = 0.4f))
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "[$timeFormatted]",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 10.sp,
+                    color = colors.onFeltSubtle
+                )
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "W#${entry.workerId}",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    color = colors.scoreGold
+                )
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "➔",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                    color = colors.onFeltSubtle
+                )
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = if (entry.difficulty == DealDifficulty.EASY) "Easy" else "Medium",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 11.sp,
+                    color = if (entry.difficulty == DealDifficulty.EASY) Color(0xFF81C784) else Color(0xFFFFB74D)
+                )
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "#${entry.seed}",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.sp,
+                    color = colors.onFeltText
+                )
+            )
+        }
+        Text(
+            text = "${entry.durationMs}ms",
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontFamily = FontFamily.Monospace,
+                fontSize = 10.sp,
+                color = colors.onFeltSubtle
+            )
+        )
     }
 }
 
