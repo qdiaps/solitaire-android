@@ -17,12 +17,19 @@
   - **Phase 4: Drag-and-Drop & Interactive Gameplay** — 154 unit tests (100% pass, 423 total suite tests), MVI contract, `GameViewModel`, timer, smart tap, hitboxes, drag overlay, snap-back physics, universal haptics (ERM + LRA), flight animations, 3D card flips, low-latency SoundPool audio feedback engine, and `MainActivity` wiring. (Complete)
   - **Phase 5: Game Loop, Scoring, Auto-Complete & Persistence** — 132 unit tests (100% pass, 555 total suite tests), card backs & faces typography, hint resolver & UI pulsing, auto-complete domain resolver & cascade, DataStore manager & settings repository, settings bottom sheet UI, statistics repository & dialog UI, active game session persistence & lifecycle restoration. (Complete)
   - *(Full historical task breakdown archived in [docs/archive/STATE_HISTORY.md](archive/STATE_HISTORY.md))*
-- **Current Focus:** Completed `T-6.FIX4` (Fixed victory stats recording and session clearance on auto-complete win in GameViewModel). Ready to proceed to `T-6.1`.
+- **Current Focus:** Formulated architectural plan for `T-6.FIX5` (Fast-Fail solver optimization, pre-seeded 200-deal bank, dynamic multi-worker replenishment, and BuildConfig.DEBUG dev tools in SettingsBottomSheet). Ready to start `T-6.FIX5.1`.
 - **Blockers / Technical Debt:** None.
 
 ---
 
 ## Recent Progress Log
+- **2026-09-28 (T-6.FIX5 Planning: Solver Fast-Fail, Pre-Seeded Bank & Debug Panel):**
+  - Profiled A* solver latency on candidate deals: empirical testing identified that Easy threshold `states <= 250` occurred in < 0.5% of random deals with 1.5s search timeouts, leading to 5+ minute buffering delays on mobile devices.
+  - Architected hybrid Pre-Seeded Replenishing Pool: 200 initial guaranteed solvable seeds (100 Easy, 100 Medium) bundled in assets, loaded instantly on cold start (0 ms latency).
+  - Designed rotation semantics: playing or skipping a deal permanently consumes and removes its seed from local storage, while background coroutines dynamically replenish the bank to maintain 100 Easy and 100 Medium deals.
+  - Designed dynamic worker scaling: 0 workers at 100% capacity (0% CPU/battery), 1 worker on mild dip, scaling to 3-4 parallel workers on heavy depletion (< 50%).
+  - Designed developer panel for `SettingsBottomSheet` under `BuildConfig.DEBUG` featuring live generator telemetry, system diagnostics, Instant Win action, View/Export Seeds, and a "Stress Refill / Flush 90%" trigger with a safety floor (< 20 total or < 10 per difficulty).
+  - Decomposed into 4 atomic subtasks (`T-6.FIX5.1` through `T-6.FIX5.4`) in `docs/TASKS.md`.
 - **2026-09-28 (T-6.FIX4: Record Victory Stats and Clear Session on Auto-Complete Win):**
   - Resolved missing victory stats recording bug in `GameViewModel.applyAutoCompleteMove`: previously, winning via animated auto-complete did not call `recordVictoryInStats()` or `cancelIdleHintTimer()`, leaving DataStore statistics (games won, win streak, best score, best time) un-updated and the saved session in DataStore un-cleared.
   - Added `recordVictoryInStats()` and `cancelIdleHintTimer()` when `isWon` is detected in `applyAutoCompleteMove`.
